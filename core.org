@@ -1,0 +1,94 @@
+<2013-12-12 Do>
+
+* Normal forms
+
+  x     Hypothesis variable
+  _x    Conclusion variable
+
+  't    Tag
+
+  p     Projection
+    ::= 1 | 2
+
+  br     Branch
+    ::= 't → n
+
+  n     Normal form
+    ::= _x
+      | let x = d in n    | destruction   |
+      | case x of b*      | case analysis |
+      | let _x = c   in n | construction  | 
+
+  d ::=    Destruction
+     | x    | alias       |
+     | y _z | application |
+     | z.p  | projection  |
+
+  c     Constructions
+    ::= x
+      | _x       |               | alias     |
+      | λ x. n   | Π (x : _y). n | functions |
+      | (_x, _y) | Σ (x : _y). n | pairs     |
+      | 't       | {'ts}         | tags      |
+      | ★        |               | universe  |
+
+* Environments
+
+  e ::= Environment entry
+      | x      | new hypothesis     |
+      | x = d  | defined hypothesis |
+      | _x = c | defined conclusion |
+      | 't = x | constraint         |
+
+  γ ::= e*  Environment
+
+** Environment extension
+
+   γ + e         environment extension
+
+   γ + x        = γ, x        new hypothesis
+
+   γ + (x = d)  = γ, x = y    if y = d ∈ γ   (modulo equality of variables)
+                  γ, x = d    otherwise
+    
+   γ + (_x = c) = γ, _x = _y  if _y = c ∈ γ  (modulo equality of variables)
+                  γ, _x = c   otherwise  
+
+   γ + ('t = x) = γ           if 't = x ∈ γ  (modulo equality of variables)
+                = ⊥           if 'u = x ∈ γ for t ≠ u               ( -"- )
+                = γ, 't = x   otherwise
+
+* Equality check
+
+** Judgements
+
+   γ ⊢ n = n'    compare normal forms
+   γ ⊢ c = c'    compare constructions
+
+** Rules
+  
+   ⊥ ⊢ rhs                       --> true
+
+   γ ⊢ let b in n = n'           -->  γ + b ⊢ n = n'
+   γ ⊢ n = let b in n'           -->  γ + b ⊢ n = n'
+
+   γ ⊢ case x of {'ti → ni} = n  --> ∀i. γ + ti = x ⊢ ni = n
+   γ ⊢ n = case x of {'ti → ni}  --> ∀i. γ + ti = x ⊢ n = ni
+
+   γ ⊢ _x = _y                   --> check equality of variables
+
+   γ ⊢ _x = c                    --> γ ⊢ γ(_x) = c
+   γ ⊢ c = _y                    --> γ ⊢ c = γ(_y)
+
+   γ ⊢ x = y                     --> check equality of variables
+                                     (may include eq. via tag)
+
+   γ ⊢ λ x. n = λ x'. n'         --> γ, x, x'=x ⊢  n = n'
+   γ ⊢ λ x. n = y                --> γ, x, _x = x, z = y _x ⊢ n = z 
+
+   γ ⊢ (_x1, _x2) = (_y1, _y2)   --> γ ⊢ _x1 = _y1 && γ ⊢ _x2 = _y2
+   γ ⊢ (_x1, _x2) = y            --> γ + z=y.1 ⊢ _x1 = z && γ + z=y.2 ⊢ _x2 = z
+
+   γ ⊢ 't = 't                   --> true
+
+   
