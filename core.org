@@ -17,20 +17,21 @@
     ::= _x
       | let x = d in n    | destruction   |
       | case x of b*      | case analysis |
-      | let _x = c   in n | construction  | 
+      | let _x = c   in n | construction  |
 
   d ::=    Destruction
-     | x    | alias       |
-     | y _z | application |
-     | z.p  | projection  |
+     | x    | alias                      |
+     | y _z | application                |
+     | z.p  | projection                 |
+     | _x   | cut (not in normal forms!) |
 
   c     Constructions
     ::= x
-      | _x       |               | alias     |
-      | λ x. n   | Π (x : _y). n | functions |
-      | (_x, _y) | Σ (x : _y). n | pairs     |
-      | 't       | {'ts}         | tags      |
-      | ★        |               | universe  |
+      | _x       |               | alias (use of hyp.) |
+      | λ x. n   | Π (x : _y). n | functions           |
+      | (_x, _y) | Σ (x : _y). n | pairs               |
+      | 't       | {'ts}         | tags                |
+      | ★        |               | universe            |
 
 * Environments
 
@@ -40,7 +41,7 @@
       | _x = c | defined conclusion |
       | 't = x | constraint         |
 
-  γ ::= e*  Environment
+  γ,h ::= e*  Environment   (or heap)
 
 ** Environment extension
 
@@ -58,6 +59,12 @@
                 = ⊥           if 'u = x ∈ γ for t ≠ u               ( -"- )
                 = γ, 't = x   otherwise
 
+
+   IN THE PRESENCE OF CUTS:
+
+   check for construction of a redex. If one is created, reduce it. One obtains a binding of the form  x = n
+   Push the lets into the environment. When finding a case, SPLIT the result! The checking must then proceed for
+   each split.
 * Equality check
 
 ** Judgements
@@ -92,3 +99,122 @@
    γ ⊢ 't = 't                   --> true
 
    
+
+* reduction of  n1[n2/x] (never needed, see below!)
+
+0. Check for occurence of x in n1; quick exit to n1 if no occurence. (Optional)
+1. Push the bindings/cases of n2 out, and construct a heap of bindings on the fly.
+2. we then have the form TREE(n1[_x/x]), return TREE(let x = _x in n1)
+
+* Typing rules
+** Judgements
+
+  | Γ;h ⊢ b     | check a binding          |
+  | Γ;h ⊢ x ⇉ A | check an hyp. var        |
+  | Γ;h ⊢ n ⇇ C | check a term/normal form |
+  | Γ;h ⊢ c ⇇ C | check a constructor      |
+
+** Rules
+
+*** Γ;h ⊢ b
+
+
+Γ;h ⊢ y ⇉ (z:A) → B    Γ;h ⊢ _z ⇇ A
+--------------------------------------------
+           Γ;h ⊢ x = y _z
+
+Γ;h ⊢ y ⇉ (z:A) × B
+--------------------------
+   Γ;h ⊢ x = y.1
+
+Γ;h ⊢ y ⇉ (z:A) × B
+--------------------------
+   Γ;h ⊢ x = y.2
+
+
+   Γ;h ⊢ _x ⇇ _A
+------------------------
+   Γ;h ⊢ x = _x : _A
+
+
+  always correct
+-------------------
+   Γ;h ⊢ _x = c
+
+*** Γ;h ⊢ x ⇉ A
+
+Γ(x) = A
+--------------------
+Γ;h ⊢ x ⇉ A
+
+
+h(x) = y _z     Γ;h ⊢ y ⇉ (z:A) → B
+----------------------------------------
+Γ;h ⊢  x ⇉ let z = _z in B
+
+
+h(x) = y.1     Γ;h ⊢ y ⇉ (z:_A) × B
+----------------------------------------
+   Γ;h ⊢ x ⇉ _A
+
+
+h(x) = y.2     Γ;h ⊢ y ⇉ (z:_A) × B
+----------------------------------------
+   Γ;h ⊢ x ⇉ let z = y.1 in B
+
+
+h(x) = (_x:_A)
+------------------
+Γ;h ⊢ x ⇉ _A
+
+*** Γ;h ⊢ n ⇇ C
+
+for each i:   Γ; h + ti = x ⊢ ai ⇇ C
+------------------------------------
+Γ;h ⊢ case x of {`ti ↦ ai } ⇇ C
+
+
+Γ;h+b ⊢ a ⇇ C     Γ;h ⊢ b
+----------------------------------
+Γ;h ⊢ let b in a ⇇ C
+
+
+h(z) = x   Γ;h ⊢ x ⇉ A    Γ;h ⊢ A ⇇ C
+-------------------------------------------
+Γ;h ⊢ z ⇇ c
+
+
+h(z) = c   Γ;h ⊢ c ⇉ C
+-------------------------
+Γ;h ⊢ z ⇇ c
+
+*** Γ;h ⊢ c ⇇ C
+
+A subtle thing: we never need to reduce C, this is done by context reduction. (We handle cuts there!)
+
+
+Γ;h+b ⊢ c ⇇ C  (no need to re-check the binding as the type is checked already)
+-------------------------
+Γ;h ⊢ c ⇇ let b in c
+
+
+for each i:  Γ;h + ti = x ⊢  c ⇇ Ci
+-----------------------------------------
+Γ;h ⊢ c ⇇ case x of {`ti -> Ci}
+
+
+Γ;h ⊢ c ⇇ h(_x)
+------------------
+Γ;h ⊢ c ⇇ _x
+
+
+Γ;h ⊢ _a ⇇ _A      Γ;h+x=_a:_A ⊢ _b ⇇ B
+----------------------------------------------
+Γ;h ⊢ (_a,_b) ⇇ (x:_A) × B
+
+
+Γ,x:_A;h ⊢ _z ⇇ let x = w in B
+----------------------------------------------
+Γ;h ⊢ λw. _z ⇇ (x:_A) -> B
+
+
