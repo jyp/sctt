@@ -60,7 +60,7 @@
                 = γ, 't = x   otherwise
 
 
-   IN THE PRESENCE OF CUTS:
+   For the eager evaluation of cuts one can proceed as follows:
 
    check for construction of a redex. If one is created, reduce it. One obtains a binding of the form  x = n
    Push the lets into the environment. When finding a case, SPLIT the result! The checking must then proceed for
@@ -99,12 +99,6 @@
    γ ⊢ 't = 't                   --> true
 
    
-
-* reduction of  n1[n2/x] (never needed, see below!)
-
-0. Check for occurence of x in n1; quick exit to n1 if no occurence. (Optional)
-1. Push the bindings/cases of n2 out, and construct a heap of bindings on the fly.
-2. we then have the form TREE(n1[_x/x]), return TREE(let x = _x in n1)
 
 * Typing rules
 ** Judgements
@@ -190,9 +184,6 @@ h(z) = c   Γ;h ⊢ c ⇉ C
 
 *** Γ;h ⊢ c ⇇ C
 
-A subtle thing: we never need to reduce C, this is done by context reduction. (We handle cuts there!)
-
-
 Γ;h+b ⊢ c ⇇ C  (no need to re-check the binding as the type is checked already)
 -------------------------
 Γ;h ⊢ c ⇇ let b in c
@@ -214,7 +205,26 @@ for each i:  Γ;h + ti = x ⊢  c ⇇ Ci
 
 
 Γ,x:_A;h ⊢ _z ⇇ let x = w in B
-----------------------------------------------
+------------------------------------
 Γ;h ⊢ λw. _z ⇇ (x:_A) -> B
 
+
+For the lazy evaluation of cuts, one adds the following rules:
+
+
+h(x) = y z     h(y)=λw._a    Γ;h+w=z ⊢ c ⇇ _a
+--------------------------------------------------
+Γ;h ⊢ c ⇇ x
+
+
+
+h(x) = y.1     h(y)=(_w,_z)  Γ;h ⊢ c ⇇ _w
+------------------------------------------
+Γ;h ⊢ c ⇇ x
+
+* reduction of  n1[n2/x] (never needed!)
+
+0. Check for occurence of x in n1; quick exit to n1 if no occurence. (Optional)
+1. Push the bindings/cases of n2 out, and construct a heap of bindings on the fly.
+2. we then have the form TREE(n1[_x/x]), return TREE(let x = _x in n1)
 
