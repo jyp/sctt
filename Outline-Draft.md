@@ -6,7 +6,7 @@ A. The problem:
 - Two problems:
 	1. It’s a bit slow. Type inference generates big terms (recall the canonical ML program). The intermediate representation does not support sharing. Side note: it’s not good for humans to read normal forms like this either!
 	2. It’s a bit annoying to use. The “case” function does not quite work. McBride invented “the view from the left”, but this departs significantly from the tradition of “terms” as text. In practice, it makes the system awkward to use, as “with” is translated to an extra abstraction. (This means that normal forms using with become big!) The types of functions using with can’t even be expressed by the user. More quirks of “with”: needs for extra constructs on top of it (inspect idiom); and some programs still do not typecheck.
-Here, we instead propose to properly fix the “case” construction. 
+Here, we instead propose to properly fix the “case” construction.
 
 THE ROOT OF THE PROBLEM: naming intermediate results is essential both for humans and computers to manipulate typed terms.
 

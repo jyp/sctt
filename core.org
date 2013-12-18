@@ -51,9 +51,9 @@
 
    γ + (x = d)  = γ, x = y    if y = d ∈ γ   (modulo equality of variables)
                   γ, x = d    otherwise
-    
+
    γ + (_x = c) = γ, _x = _y  if _y = c ∈ γ  (modulo equality of variables)
-                  γ, _x = c   otherwise  
+                  γ, _x = c   otherwise
 
    γ + ('t = x) = γ           if 't = x ∈ γ  (modulo equality of variables)
                 = ⊥           if 'u = x ∈ γ for t ≠ u               ( -"- )
@@ -73,7 +73,7 @@
    γ ⊢ c = c'    compare constructions
 
 ** Rules
-  
+
    ⊥ ⊢ rhs                       --> true
 
    γ ⊢ let b in n = n'           -->  γ + b ⊢ n = n'
@@ -91,14 +91,14 @@
                                      (may include eq. via tag)
 
    γ ⊢ λ x. n = λ x'. n'         --> γ, x, x'=x ⊢  n = n'
-   γ ⊢ λ x. n = y                --> γ, x, _x = x, z = y _x ⊢ n = z 
+   γ ⊢ λ x. n = y                --> γ, x, _x = x, z = y _x ⊢ n = z
 
    γ ⊢ (_x1, _x2) = (_y1, _y2)   --> γ ⊢ _x1 = _y1 && γ ⊢ _x2 = _y2
    γ ⊢ (_x1, _x2) = y            --> γ + z=y.1 ⊢ _x1 = z && γ + z=y.2 ⊢ _x2 = z
 
    γ ⊢ 't = 't                   --> true
 
-   
+
 
 * Typing rules
 ** Judgements
@@ -212,7 +212,7 @@ for each i:  Γ;h + ti = x ⊢  c ⇇ Ci
 For the lazy evaluation of cuts, one adds the following rules:
 
 
-h(x) = y z     h(y)=λw._a    Γ;h+w=z ⊢ c ⇇ _a
+h(x) = y z     h(y)=λw.n    Γ;h ⊢ c ⇇ n[z/w]
 --------------------------------------------------
 Γ;h ⊢ c ⇇ x
 
@@ -227,4 +227,3 @@ h(x) = y.1     h(y)=(_w,_z)  Γ;h ⊢ c ⇇ _w
 0. Check for occurence of x in n1; quick exit to n1 if no occurence. (Optional)
 1. Push the bindings/cases of n2 out, and construct a heap of bindings on the fly.
 2. we then have the form TREE(n1[_x/x]), return TREE(let x = _x in n1)
-

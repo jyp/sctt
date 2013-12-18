@@ -30,8 +30,8 @@ in subsequent parts of the term, which potentially solves two
 problems:
 
 1. The size of certain terms becomes so large that type-checking them
-becomes prohibitively expensive.  
-    
+becomes prohibitively expensive.
+
 2. Even for moderately-sized programs, the normalized output given by
 the type-checker is to big to be verified by users.
 
@@ -47,5 +47,3 @@ With this goal in mind, we will:
 - Verify that the examples we have designed work with our implementation.
 - If time allows, assess if the theory is suitable as a core, by
   extending it with experimental features.
-  
-  
