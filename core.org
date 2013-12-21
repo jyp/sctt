@@ -14,7 +14,8 @@
     ::= 't → n
 
   n     Normal form
-    ::= _x
+    ::= 
+      | _x                | conclude      |
       | let x = d in n    | destruction   |
       | case x of b*      | case analysis |
       | let _x = c   in n | construction  |
@@ -27,11 +28,11 @@
 
   c     Constructions
     ::= x
-      | _x       |               | alias (use of hyp.) |
-      | λ x. n   | Π (x : _y). n | functions           |
-      | (_x, _y) | Σ (x : _y). n | pairs               |
-      | 't       | {'ts}         | tags                |
-      | ★        |               | universe            |
+      | _x       |               | use of hyp. |
+      | λ x. n   | Π (x : _y). n | functions   |
+      | (_x, _y) | Σ (x : _y). n | pairs       |
+      | 't       | {'ts}         | tags        |
+      | ★        |               | universe    |
 
 * Environments
 
