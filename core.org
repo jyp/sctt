@@ -104,8 +104,8 @@
 * Typing rules
 ** Judgements
 
-  | Γ;h ⊢ b     | check a binding          |
-  | Γ;h ⊢ x ⇉ A | check an hyp. var        |
+  | Γ;h ⊢ b     | check a destruction      |
+  | Γ;h ⊢ x ⇉ A | infer an hyp. var        |
   | Γ;h ⊢ n ⇇ C | check a term/normal form |
   | Γ;h ⊢ c ⇇ C | check a constructor      |
 
@@ -165,6 +165,7 @@ h(x) = (_x:_A)
 *** Γ;h ⊢ n ⇇ C
 
 for each i:   Γ; h + ti = x ⊢ ai ⇇ C
+Γ(x) = {`ti}
 ------------------------------------
 Γ;h ⊢ case x of {`ti ↦ ai } ⇇ C
 

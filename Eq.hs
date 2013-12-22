@@ -2,7 +2,7 @@
 module Eq where
 import Terms
 import qualified Data.Map as M
-
+import Data.Monoid
 import Control.Monad.Reader
 import Control.Applicative
 
@@ -72,14 +72,22 @@ addConstr x c k = do
 (<&>) :: Applicative a => a Bool -> a Bool -> a Bool
 x <&> y = (&&) <$> x <*> y
 
+spliceBinding :: (n ~ r, Ord r) => Term n r -> (Conc r -> M n r Bool) -> M n r Bool
+spliceBinding (Conc c) k = k c
+spliceBinding (Destr x d t1) k = addDestr x d (spliceBinding t1 k)
+spliceBinding (Constr x c t1) k = addConstr x c (spliceBinding t1 k)
+spliceBinding (Case x bs) k = and <$> forM bs (\(Br tag t1) ->
+  addConstr x (Tag tag) $ spliceBinding t1 k)
 
-testTerm :: (n ~ r, Ord r) =>  Term n r -> Term n r -> M n r Bool
-testTerm (Conc c1) (Conc c2) = testConc c1 c2 
-testTerm (Destr x d t1) t2 = addDestr x d (testTerm t1 t2)
-testTerm (Constr x c t1) t2 = addConstr x c (testTerm t1 t2)
-testTerm (Case x bs) t2 = and <$> forM bs (\(Br tag t1) ->
-  addConstr x (Tag tag) $ testTerm t1 t2)
-testTerm c1 c2 = testTerm c2 c1
+testTerm :: (n ~ r, Ord r) => Term n r -> Term n r -> M n r Bool
+testTerm t1 t2 = spliceBinding t1 $ \c1 -> spliceBinding t2 $ \c2 -> testConc c1 c2
+-- testTerm :: (n ~ r, Ord r) => Term n r -> Term n r -> M n r Bool
+-- testTerm (Conc c1) (Conc c2) = testConc c1 c2 
+-- testTerm (Destr x d t1) t2 = addDestr x d (testTerm t1 t2)
+-- testTerm (Constr x c t1) t2 = addConstr x c (testTerm t1 t2)
+-- testTerm (Case x bs) t2 = and <$> forM bs (\(Br tag t1) ->
+--   addConstr x (Tag tag) $ testTerm t1 t2)
+-- testTerm c1 c2 = testTerm c2 c1
 
 testConc :: (n ~ r, Ord r) => Conc r -> Conc r -> M n r Bool
 testConc x_1 x_2
