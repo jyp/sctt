@@ -24,9 +24,7 @@ addConstr' src trg h@Heap{..} = h{heapConstr = M.insert src trg heapConstr }
 addDestr' :: Ord r => Destr r -> n -> Heap n r -> Heap n r
 addDestr' src trg h@Heap{..} = h{heapDestr = M.insert src trg heapDestr }
 
-
 getAlias h x = M.findWithDefault x x h
-
 
 addAliases :: forall n r. (n~r,Ord r) => [(r,r)] -> M n r Bool -> M n r Bool
 addAliases [] k = k
@@ -47,26 +45,23 @@ addAlias src trg = addAliases [(src,trg)]
 aliasOf :: Ord r => r -> M n r r
 aliasOf x = flip getAlias x . heapAlias <$> ask
 
-lookHeapC :: Ord n => n -> M n r (Constr n r)
-lookHeapC x = do
-  cHeap <- asks heapConstr
-  case M.lookup x cHeap of
-    Just c -> return c
+lookHeapC :: Ord n => n -> M n r (Maybe (Constr n r))
+lookHeapC x = M.lookup x . heapConstr <$> ask
 
--- | return true if fizzled, otherwise call the continuation.
 addDestr :: (n ~ r, Ord r) =>  Hyp n -> Destr r -> M n r Bool -> M n r Bool
-addDestr x (Cut c) k = error "cuts not supported yet"
+addDestr x (Cut c) k = error "cuts not supported yet" -- otherwise add alias.
 addDestr x d k = do
-  dHeap <- asks heapDestr
-  case M.lookup d dHeap of
+  h <- ask
+  let dHeap = heapDestr h
+      aHeap = heapAlias h
+  --for now we assume normal forms so adding a destruction should
+  --never trigger any reduction.
+  case M.lookup (getAlias aHeap <$> d) dHeap of
     Just y -> addAlias y x k
     Nothing -> local (addDestr' d x) k
 
 
--- | return true if fizzled, otherwise call the continuation.  for now
--- we assume normal forms so adding a construction should never
--- trigger any reduction. Otherwise we need to look for all
--- elimination of the variable and proceed.
+-- | return true if fizzled, otherwise call the continuation.  
 addConstr :: Ord n => Conc n -> Constr n r -> M n r Bool -> M n r Bool
 addConstr x c k = do
   hC <- heapConstr <$> ask
@@ -87,21 +82,21 @@ testTerm (Case x bs) t2 = and <$> forM bs (\(Br tag t1) ->
 testTerm c1 c2 = testTerm c2 c1
 
 testConc :: (n ~ r, Ord r) => Conc r -> Conc r -> M n r Bool
-testConc x_1 x_2 = do
-  c1 <- lookHeapC =<< aliasOf x_1
-  c2 <- lookHeapC =<< aliasOf x_2
+testConc x_1 x_2
+  | x_1 == x_2 = return True -- optimisation, so equal deep structures are not traversed.
+  | otherwise = do
+  Just c1 <- lookHeapC =<< aliasOf x_1
+  Just c2 <- lookHeapC =<< aliasOf x_2
   testConstr c1 c2
 
 testConstr :: (n ~ r, Ord r) => Constr n r -> Constr n r -> M n r Bool
 testConstr (Hyp h1) (Hyp h2) = (==) <$> aliasOf h1 <*> aliasOf h2
--- testConstr (Alias' c1) c2 = testConstr c2 =<< lookHeapC c1
--- testConstr c1 (Alias' c2) = testConstr c1 =<< lookHeapC c2
 testConstr (Lam x1 t1) (Lam x2 t2) = local (addAlias' x1 x2) $ testTerm t1 t2
-testConstr (Pair a1 b1)(Pair a2 b2) = (&&) <$> testConc a1 a2 <*> testConc b1 b2
+testConstr (Pair a1 b1)(Pair a2 b2) = testConc a1 a2 <&> testConc b1 b2
 testConstr (Pi x1 a1 t1) (Pi x2 a2 t2) = testConc a1 a2 <&> (local (addAlias' x1 x2) $ testTerm t1 t2)
 testConstr (Sigma x1 a1 t1) (Sigma x2 a2 t2) = testConc a1 a2 <&> (local (addAlias' x1 x2) $ testTerm t1 t2)
 testConstr (Tag t1)(Tag t2) = return $ t1 == t2
 testConstr (Fin ts1)(Fin ts2) = return $ ts1 == ts2
 testConstr (Universe x1)(Universe x2) = return $ x1 == x2
-
+testConstr _ _ = return False
 
