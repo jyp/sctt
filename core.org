@@ -132,7 +132,7 @@
    Γ;h ⊢ x = _x : _A
 
 
-  always correct
+  always correct ; what about lambdas?!
 -------------------
    Γ;h ⊢ _x = c
 

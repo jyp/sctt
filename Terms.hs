@@ -53,10 +53,14 @@ data Constr n r where
 --   DC :: Conc n ->  Constr n r -> Entry n r
 --   CC :: Tag -> Hyp r -> Entry n r
 
-data Heap n r = Heap { heapConstr :: Map (Conc n) (Constr n r)
+type DC n r = Either (Destr r) (Constr n r)
+
+data Heap n r = Heap { heapConstr :: Map (Conc n) (DC n r)
+                     , heapCuts :: Map (Hyp n) (Conc r)
                      , heapDestr :: Map (Destr r) (Hyp n)
                      , heapAlias :: Map r r
+                     , context :: Map r (Conc r) -- ^ types
                      }
 
-emptyHeap = Heap M.empty M.empty M.empty
+emptyHeap = Heap M.empty M.empty M.empty M.empty M.empty
 

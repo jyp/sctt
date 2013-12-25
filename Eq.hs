@@ -5,11 +5,17 @@ import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad.Reader
 import Control.Applicative
+import Fresh
+import Ident
 
-newtype M n r a = M {runM :: Reader (Heap n r) a}
+newtype M n r a = M {runM :: ReaderT (Heap n r) FreshM a}
   deriving (Functor, Applicative, Monad, MonadReader (Heap n r))
 
-run h0 x = runReader (runM x) h0
+type M' a = M Id Id a
+type Term' n r = Term Id Id
+
+run :: Heap n r -> M n r a -> a
+run h0 x = runFreshM $ runReaderT (runM x) h0
 
 addAlias' :: Ord r => r -> r -> Heap n r -> Heap n r
 addAlias' src trg h@Heap{..} = h{heapAlias = f <$> M.insert src trg heapAlias }
@@ -18,7 +24,7 @@ addAlias' src trg h@Heap{..} = h{heapAlias = f <$> M.insert src trg heapAlias }
 addAliases' :: Ord r => [(r,r)] -> Heap n r -> Heap n r
 addAliases' = foldr (.) id . map (uncurry addAlias')
 
-addConstr' :: Ord n => n -> Constr n r -> Heap n r -> Heap n r
+addConstr' :: Ord n => n -> DC n r -> Heap n r -> Heap n r
 addConstr' src trg h@Heap{..} = h{heapConstr = M.insert src trg heapConstr }
 
 addDestr' :: Ord r => Destr r -> n -> Heap n r -> Heap n r
@@ -45,20 +51,43 @@ addAlias src trg = addAliases [(src,trg)]
 aliasOf :: Ord r => r -> M n r r
 aliasOf x = flip getAlias x . heapAlias <$> ask
 
-lookHeapC :: Ord n => n -> M n r (Maybe (Constr n r))
-lookHeapC x = M.lookup x . heapConstr <$> ask
+eval1 :: (r~Id,n~Id) => Destr r -> (Term n r -> M n r Bool) -> M n r Bool 
+eval1 (Proj p f) k = do
+  lookHeapC p $ \(Pair a_ b_) -> k $ Conc $ case f of
+    Terms.First -> a_; Second -> b_
+eval1 (App f a_) k = lookHeapC f $ \(Lam xx bb) -> do
+    k =<< M (lift (subst xx a_ bb))
 
+getEliminated (Proj x _) = x
+getEliminated (App x _) = x
+
+
+-- | Look for some constructed value in the heap.
+-- TODO: rename to lookAndEval
+lookHeapC :: (r~Id,n~Id) => n -> (Constr n r -> M n r Bool) -> M n r Bool
+-- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
+lookHeapC x k = do
+  lk <- M.lookup x . heapConstr <$> ask
+  case lk of
+    Nothing -> error "Construction not found"
+    Just (Right c) -> k c
+    Just (Left d) -> eval1 d $ \d' -> onConcl d' $ \c ->
+                   local (addAlias' x c) (lookHeapC c k)
+    
 addDestr :: (n ~ r, Ord r) =>  Hyp n -> Destr r -> M n r Bool -> M n r Bool
-addDestr x (Cut c) k = error "cuts not supported yet" -- otherwise add alias.
+addDestr x (Cut c) k = addAlias x c k
 addDestr x d k = do
   h <- ask
   let dHeap = heapDestr h
       aHeap = heapAlias h
-  --for now we assume normal forms so adding a destruction should
-  --never trigger any reduction.
-  case M.lookup (getAlias aHeap <$> d) dHeap of
-    Just y -> addAlias y x k
-    Nothing -> local (addDestr' d x) k
+      cHeap = heapConstr h
+      d' = getAlias aHeap <$> d
+      y = getEliminated d
+  case M.lookup y cHeap of
+    Just _ -> local (addConstr' x $ Left d') k
+    Nothing -> case M.lookup d' dHeap of
+      Just y -> addAlias y x k
+      Nothing -> local (addDestr' d' x) k
 
 
 -- | return true if fizzled, otherwise call the continuation.  
@@ -66,38 +95,31 @@ addConstr :: Ord n => Conc n -> Constr n r -> M n r Bool -> M n r Bool
 addConstr x c k = do
   hC <- heapConstr <$> ask
   case c of
-    Tag t | Just (Tag t') <- M.lookup x hC, t /= t' -> return True
-    _ -> local (addConstr' x c) k
+    Tag t | Just (Right (Tag t')) <- M.lookup x hC, t /= t' -> return True
+    _ -> local (addConstr' x $ Right c) k
 
 (<&>) :: Applicative a => a Bool -> a Bool -> a Bool
 x <&> y = (&&) <$> x <*> y
 
-spliceBinding :: (n ~ r, Ord r) => Term n r -> (Conc r -> M n r Bool) -> M n r Bool
-spliceBinding (Conc c) k = k c
-spliceBinding (Destr x d t1) k = addDestr x d (spliceBinding t1 k)
-spliceBinding (Constr x c t1) k = addConstr x c (spliceBinding t1 k)
-spliceBinding (Case x bs) k = and <$> forM bs (\(Br tag t1) ->
-  addConstr x (Tag tag) $ spliceBinding t1 k)
+onConcl :: (n ~ r, Ord r) => Term n r -> (Conc r -> M n r Bool) -> M n r Bool
+onConcl (Conc c) k = k c
+onConcl (Destr x d t1) k = addDestr x d (onConcl t1 k)
+onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)
+onConcl (Case x bs) k = and <$> forM bs (\(Br tag t1) ->
+  addConstr x (Tag tag) $ onConcl t1 k)
 
-testTerm :: (n ~ r, Ord r) => Term n r -> Term n r -> M n r Bool
-testTerm t1 t2 = spliceBinding t1 $ \c1 -> spliceBinding t2 $ \c2 -> testConc c1 c2
--- testTerm :: (n ~ r, Ord r) => Term n r -> Term n r -> M n r Bool
--- testTerm (Conc c1) (Conc c2) = testConc c1 c2 
--- testTerm (Destr x d t1) t2 = addDestr x d (testTerm t1 t2)
--- testTerm (Constr x c t1) t2 = addConstr x c (testTerm t1 t2)
--- testTerm (Case x bs) t2 = and <$> forM bs (\(Br tag t1) ->
---   addConstr x (Tag tag) $ testTerm t1 t2)
--- testTerm c1 c2 = testTerm c2 c1
+testTerm :: (r~Id,n~Id) =>   Term n r -> Term n r -> M n r Bool
+testTerm t1 t2 = onConcl t1 $ \c1 -> onConcl t2 $ \c2 -> testConc c1 c2
 
-testConc :: (n ~ r, Ord r) => Conc r -> Conc r -> M n r Bool
+testConc :: (r~Id,n~Id) => Conc r -> Conc r -> M n r Bool
 testConc x_1 x_2
   | x_1 == x_2 = return True -- optimisation, so equal deep structures are not traversed.
   | otherwise = do
-  Just c1 <- lookHeapC =<< aliasOf x_1
-  Just c2 <- lookHeapC =<< aliasOf x_2
-  testConstr c1 c2
+    a1 <- aliasOf x_1
+    a2 <- aliasOf x_2
+    lookHeapC a1 $ \c1 -> lookHeapC a2 $ \c2 -> testConstr c1 c2
 
-testConstr :: (n ~ r, Ord r) => Constr n r -> Constr n r -> M n r Bool
+testConstr :: (r~Id,n~Id) => Constr n r -> Constr n r -> M n r Bool
 testConstr (Hyp h1) (Hyp h2) = (==) <$> aliasOf h1 <*> aliasOf h2
 testConstr (Lam x1 t1) (Lam x2 t2) = local (addAlias' x1 x2) $ testTerm t1 t2
 testConstr (Pair a1 b1)(Pair a2 b2) = testConc a1 a2 <&> testConc b1 b2
