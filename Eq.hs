@@ -56,7 +56,9 @@ eval1 (Proj p f) k = do
   lookHeapC p $ \(Pair a_ b_) -> k $ Conc $ case f of
     Terms.First -> a_; Second -> b_
 eval1 (App f a_) k = lookHeapC f $ \(Lam xx bb) -> do
-    k =<< M (lift (subst xx a_ bb))
+    k =<< substM xx a_ bb
+
+substM xx a_ bb = M (lift (subst xx a_ bb))
 
 getEliminated (Proj x _) = x
 getEliminated (App x _) = x
@@ -75,7 +77,7 @@ lookHeapC x k = do
                    local (addAlias' x c) (lookHeapC c k)
     
 addDestr :: (n ~ r, Ord r) =>  Hyp n -> Destr r -> M n r Bool -> M n r Bool
-addDestr x (Cut c) k = addAlias x c k
+addDestr x (Cut c _ct) k = addAlias x c k
 addDestr x d k = do
   h <- ask
   let dHeap = heapDestr h

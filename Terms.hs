@@ -33,7 +33,7 @@ data Destr r where
   -- Alias :: Hyp r -> Destr r -- not needed in terms.
   App :: Hyp r -> Conc r -> Destr r
   Proj :: Hyp r -> Proj -> Destr r
-  Cut :: Conc r -> Destr r
+  Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
     deriving (Eq, Ord, Functor)
 
 data Constr n r where
@@ -59,7 +59,7 @@ data Heap n r = Heap { heapConstr :: Map (Conc n) (DC n r)
                      , heapCuts :: Map (Hyp n) (Conc r)
                      , heapDestr :: Map (Destr r) (Hyp n)
                      , heapAlias :: Map r r
-                     , context :: Map r (Conc r) -- ^ types
+                     , context :: Map n (Conc r) -- ^ types
                      }
 
 emptyHeap = Heap M.empty M.empty M.empty M.empty M.empty
