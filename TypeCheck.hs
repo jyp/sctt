@@ -8,7 +8,8 @@ import Control.Applicative
 import Eq
 import Fresh
 import Ident
-{-type H = Int
+{-
+type H = Int
 
 data Result a = Success | Cont [(H,a)] | Fail String
 
@@ -42,7 +43,7 @@ inferDestr (Proj p f) k =
        case f of
          First -> k t_
          Second -> do
-           x' <- M $ lift $ freshId
+           x' <- liftM freshId
            u' <- substM x x' u
            onConcl (Destr x' (Proj p First) u' ) k
 
@@ -60,7 +61,6 @@ addCtx' x t h@Heap{..} = h{context = M.insert x t context }
 addCtx :: Ord n => n -> Conc r -> (M n r Bool) -> M n r Bool
 addCtx x t k = local (addCtx' x t) k
 
-
 -- maintains the invariant that every hyp. has an entry in the context.
 checkBindings :: (n~Id,r~Id) => Term n r -> (Conc r -> M n r Bool) -> M n r Bool
 checkBindings (Conc c) k = k c
@@ -69,7 +69,7 @@ checkBindings (Destr x d t1) k =
   inferDestr d $ \dt ->
   addCtx x dt (addDestr x d $ checkBindings t1 k)
 checkBindings (Case x bs) k =
-  inferHyp x $ \xt -> 
+  inferHyp x $ \xt ->
   case xt of
     Fin ts -> do
       rs <- forM bs $ \(Br tag t1) -> do
@@ -117,6 +117,7 @@ checkConstrSort (Pi xx ta_ tb_) s = do
   addCtx xx ta_ $ checkSort tb_ s
 
 checkConstrSort (Fin _) s = return True
+checkConstrSort (Universe s') s = return $ s' < s
 
 
 

@@ -21,10 +21,10 @@
       | let _x = c   in n | construction  |
 
   d ::=    Destruction
-     | x    | alias                      |
-     | y _z | application                |
-     | z.p  | projection                 |
-     | _x   | cut (not in normal forms!) |
+     | x       | alias                      |
+     | y _z    | application                |
+     | z.p     | projection                 |
+     | _x : _y | cut (not in normal forms!) |
 
   c     Constructions
     ::= x
