@@ -25,7 +25,7 @@ Pi.     Constr ::= "(" Var ":" Var ")" "->" Term;
 Pair.   Constr ::= "(" Var "," Var ")";
 Sigma.  Constr ::= "(" Var ":" Var ")" "X" Term;
 Tag.    Constr ::= Tag ;
-Fin.    Constr ::= "{" Tag "}" ;
+Fin.    Constr ::= "{" [Tag] "}" ;
 Univ.   Constr ::= "*" Nat;
 
 position token Var (letter)((letter|digit|'-'|'_'|'\'')*) ;
