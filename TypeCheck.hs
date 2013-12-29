@@ -8,6 +8,7 @@ import Control.Applicative
 import Eq
 import Fresh
 import Ident
+import Display
 {-
 type H = Int
 
@@ -23,10 +24,15 @@ instance Monad TC where
     Cont xs -> [ fromTC g a h1 | (h1,a) <- xs] 
 -}  
 
-checkTyp :: Term' -> Bool
+checkTyp :: Term' -> (Bool,[Doc])
 checkTyp t = runTC (nextUnique t) emptyHeap (checkSort t 100000)
 
-  
+addCtx' :: Ord n => n -> Conc r -> Heap n r -> Heap n r
+addCtx' x t h@Heap{..} = h{context = M.insert x t context }
+
+addCtx :: Ord n => n -> Conc r -> (M n r Bool) -> M n r Bool
+addCtx x t k = local (addCtx' x t) k
+
 -- Infer the type of a destruction and return it as a normal form.
 inferDestr :: (n~Id,r~Id) => Destr r -> (Conc r ->  M n r Bool) -> M n r Bool
 inferDestr (Cut v vt) k = do
@@ -49,7 +55,7 @@ inferDestr (Proj p f) k =
          Second -> do
            x' <- liftTC freshId
            u' <- substM x x' u
-           onConcl (Destr x' (Proj p First) u' ) k
+           onConcl (Destr x' (Proj p First) u') k
 
 -- Direct lookup of type in the context
 inferHyp :: (n~Id,r~Id) => Hyp r -> (Constr n r -> M n r Bool) -> M n r Bool
@@ -58,12 +64,6 @@ inferHyp h k = do
   case M.lookup h ctx of
     Just c -> do
       lookHeapC c k
-
-addCtx' :: Ord n => n -> Conc r -> Heap n r -> Heap n r
-addCtx' x t h@Heap{..} = h{context = M.insert x t context }
-
-addCtx :: Ord n => n -> Conc r -> (M n r Bool) -> M n r Bool
-addCtx x t k = local (addCtx' x t) k
 
 -- maintains the invariant that every hyp. has an entry in the context.
 checkBindings :: (n~Id,r~Id) => Term n r -> (Conc r -> M n r Bool) -> M n r Bool
@@ -94,34 +94,27 @@ checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> M n r Bool
 checkConclAgainstConstr v t = lookHeapC v $ \v' -> checkConstr v' t
 
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> M n r Bool
+checkConstr t (Universe s) = checkConstrSort t s
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_
   checkConAgainstTerm b_ =<< substM xx a_ tb_
-
 checkConstr (Lam x b_) (Pi xx ta_ tb_) = do
   addCtx xx ta_ $ checkTermAgainstTerm b_ tb_
-
 checkConstr (Tag t) (Fin ts) = return (t `elem` ts)
-
-checkConstr t (Universe s) = checkConstrSort t s
-
-checkConstr _ _ = error "tc. error"
+checkConstr _ _ = return False
 
 checkSort :: (n~Id,r~Id) => Term n r -> Int -> M n r Bool
 checkSort t s = onConcl t $ \c -> checkConclSort c s
 
 checkConclSort c s = lookHeapC c $ \c' -> checkConstrSort c' s
+
 checkConstrSort :: (n~Id,r~Id) => Constr n r -> Int -> M n r Bool
 checkConstrSort (Sigma xx ta_ tb_) s = do
   checkConclSort ta_ s
   addCtx xx ta_ $ checkSort tb_ s
-
 checkConstrSort (Pi xx ta_ tb_) s = do
   checkConclSort ta_ s
   addCtx xx ta_ $ checkSort tb_ s
-
 checkConstrSort (Fin _) s = return True
 checkConstrSort (Universe s') s = return $ s' < s
-
-
-
+checkConstrSort _ _ = return False

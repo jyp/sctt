@@ -10,10 +10,12 @@ T.  Tag      ::= "'" Var;
 Br. Branch   ::= Tag "->" Term;
 
 separator Branch ".";
-Concl.  Term ::=    Var ;
-Destr.  Term ::=    Var "=" Destr ";" Term;
-Constr. Term ::=    Var "=" Constr ";" Term;
-Case.   Term ::=    "case" Var "of" "{" [Branch] "}";
+Concl.  Term1 ::=    Var ;
+Destr.  Term1 ::=    Var "=" Destr ";" Term1;
+Constr. Term1 ::=    Var "=" Constr ";" Term1;
+Case.   Term1 ::=    "case" Var "of" "{" [Branch] "}";
+
+coercions Term 1;
 
 Appl.   Destr ::= Var Var;
 Proj.   Destr ::= Var Proj;

@@ -58,6 +58,10 @@ freshId :: FreshM Id
 freshId = do u <- fresh
              return $ mkId "tmp" u
 
+freshFrom :: Name -> FreshM Id
+freshFrom n = do u <- fresh
+                 return $ mkId n u
+
 freshIds :: Int -> FreshM [Id]
 freshIds n = replicateM n freshId
 

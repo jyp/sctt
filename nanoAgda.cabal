@@ -25,6 +25,6 @@ executable nac
                        containers >=0.4,
                        -- pretty-show,
                        array ==0.4.*,
-                       filepath
+                       filepath,
                        -- process,
-                       -- cmdargs,
+                       cmdargs

@@ -29,7 +29,8 @@ set :: forall a b. Lens a b -> b -> a -> a
 set (L l) x r = runReader (l ((\_ -> ask) :: b -> Reader b b) r) x
 
 upd :: Lens a b -> (b -> b) -> (a -> a)
-upd (L l) f a = fromI $ l I a
+upd (L l) f a = fromI $ l (I . f) a
+
 hyp,con :: Lens Env (Map String Id)
 con = L $ \f (Env h c) -> fmap (Env h) (f c)
 hyp = L $ \f (Env h c) -> fmap (flip Env c) (f h)
@@ -39,15 +40,18 @@ newtype R a = R {fromR :: ReaderT Env FreshM a}
 
 resolveVar :: (Lens Env (Map String Id)) -> A.Var -> R Id
 resolveVar l (A.Var (_,x)) = do
-  v <- M.lookup x . view l <$> ask
+  env <- ask
+  let v = M.lookup x . view l $ env
   case v of
     Just i -> return i
-    Nothing -> error $ "unknown identifier: " ++ x
+    Nothing -> error $
+                 "env = " ++ show env ++ "\n" ++
+                 "unknown identifier: " ++ x
 
 
 insert :: (Lens Env (Map String Id)) -> A.Var -> (Id -> R a) -> R a
 insert l (A.Var (_,x)) k = do
-  v <- R $ lift $ freshId
+  v <- R $ lift $ freshFrom x
   local (upd l $ M.insert x v) (k v)
 
 
@@ -62,11 +66,12 @@ resolveTerm (A.Destr x d t) = do
   d' <- resolveDestr d
   insert hyp x $ \x' -> Destr x' d' <$> resolveTerm t
 resolveTerm (A.Case x bs) = Case <$> resolveVar hyp x <*> (forM bs $ \(A.Br tag t) -> Br <$> resolveTag tag <*> resolveTerm t)
+resolveTerm (A.Concl x) = Conc <$> resolveVar con x
 
 resolveDestr :: A.Destr -> R (Destr Id)
 resolveDestr (A.Appl f x) = App <$> resolveVar hyp f <*> resolveVar con x
 resolveDestr (A.Proj p f) = Proj <$> resolveVar hyp p <*> pure (resolveProj f)
-resolveDestr (A.Cut x t) = Cut <$> resolveVar con x <*> resolveVar con t 
+resolveDestr (A.Cut x t) = Cut <$> resolveVar con x <*> resolveVar con t
 
 resolveProj (A.First) = First
 resolveProj (A.Second) = Second

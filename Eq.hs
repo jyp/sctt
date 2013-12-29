@@ -3,19 +3,20 @@ module Eq where
 import Terms
 import qualified Data.Map as M
 import Data.Monoid
-import Control.Monad.Reader
+import Control.Monad.RWS
 import Control.Applicative
 import Fresh
 import Ident
+import Display
 
-newtype M n r a = M {runM :: ReaderT (Heap n r) FreshM a}
+newtype M n r a = M {runM :: RWST (Heap n r) [Doc] () FreshM a}
   deriving (Functor, Applicative, Monad, MonadReader (Heap n r))
 
 type M' a = M Id Id a
 type Term' = Term Id Id
 
-runTC :: Unique -> Heap n r -> M n r a -> a
-runTC u h0 x = runFreshMFromUnique u $ runReaderT (runM x) h0
+runTC :: Unique -> Heap n r -> M n r a -> (a,[Doc])
+runTC u h0 x = runFreshMFromUnique u $ evalRWST (runM x) h0 ()
 
 addAlias' :: Ord r => r -> r -> Heap n r -> Heap n r
 addAlias' src trg h@Heap{..} = h{heapAlias = f <$> M.insert src trg heapAlias }
