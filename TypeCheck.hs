@@ -23,10 +23,14 @@ instance Monad TC where
     Cont xs -> [ fromTC g a h1 | (h1,a) <- xs] 
 -}  
 
+checkTyp :: Term' -> Bool
+checkTyp t = runTC (nextUnique t) emptyHeap (checkSort t 100000)
+
   
 -- Infer the type of a destruction and return it as a normal form.
 inferDestr :: (n~Id,r~Id) => Destr r -> (Conc r ->  M n r Bool) -> M n r Bool
 inferDestr (Cut v vt) k = do
+  checkConclSort vt 100000
   checkConcl v vt
   k vt
 inferDestr (App f a_) k =
@@ -43,7 +47,7 @@ inferDestr (Proj p f) k =
        case f of
          First -> k t_
          Second -> do
-           x' <- liftM freshId
+           x' <- liftTC freshId
            u' <- substM x x' u
            onConcl (Destr x' (Proj p First) u' ) k
 

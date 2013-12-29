@@ -9,10 +9,10 @@ separator Tag ",";
 T.  Tag      ::= "'" Var;
 Br. Branch   ::= Tag "->" Term;
 
-separator Branch ";";
+separator Branch ".";
 Concl.  Term ::=    Var ;
-Destr.  Term ::=    "let" Var "=" Destr "in" Term;
-Constr. Term ::=    "let" Var "=" Constr "in" Term;
+Destr.  Term ::=    Var "=" Destr ";" Term;
+Constr. Term ::=    Var "=" Constr ";" Term;
 Case.   Term ::=    "case" Var "of" "{" [Branch] "}";
 
 Appl.   Destr ::= Var Var;

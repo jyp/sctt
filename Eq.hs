@@ -12,10 +12,10 @@ newtype M n r a = M {runM :: ReaderT (Heap n r) FreshM a}
   deriving (Functor, Applicative, Monad, MonadReader (Heap n r))
 
 type M' a = M Id Id a
-type Term' n r = Term Id Id
+type Term' = Term Id Id
 
-run :: Heap n r -> M n r a -> a
-run h0 x = runFreshM $ runReaderT (runM x) h0
+runTC :: Unique -> Heap n r -> M n r a -> a
+runTC u h0 x = runFreshMFromUnique u $ runReaderT (runM x) h0
 
 addAlias' :: Ord r => r -> r -> Heap n r -> Heap n r
 addAlias' src trg h@Heap{..} = h{heapAlias = f <$> M.insert src trg heapAlias }
@@ -58,6 +58,7 @@ eval1 (Proj p f) k = do
 eval1 (App f a_) k = lookHeapC f $ \(Lam xx bb) -> do
     k =<< substM xx a_ bb
 
+liftTC = M . lift
 substM xx a_ bb = M (lift (subst xx a_ bb))
 
 getEliminated (Proj x _) = x

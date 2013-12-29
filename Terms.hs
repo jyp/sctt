@@ -7,7 +7,7 @@ import Data.Bitraversable
 import Data.Bifoldable
 import Data.Bifunctor
 import qualified Data.Map as M
-import Data.Map(Map)
+import Data.Map (Map)
 import Data.Generics.Genifunctors
 
 type Hyp a = a
@@ -15,9 +15,10 @@ type Conc a = a
 type Tag = String
 
 data Proj = First | Second
-     deriving (Eq, Ord)
+     deriving (Eq, Ord, Show)
 
 data Branch n r = Br Tag (Term n r)
+    deriving (Show)
 
 instance Bifoldable Term where  bifoldMap = bifoldMapDefault
 instance Bifunctor Term where  bimap = bimapDefault
@@ -28,16 +29,15 @@ data Term n r where
   Case :: Hyp n -> [Branch n r] -> Term n r
   Constr :: Conc n -> Constr n r -> Term n r -> Term n r
   Conc :: Conc r -> Term n r  -- ^ Conclude
+    deriving (Show)
 
 data Destr r where
-  -- Alias :: Hyp r -> Destr r -- not needed in terms.
   App :: Hyp r -> Conc r -> Destr r
   Proj :: Hyp r -> Proj -> Destr r
   Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
-    deriving (Eq, Ord, Functor)
+    deriving (Show, Eq, Ord, Functor)
 
 data Constr n r where
-  -- Alias' :: Conc r -> Constr n r
   Hyp :: Hyp r -> Constr n r
   Lam :: Hyp n -> Term n r -> Constr n r
   Pi :: Hyp n -> Conc r -> Term n r -> Constr n r
@@ -46,12 +46,7 @@ data Constr n r where
   Tag :: Tag -> Constr n r
   Fin :: [Tag] -> Constr n r
   Universe :: Int -> Constr n r
-
--- data Entry n r where
---   NH :: Hyp n -> Entry n r
---   DH :: Hyp n -> Destr r -> Entry n r
---   DC :: Conc n ->  Constr n r -> Entry n r
---   CC :: Tag -> Hyp r -> Entry n r
+    deriving (Show)
 
 type DC n r = Either (Destr r) (Constr n r)
 
@@ -62,5 +57,6 @@ data Heap n r = Heap { heapConstr :: Map (Conc n) (DC n r)
                      , context :: Map n (Conc r) -- ^ types
                      }
 
+emptyHeap :: Heap n r
 emptyHeap = Heap M.empty M.empty M.empty M.empty M.empty
 

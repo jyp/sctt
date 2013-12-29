@@ -5,13 +5,14 @@ DeriveFunctor #-}
 module Resolve where
 
 import Terms
-import qualified AbsNano as A
+import qualified Nano.Abs as A
 import Fresh
 import Ident
 import qualified Data.Map as M
 import Data.Map (Map)
 import Control.Monad.Reader
 import Control.Applicative
+import Eq (Term')
 newtype K k a = K {fromK :: k} deriving Functor
 newtype I a = I {fromI :: a} deriving Functor
 data Env = Env {envHyp :: Map String Id,
@@ -48,7 +49,11 @@ insert :: (Lens Env (Map String Id)) -> A.Var -> (Id -> R a) -> R a
 insert l (A.Var (_,x)) k = do
   v <- R $ lift $ freshId
   local (upd l $ M.insert x v) (k v)
-  
+
+
+resolve :: A.Term -> Term'
+resolve t =  runFreshM $ runReaderT (fromR $ resolveTerm t) emptyEnv 
+
 resolveTerm :: A.Term -> R (Term Id Id)
 resolveTerm (A.Constr x c t) = do
   c' <- resolveConstr c
