@@ -26,6 +26,9 @@ instance Pretty Proj where
 data Branch n r = Br Tag (Term n r)
     deriving (Show)
 
+instance (Pretty r, Pretty n) => Pretty (Branch n r) where
+  pretty (Br tag t) = "'" <> text tag <> "->" <> pretty t
+  
 instance Bifoldable Term where  bifoldMap = bifoldMapDefault
 instance Bifunctor Term where  bimap = bimapDefault
 instance Bitraversable Term where  bitraverse = $(genTraverse ''Term)
@@ -37,6 +40,12 @@ data Term n r where
   Conc :: Conc r -> Term n r  -- ^ Conclude
     deriving (Show)
 
+instance (Pretty r, Pretty n) => Pretty (Term n r) where
+  pretty (Destr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
+  pretty (Constr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
+  pretty (Case x bs) = "case " <> pretty x <> hang "of" 2 (braces $ sep $ punctuate "." $ map pretty bs)
+  pretty (Conc x) = pretty x
+  
 data Destr r where
   App :: Hyp r -> Conc r -> Destr r
   Proj :: Hyp r -> Proj -> Destr r
@@ -59,6 +68,15 @@ data Constr n r where
   Universe :: Int -> Constr n r
     deriving (Show)
 
+instance (Pretty r, Pretty n) => Pretty (Constr n r) where
+  pretty (Hyp h) = pretty h
+  pretty (Lam x b) = "\\" <> pretty x <> " -> " <> parens (pretty b)
+  pretty (Pi x t b) = parens (pretty x <>":"<>pretty t) <> " -> " <> parens (pretty b)
+  pretty (Sigma x t b) = parens (pretty x <>":"<>pretty t) <> " × " <> parens (pretty b)
+  pretty (Pair a b) = parens $ pretty a <> "," <> pretty b
+  pretty (Tag t) = "'" <> text t
+  pretty (Fin ts) = braces $ sep $ punctuate "," $ map text ts
+  pretty (Universe x) = "*" <> subscriptPretty x
 type DC n r = Either (Destr r) (Constr n r)
 
 data Heap n r = Heap { heapConstr :: Map (Conc n) (DC n r)

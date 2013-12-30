@@ -10,20 +10,6 @@ import Eq
 import Fresh
 import Ident
 import Display
-{-
-type H = Int
-
-data Result a = Success | Cont [(H,a)] | Fail String
-
-newtype TC a = TC {fromTC :: H -> Result a}
-
-instance Monad TC where
-  return x = TC (\h -> Cont [(H,a)])
-  TC f >>= g = TC $ \h0 -> case f h0 of
-    Success -> Success
-    Fail s  -> Fail s
-    Cont xs -> [ fromTC g a h1 | (h1,a) <- xs] 
--}  
 
 checkTyp :: Term' -> (Bool,[Doc])
 checkTyp t = runTC (nextUnique t) emptyHeap chk
@@ -38,10 +24,7 @@ addCtx x t k = local (addCtx' x t) k
 
 -- Infer the type of a destruction and return it as a normal form.
 inferDestr :: (n~Id,r~Id) => Destr r -> (Conc r ->  M n r Bool) -> M n r Bool
-inferDestr (Cut v vt) k = do
-  checkConclSort vt 10000
-  checkConcl v vt
-  k vt
+inferDestr (Cut v vt) k = checkConclSort vt 10000 <&> checkConcl v vt <&> k vt
 inferDestr (App f a_) k =
   inferHyp f $ \ft -> 
   case ft of
@@ -101,7 +84,7 @@ checkConcl v t = do
 
 checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> M n r Bool
 checkConclAgainstConstr v t = lookHeapC v $ \v' -> do
-  tell ["checking construction " <> text (show v') <> ":" <> text (show t)]
+  tell ["checking construction " <> pretty v' <> ":" <> text (show t)]
   checkConstr v' t
 
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> M n r Bool

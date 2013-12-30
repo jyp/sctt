@@ -55,7 +55,7 @@ run s fname = let ts = myLLexer s in case pTerm ts of
 process :: FilePath -> A.Term -> Checker (Term')
 process fname modul = do
   let resolved = resolve modul
-  putStrV 4 $ "[Resolved into]" $$ text (show resolved)
+  putStrV 4 $ "[Resolved into]" $$ pretty resolved
   let (accept,info) = checkTyp resolved
   mapM_ (putStrV 0) info
   guard accept
