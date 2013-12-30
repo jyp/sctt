@@ -16,10 +16,7 @@ import System.FilePath
 import Control.Monad.Error
 import Display
 import Eq
-
-instance Error Doc where
-  noMsg = "nanoAgda: unknown error"
-  strMsg = text
+import TCM
 
 myLLexer :: String -> [Token]
 myLLexer = resolveLayout True . myLexer
@@ -56,9 +53,11 @@ process :: FilePath -> A.Term -> Checker (Term')
 process fname modul = do
   let resolved = resolve modul
   putStrV 4 $ "[Resolved into]" $$ pretty resolved
-  let (accept,info) = checkTyp resolved
+  let (res,info) = checkTyp resolved
   mapM_ (putStrV 0) info
-  guard accept
+  case res of
+    Left err -> throwError err
+    Right _ -> return ()
   return resolved
   
 main :: IO ()

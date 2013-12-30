@@ -12,7 +12,8 @@ import qualified Data.Map as M
 import Data.Map (Map)
 import Control.Monad.Reader
 import Control.Applicative
-import Eq (Term')
+import TCM
+
 newtype K k a = K {fromK :: k} deriving Functor
 newtype I a = I {fromI :: a} deriving Functor
 data Env = Env {envHyp :: Map String Id,

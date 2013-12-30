@@ -70,9 +70,9 @@ data Constr n r where
 
 instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Hyp h) = pretty h
-  pretty (Lam x b) = "\\" <> pretty x <> " -> " <> parens (pretty b)
-  pretty (Pi x t b) = parens (pretty x <>":"<>pretty t) <> " -> " <> parens (pretty b)
-  pretty (Sigma x t b) = parens (pretty x <>":"<>pretty t) <> " × " <> parens (pretty b)
+  pretty (Lam x b) = "\\" <> pretty x <> " -> " <> (pretty b)
+  pretty (Pi x t b) = parens (pretty x <>":"<>pretty t) <> " -> " <>  (pretty b)
+  pretty (Sigma x t b) = parens (pretty x <>":"<>pretty t) <> " × " <> (pretty b)
   pretty (Pair a b) = parens $ pretty a <> "," <> pretty b
   pretty (Tag t) = "'" <> text t
   pretty (Fin ts) = braces $ sep $ punctuate "," $ map text ts

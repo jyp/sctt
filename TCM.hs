@@ -12,8 +12,22 @@ import Control.Monad.Error
 import Control.Applicative
 
 type Heap' = Heap Id Id
+type Term' = Term Id Id
+type Constr' = Constr Id Id
 
-newtype TC a = TC {fromTC :: ErrorT String (RWST Heap' [Doc] () FreshM) a} 
-  deriving (Functor, Applicative, Monad, MonadReader Heap', MonadWriter [Doc])
+newtype TC a = TC {fromTC :: ErrorT Doc (RWST Heap' [Doc] () FreshM) a} 
+  deriving (Functor, Applicative, Monad, MonadReader Heap', MonadWriter [Doc], MonadError Doc)
+
+instance Error Doc where
+  noMsg = "unknown error"
+  strMsg = text
+  
+runTC :: Unique -> Heap' -> TC a -> (Either Doc a,[Doc])
+runTC u h0 (TC x) = runFreshMFromUnique u $ evalRWST (runErrorT x) h0 ()
+
+liftTC :: FreshM a -> TC a
+liftTC x = TC $ lift $ lift x
+
+substTC xx a_ bb = liftTC (subst xx a_ bb)
 
 

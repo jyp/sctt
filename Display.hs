@@ -1,6 +1,6 @@
 {-# LANGUAGE PackageImports, GADTs, KindSignatures, StandaloneDeriving, EmptyDataDecls, FlexibleInstances, OverloadedStrings #-}
 
-module Display (Pretty(..), Doc, ($$), (<+>), text, hang, vcat, parensIf, sep, comma, nest, parens, braces,
+module Display (Pretty(..), Doc, ($$), (<+>), text, hang, vcat, parensIf, sep, comma, nest, parens, braces, int,
                 subscriptPretty, superscriptPretty, subscriptShow, render, punctuate) where
 
 import Prelude hiding (length, reverse)
