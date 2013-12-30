@@ -10,22 +10,23 @@ T.  Tag      ::= "'" Var;
 Br. Branch   ::= Tag "->" Term;
 
 separator Branch ".";
-Concl.  Term1 ::=    Var ;
+Concl.  Term2 ::=    Var ;
+Case.   Term2 ::=    "case" Var "of" "{" [Branch] "}";
+
 Destr.  Term1 ::=    Var "=" Destr ";" Term1;
 Constr. Term1 ::=    Var "=" Constr ";" Term1;
-Case.   Term1 ::=    "case" Var "of" "{" [Branch] "}";
 
-coercions Term 1;
+coercions Term 2;
 
 Appl.   Destr ::= Var Var;
 Proj.   Destr ::= Var Proj;
 Cut.    Destr ::= Var ":" Var;
 
 Hyp.    Constr ::= Var;
-Lam.    Constr ::= "\\" Var "->" Term;
-Pi.     Constr ::= "(" Var ":" Var ")" "->" Term;
+Lam.    Constr ::= "\\" Var "->" Term2;
+Pi.     Constr ::= "(" Var ":" Var ")" "->" Term2;
 Pair.   Constr ::= "(" Var "," Var ")";
-Sigma.  Constr ::= "(" Var ":" Var ")" "X" Term;
+Sigma.  Constr ::= "(" Var ":" Var ")" "X" Term2;
 Tag.    Constr ::= Tag ;
 Fin.    Constr ::= "{" [Tag] "}" ;
 Univ.   Constr ::= "*" Nat;

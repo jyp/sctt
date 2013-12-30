@@ -57,7 +57,7 @@ process fname modul = do
   let resolved = resolve modul
   putStrV 4 $ "[Resolved into]" $$ text (show resolved)
   let (accept,info) = checkTyp resolved
-  mapM_ (putStrV 0) info  -- display constraints, etc.
+  mapM_ (putStrV 0) info
   guard accept
   return resolved
   

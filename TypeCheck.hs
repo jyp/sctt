@@ -1,9 +1,10 @@
-{-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables #-}
+{-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings #-}
 module TypeCheck where
 import Terms
 import qualified Data.Map as M
 
 import Control.Monad.Reader
+import Control.Monad.Writer
 import Control.Applicative
 import Eq
 import Fresh
@@ -25,7 +26,9 @@ instance Monad TC where
 -}  
 
 checkTyp :: Term' -> (Bool,[Doc])
-checkTyp t = runTC (nextUnique t) emptyHeap (checkSort t 100000)
+checkTyp t = runTC (nextUnique t) emptyHeap chk
+  where chk = do tell ["Start"]
+                 checkSort t 100000
 
 addCtx' :: Ord n => n -> Conc r -> Heap n r -> Heap n r
 addCtx' x t h@Heap{..} = h{context = M.insert x t context }
@@ -36,7 +39,7 @@ addCtx x t k = local (addCtx' x t) k
 -- Infer the type of a destruction and return it as a normal form.
 inferDestr :: (n~Id,r~Id) => Destr r -> (Conc r ->  M n r Bool) -> M n r Bool
 inferDestr (Cut v vt) k = do
-  checkConclSort vt 100000
+  checkConclSort vt 10000
   checkConcl v vt
   k vt
 inferDestr (App f a_) k =
@@ -51,11 +54,11 @@ inferDestr (Proj p f) k =
   case pt of
     (Sigma x t_ u) -> do
        case f of
-         First -> k t_
-         Second -> do
+         Terms.First -> k t_
+         Terms.Second -> do
            x' <- liftTC freshId
            u' <- substM x x' u
-           onConcl (Destr x' (Proj p First) u') k
+           onConcl (Destr x' (Proj p Terms.First) u') k
 
 -- Direct lookup of type in the context
 inferHyp :: (n~Id,r~Id) => Hyp r -> (Constr n r -> M n r Bool) -> M n r Bool
@@ -68,9 +71,13 @@ inferHyp h k = do
 -- maintains the invariant that every hyp. has an entry in the context.
 checkBindings :: (n~Id,r~Id) => Term n r -> (Conc r -> M n r Bool) -> M n r Bool
 checkBindings (Conc c) k = k c
-checkBindings (Constr x c t1) k = addConstr x c (checkBindings t1 k) -- FIXME: check lambdas?!
-checkBindings (Destr x d t1) k =
-  inferDestr d $ \dt ->
+checkBindings (Constr x c t1) k = do
+  -- tell ["constructing" <> pretty x]
+  addConstr x c $ do
+    -- tell ["constructed" <> pretty x]
+    checkBindings t1 k
+checkBindings (Destr x d t1) k = inferDestr d $ \dt -> do
+  tell ["inferred " <> pretty d <> " to be " <> pretty dt]
   addCtx x dt (addDestr x d $ checkBindings t1 k)
 checkBindings (Case x bs) k =
   inferHyp x $ \xt ->
@@ -88,12 +95,17 @@ checkConAgainstTerm :: (n~Id,r~Id) => Conc r -> Term n r -> M n r Bool
 checkConAgainstTerm c t = onConcl t $ \t' -> checkConcl c t'
 
 checkConcl :: (n~Id,r~Id) => Conc r -> r -> M n r Bool
-checkConcl v t = lookHeapC t $ \t' -> checkConclAgainstConstr v t'
+checkConcl v t = do
+  tell ["checking conclusion " <> pretty v <> ":" <> pretty t]
+  lookHeapC t $ \t' -> checkConclAgainstConstr v t'
 
 checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> M n r Bool
-checkConclAgainstConstr v t = lookHeapC v $ \v' -> checkConstr v' t
+checkConclAgainstConstr v t = lookHeapC v $ \v' -> do
+  tell ["checking construction " <> text (show v') <> ":" <> text (show t)]
+  checkConstr v' t
 
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> M n r Bool
+checkConstr (Hyp h) t = inferHyp h $ \t' -> testConstr t' t
 checkConstr t (Universe s) = checkConstrSort t s
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_
@@ -104,9 +116,11 @@ checkConstr (Tag t) (Fin ts) = return (t `elem` ts)
 checkConstr _ _ = return False
 
 checkSort :: (n~Id,r~Id) => Term n r -> Int -> M n r Bool
-checkSort t s = onConcl t $ \c -> checkConclSort c s
+checkSort t s = checkBindings t $ \c -> checkConclSort c s
 
-checkConclSort c s = lookHeapC c $ \c' -> checkConstrSort c' s
+checkConclSort c s = do
+  tell ["checking " <> pretty c <> " has sort " <> pretty s]
+  lookHeapC c $ \c' -> checkConstrSort c' s
 
 checkConstrSort :: (n~Id,r~Id) => Constr n r -> Int -> M n r Bool
 checkConstrSort (Sigma xx ta_ tb_) s = do

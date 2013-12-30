@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, DeriveFunctor, TemplateHaskell #-}
+{-# LANGUAGE GADTs, DeriveFunctor, TemplateHaskell, OverloadedStrings #-}
 
 
 module Terms where
@@ -9,6 +9,8 @@ import Data.Bifunctor
 import qualified Data.Map as M
 import Data.Map (Map)
 import Data.Generics.Genifunctors
+import Display
+import Data.Monoid
 
 type Hyp a = a
 type Conc a = a
@@ -16,6 +18,10 @@ type Tag = String
 
 data Proj = First | Second
      deriving (Eq, Ord, Show)
+
+instance Pretty Proj where
+   pretty Terms.First = ".1"
+   pretty Terms.Second = ".2"
 
 data Branch n r = Br Tag (Term n r)
     deriving (Show)
@@ -36,6 +42,11 @@ data Destr r where
   Proj :: Hyp r -> Proj -> Destr r
   Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
     deriving (Show, Eq, Ord, Functor)
+
+instance Pretty r => Pretty (Destr r) where
+  pretty (App f x) = pretty f <> " " <> pretty x
+  pretty (Proj x p) = pretty x <> pretty p
+  pretty (Cut x t) = pretty x <> ":" <> pretty t
 
 data Constr n r where
   Hyp :: Hyp r -> Constr n r

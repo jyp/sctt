@@ -1,4 +1,4 @@
-{-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables #-}
+{-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings #-}
 module Eq where
 import Terms
 import qualified Data.Map as M
@@ -10,7 +10,7 @@ import Ident
 import Display
 
 newtype M n r a = M {runM :: RWST (Heap n r) [Doc] () FreshM a}
-  deriving (Functor, Applicative, Monad, MonadReader (Heap n r))
+  deriving (Functor, Applicative, Monad, MonadReader (Heap n r), MonadWriter [Doc])
 
 type M' a = M Id Id a
 type Term' = Term Id Id
@@ -77,7 +77,7 @@ lookHeapC x k = do
     Just (Right c) -> k c
     Just (Left d) -> eval1 d $ \d' -> onConcl d' $ \c ->
                    local (addAlias' x c) (lookHeapC c k)
-    
+
 addDestr :: (n ~ r, Ord r) =>  Hyp n -> Destr r -> M n r Bool -> M n r Bool
 addDestr x (Cut c _ct) k = addAlias x c k
 addDestr x d k = do
@@ -95,8 +95,9 @@ addDestr x d k = do
 
 
 -- | return true if fizzled, otherwise call the continuation.  
-addConstr :: Ord n => Conc n -> Constr n r -> M n r Bool -> M n r Bool
+addConstr :: (Ord n, Pretty n) => Conc n -> Constr n r -> M n r Bool -> M n r Bool
 addConstr x c k = do
+  tell ["Adding construction " <> pretty x]
   hC <- heapConstr <$> ask
   case c of
     Tag t | Just (Right (Tag t')) <- M.lookup x hC, t /= t' -> return True
@@ -105,7 +106,7 @@ addConstr x c k = do
 (<&>) :: Applicative a => a Bool -> a Bool -> a Bool
 x <&> y = (&&) <$> x <*> y
 
-onConcl :: (n ~ r, Ord r) => Term n r -> (Conc r -> M n r Bool) -> M n r Bool
+onConcl :: (n ~ r, Ord r, Pretty r) => Term n r -> (Conc r -> M n r Bool) -> M n r Bool
 onConcl (Conc c) k = k c
 onConcl (Destr x d t1) k = addDestr x d (onConcl t1 k)
 onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)

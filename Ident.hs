@@ -4,7 +4,10 @@ module Ident where
 import Data.Function (on)
 import Data.Char
 import Numeric
+import Display
 
+instance Pretty Id where
+  pretty i = text $ show i
 
 type Name = String
 
