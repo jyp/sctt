@@ -15,7 +15,7 @@ executable nac
   hs-source-dirs:      ./
   ghc-options:         -Wall
   build-tools:         alex, happy
-  other-modules: Nano.Lex, Nano.Par
+  other-modules: Nano.Lex, Nano.Par, Micro.Lex, Micro.Par
   build-depends:       base >= 4,
                        geniplate ==0.6.*,
                        bifunctors,

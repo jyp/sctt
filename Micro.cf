@@ -1,0 +1,43 @@
+entrypoints Term ;
+
+layout "of" ;
+
+First.  Proj ::= ".1" ;
+Second. Proj ::= ".2" ;
+
+separator Tag ",";
+T.  Tag      ::= "'" Var;
+Br. Branch   ::= Tag "->" Term;
+
+separator Branch ".";
+Concl.  Term2 ::=    Constr ;
+
+Constr. Term1 ::=    Var "=" Destr ";" Term1;
+Destr.  Term1 ::=    Var ":=" Constr ";" Term1;
+
+coercions Term 2;
+
+Var.    Destr ::= Var;
+Case.   Destr ::= "case" Var "of" "{" [Branch] "}";
+Appl.   Destr ::= Destr Constr2;
+Proj.   Destr ::= Destr Proj;
+Cut.    Destr ::= Constr2 ":" Constr;
+
+Copy.   Constr2 ::= "@" Var;
+Lam.    Constr2 ::= "\\" Var "->" Term2;
+Pi.     Constr2 ::= "(" Var ":" Constr ")" "->" Term2;
+Pair.   Constr2 ::= "(" Constr "," Constr ")";
+Sigma.  Constr2 ::= "(" Var ":" Constr ")" "X" Term2;
+Tag.    Constr2 ::= Tag ;
+Fin.    Constr2 ::= "{" [Tag] "}" ;
+Univ.   Constr2 ::= "*" Nat;
+Hyp.    Constr1 ::= Destr;
+
+coercions Constr 2;
+
+position token Var (letter)((letter|digit|'-'|'_'|'\'')*) ;
+position token Nat digit+ ;
+
+comment "{-" "-}" ;
+comment "--" ;
+
