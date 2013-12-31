@@ -121,5 +121,5 @@ testConstr (Sigma x1 a1 t1) (Sigma x2 a2 t2) = testConc a1 a2 >> (local (addAlia
 testConstr (Tag t1)(Tag t2) = return $ t1 == t2
 testConstr (Fin ts1)(Fin ts2) = return $ ts1 == ts2
 testConstr (Universe x1)(Universe x2) = return $ x1 == x2
-testConstr c1 c2 = throwError $ pretty c1 <> " /= " <> pretty c2
+testConstr _ _ = return False
 

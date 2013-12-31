@@ -22,7 +22,9 @@ addCtx' :: Ord n => n -> Conc r -> Heap n r -> Heap n r
 addCtx' x t h@Heap{..} = h{context = M.insert x t context }
 
 addCtx :: Id -> Conc Id -> (TC Bool) -> TC Bool
-addCtx x t k = local (addCtx' x t) k
+addCtx x t k = do
+  tell ["Adding hyp " <> pretty x <> ":" <> pretty t]
+  local (addCtx' x t) k
 
 -- Infer the type of a destruction and return it as a normal form.
 inferDestr :: (n~Id,r~Id) => Destr r -> (Conc r ->  TC Bool) -> TC Bool
@@ -37,6 +39,7 @@ inferDestr (App f a_) k =
        checkConcl a_ t_
        retTyp <- substTC x a_ u
        onConcl retTyp k
+    _ -> throwError $ pretty f <> " has not a function type"
 inferDestr (Proj p f) k =
   inferHyp p $ \pt ->
   case pt of
@@ -47,12 +50,14 @@ inferDestr (Proj p f) k =
            x' <- liftTC freshId
            u' <- substTC x x' u
            onConcl (Destr x' (Proj p Terms.First) u') k
+    _ -> throwError $ pretty p <> " has not a pair type"
 
 -- Direct lookup of type in the context
 inferHyp :: (n~Id,r~Id) => Hyp r -> (Constr n r -> TC Bool) -> TC Bool
 inferHyp h k = do
   ctx <- context <$> ask
   case M.lookup h ctx of
+    Nothing -> throwError $ "Panic: " <> pretty h <> " hyp. not found in context."
     Just c -> do
       lookHeapC c k
 
@@ -72,9 +77,10 @@ checkBindings (Case x bs) k =
   case xt of
     Fin ts -> do
       rs <- forM bs $ \(Br tag t1) -> do
-        when (tag `notElem` ts) $ error "type error in case"
+        when (tag `notElem` ts) $ throwError $ "type error in case on " <> pretty x <> ": " <> text tag <> " not in " <> pretty xt
         addConstr x (Tag tag) $ checkBindings t1 k
       return $ and rs
+    _ -> throwError $ pretty x <> " has not a fin. set type"
 
 checkTermAgainstTerm :: (n~Id,r~Id) => Term n r -> Term n r -> TC Bool
 checkTermAgainstTerm e t = checkBindings e $ \c -> checkConAgainstTerm c t
@@ -93,13 +99,16 @@ checkConclAgainstConstr v t = lookHeapC v $ \v' -> do
   checkConstr v' t
 
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> TC Bool
-checkConstr (Hyp h) t = inferHyp h $ \t' -> testConstr t' t
+checkConstr (Hyp h) t = inferHyp h $ \t' -> do
+  v <- testConstr t' t
+  when (not v) $ throwError $ pretty t <> " /= " <> pretty t'
+  return True
 checkConstr t (Universe s) = checkConstrSort t s
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_
   checkConAgainstTerm b_ =<< substTC xx a_ tb_
 checkConstr (Lam x b_) (Pi xx ta_ tb_) = do
-  addCtx xx ta_ $ checkTermAgainstTerm b_ tb_
+  addCtx x ta_ $ checkTermAgainstTerm b_ tb_
 checkConstr (Tag t) (Fin ts) = return (t `elem` ts)
 checkConstr v t = throwError $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
 
