@@ -11,19 +11,19 @@ Br. Branch   ::= Tag "->" Term;
 
 separator Branch ".";
 Concl.  Term2 ::=    Constr ;
+Case.  Term2 ::= "case" Destr "of" "{" [Branch] "}";
 
-Constr. Term1 ::=    Var "=" Destr ";" Term1;
-Destr.  Term1 ::=    Var ":=" Constr ";" Term1;
+Destr. Term1 ::=    Var "=" Destr ";" Term1;
+-- Constr.  Term1 ::=    Var ":=" Constr ";" Term1;
 
 coercions Term 2;
 
-Var.    Destr ::= Var;
-Case.   Destr ::= "case" Var "of" "{" [Branch] "}";
+V.      Destr ::= Var;
 Appl.   Destr ::= Destr Constr2;
 Proj.   Destr ::= Destr Proj;
 Cut.    Destr ::= Constr2 ":" Constr;
 
-Copy.   Constr2 ::= "@" Var;
+-- Copy.   Constr2 ::= "@" Var;
 Lam.    Constr2 ::= "\\" Var "->" Term2;
 Pi.     Constr2 ::= "(" Var ":" Constr ")" "->" Term2;
 Pair.   Constr2 ::= "(" Constr "," Constr ")";

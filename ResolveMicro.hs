@@ -1,6 +1,6 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards,
 GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, RankNTypes,
-DeriveFunctor #-}
+DeriveFunctor, TupleSections #-}
 
 module Resolve where
 
@@ -42,10 +42,14 @@ newtype R a = R {fromR :: ReaderT Env FreshM a}
 resolveVar :: (Lens Env (Map String Id)) -> A.Var -> R (Maybe Id)
 resolveVar l (A.Var (_,x)) = M.lookup x . view l <$> ask
 
+liftR x = R $ lift $ x
+freshIdR = liftR freshId
 insert :: (Lens Env (Map String Id)) -> A.Var -> (Id -> R a) -> R a
-insert l (A.Var (_,x)) k = do
-  v <- R $ lift $ freshFrom x
-  local (upd l $ M.insert x v) (k v)
+insert l y@(A.Var (_,x)) k = do
+  v <- liftR $ freshFrom x
+  insert' l y v (k v)
+
+insert' l (A.Var (_,x)) v = local (upd l $ M.insert x v)
 
 type Slice = Term' -> Term'
 
@@ -53,41 +57,83 @@ resolve :: A.Term -> Term'
 resolve t =  runFreshM $ runReaderT (fromR $ resolveTerm t) emptyEnv
 
 resolveTerm :: A.Term -> R (Term Id Id)
-resolveTerm (A.Concl x) = do
-  i <- freshIdR
-  c <- resolveConstr x 
-  return $ c $ Conc i
-resolveTerm (A.Constr x c t) = do
-  c' <- resolveConstr c x
-  c' <$> resolveTerm t
+resolveTerm (A.Concl c) = do
+  (c'id,c') <- resolveConstr c
+  return $ c' $ Conc c'id
+resolveTerm (A.Destr x c t) = do
+  (c'id,c') <- resolveDestr c
+  insert' con x c'id $ c' <$> resolveTerm t
+-- resolveTerm (A.Destr x c t) = do
+--   c' <- resolveDestr c x
+--   c' <$> resolveTerm t
+resolveTerm (A.Case x bs) = do
+  (x'id,x') <- resolveDestr x
+  bs' <- forM bs $ \(A.Br tag t) -> do
+    (resolveTag tag,) <$> resolveTerm t
+  return (x' $ Case x'id [Br tag t' | (tag,t') <- bs'])
 
-resolveDestr :: A.Destr -> Id -> R Slice
-resolveTerm (A.Case x bs) = Case <$> resolveVar hyp x <*> (forM bs $ \(A.Br tag t) -> Br <$> resolveTag tag <*> resolveTerm t)
-resolveConstr (A.Hyp x) = Hyp <$> resolveVar hyp x
-resolveTerm (A.Concl x) = Conc <$> resolveVar con x
-resolveDestr (A.Appl f x) = App <$> resolveVar hyp f <*> resolveVar con x
-resolveDestr (A.Proj p f) r = do
-  i <- freshIdR
-  p' <- resolveDestr p i
-  return (Destr r p' $ resolveProj f)
-resolveDestr (A.Cut x t) = Cut <$> resolveVar con x <*> resolveVar con t
+resolveDestr :: A.Destr -> R (Id,Slice)
+resolveDestr (A.V x) = do
+  x' <- resolveVar hyp x
+  case x' of
+    Just x'' -> return (x'',id) 
+
+
+resolveDestr (A.Appl f x) = do
+  (f'id,f') <- resolveDestr f
+  (x'id,x') <- resolveConstr x
+  r <- freshIdR
+  return (r,f' . x' . Destr r (App f'id x'id))
+resolveDestr (A.Proj p f) = do
+  (p'id,p') <- resolveDestr p
+  r <- freshIdR
+  return (r,p'.Destr r (Proj p'id $ resolveProj f))
+resolveDestr (A.Cut x t) = do
+  (x'id,x') <- resolveConstr x
+  (t'id,t') <- resolveConstr t
+  r <- freshIdR
+  return (r, x'.t'.Destr r (Cut x'id t'id))
 
 resolveProj (A.First) = First
 resolveProj (A.Second) = Second
 
-resolveConstr :: A.Constr -> Id -> R Slice
-resolveTerm (A.Destr x d t) = do
-  insert hyp x $ \x' -> Destr x' d' <$> resolveTerm t
-resolveConstr (A.Lam x t) = insert hyp x $ \x' ->
-  Lam x' <$> resolveTerm t
-resolveConstr (A.Pi x c t) = insert hyp x $ \x' ->
-  Pi x' <$> resolveVar con c <*> resolveTerm t
-resolveConstr (A.Pair a b) = Pair <$> resolveVar con a <*> resolveVar con b
-resolveConstr (A.Sigma x c t) = insert hyp x $ \x' ->
-  Sigma x' <$> resolveVar con c <*> resolveTerm t
-resolveConstr (A.Tag t) = Tag <$> resolveTag t
-resolveConstr (A.Fin ts) = Fin <$> mapM resolveTag ts
-resolveConstr (A.Univ (A.Nat (_,n))) = Universe <$> pure (read n)
+resolveConstr :: A.Constr -> R (Id,Slice)
+-- resolveConstr (A.Copy x) = Hyp <$> resolveVar con x
+resolveConstr (A.Hyp h) = do
+  r <- freshIdR
+  (h'id,h') <- resolveDestr h
+  return (r,h' . Constr r (Hyp h'id))
+resolveConstr (A.Lam x t) =
+  insert hyp x $ \x' -> do
+    r <- freshIdR
+    t' <- resolveTerm t
+    return (r,Constr r (Lam x' t'))
+resolveConstr (A.Pi x c t) = do
+  (c'id,c') <- resolveConstr c
+  r <- freshIdR
+  insert hyp x $ \x' -> do
+    t' <- resolveTerm t
+    return (r,c' . Constr r (Pi x' c'id t'))
+resolveConstr (A.Sigma x c t) = do
+  (c'id,c') <- resolveConstr c
+  r <- freshIdR
+  insert hyp x $ \x' -> do
+    t' <- resolveTerm t
+    return (r,c' . Constr r (Sigma x' c'id t'))
+resolveConstr (A.Pair a b) = do
+  (a'id,a') <- resolveConstr a
+  (b'id,b') <- resolveConstr b
+  r <- freshIdR
+  return (r,a'.b'.Constr r (Pair a'id b'id))
+resolveConstr (A.Tag t) = do
+  r <- freshIdR
+  return (r,Constr r (Tag $ resolveTag t))
+resolveConstr (A.Fin ts) = do 
+  r <- freshIdR
+  return (r,Constr r (Fin $ mapM resolveTag ts))
+resolveConstr (A.Univ (A.Nat (_,n))) = do
+  r <- freshIdR
+  return (r,Constr r (Universe $ read n))
 
 
-resolveTag (A.T (A.Var (_,x))) = pure x
+resolveTag (A.T (A.Var (_,x))) = x
