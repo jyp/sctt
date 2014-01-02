@@ -53,8 +53,8 @@ insert' l (A.Var (_,x)) v = local (upd l $ M.insert x v)
 
 type Slice = Term' -> Term'
 
-resolve :: A.Module -> (Term',Term')
-resolve t =  runFreshM $ runReaderT (fromR $ resolveModule t) emptyEnv
+resolve :: A.Module -> Either String (Term',Term')
+resolve t = Right $ runFreshM $ runReaderT (fromR $ resolveModule t) emptyEnv
 
 resolveModule :: A.Module -> R (Term',Term')
 resolveModule (A.Module t1 t2) = (,) <$> resolveTerm t1 <*> resolveTerm t2

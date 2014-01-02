@@ -1,65 +1,50 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ExistentialQuantification, RecordWildCards #-}
 module Main where
 
 import Data.Either
 import Options
 
-import qualified Nano.Abs as A
-import Nano.Par
-import Nano.Lex
-import Nano.Layout
-import Nano.ErrM
-import Resolve
+import Micro.Frontend
 import TypeCheck
-import System.FilePath
 import Control.Monad.Error
 import Display
-import Eq
 import TCM
+import FeInterface
+import Micro.Frontend
 
-myLLexer :: String -> [Token]
-myLLexer = resolveLayout True . myLexer
+chooseFrontEnd :: FilePath -> FrontEnd
+chooseFrontEnd _ = fe
 
 type Verbosity = Int
 
 putStrV :: Verbosity -> Doc -> Checker ()
 putStrV v s = if verb options >= v then liftIO $ putStrLn (render s) else return ()
 
--- | The file containing the type of the term contained in file @f@
-typeFile :: FilePath -> FilePath
-typeFile f = replaceExtension f "type.na"
-
-runFile :: FilePath -> Checker (Term')
+runFile :: FilePath -> Checker ()
 runFile f = do
+  let fe = chooseFrontEnd f
   putStrV 1 $ "Processing file:" <+> text f
   contents <- liftIO $ readFile f
-  run contents f
-
-instance Pretty Token where
-    pretty = text . show
+  run fe contents f
 
 type Checker a = ErrorT Doc IO a
 
-run :: String -> FilePath -> Checker (Term')
-run s fname = let ts = myLLexer s in case pTerm ts of
-   Bad err -> do
+run :: FrontEnd -> String -> FilePath -> Checker ()
+run fe@FE{..} s fname = let ts = myLLexer s in case pModule ts of
+   Left err -> do
      putStrV 1 $ "Tokens:" <+> pretty ts
      throwError $ text $ fname ++ ": parse failed: " ++ err
-   Ok tree -> do
-     process fname tree
+   Right tree -> do
+      let Right (rTyp,rVal) = resolveModule tree
+      putStrV 4 $ "[Resolved value]" $$ pretty rVal
+      putStrV 4 $ "[Resolved type]" $$ pretty rTyp
+      let (res,info) = typeCheck rVal rTyp
+      mapM_ (putStrV 0) info
+      case res of
+        Left err -> throwError err
+        Right _ -> return ()
 
-process :: FilePath -> A.Term -> Checker (Term')
-process fname modul = do
-  let resolved = resolve modul
-  putStrV 4 $ "[Resolved into]" $$ pretty resolved
-  let (res,info) = checkTyp resolved
-  mapM_ (putStrV 0) info
-  case res of
-    Left err -> throwError err
-    Right _ -> return ()
-  return resolved
-  
 main :: IO ()
 main = do
   results <- forM (files options) $ \f -> runErrorT $ runFile f

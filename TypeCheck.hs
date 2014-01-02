@@ -18,6 +18,12 @@ checkTyp t = runTC (nextUnique t) emptyHeap chk
   where chk = do tell ["Start"]
                  checkSort t 100000
 
+typeCheck :: Term' -> Term' -> (Either Doc Bool,[Doc])
+typeCheck a t = runTC (max (nextUnique t) (nextUnique a)) emptyHeap chk
+  where chk = do tell ["Start"]
+                 checkSort t 100000
+                 checkTermAgainstTerm a t
+
 addCtx' :: Ord n => n -> Conc r -> Heap n r -> Heap n r
 addCtx' x t h@Heap{..} = h{context = M.insert x t context }
 
