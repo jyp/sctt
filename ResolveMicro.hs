@@ -2,7 +2,7 @@
 GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, RankNTypes,
 DeriveFunctor, TupleSections #-}
 
-module Resolve where
+module ResolveMicro where
 
 import Terms
 import qualified Micro.Abs as A
@@ -53,9 +53,12 @@ insert' l (A.Var (_,x)) v = local (upd l $ M.insert x v)
 
 type Slice = Term' -> Term'
 
-resolve :: A.Term -> Term'
-resolve t =  runFreshM $ runReaderT (fromR $ resolveTerm t) emptyEnv
+resolve :: A.Module -> (Term',Term')
+resolve t =  runFreshM $ runReaderT (fromR $ resolveModule t) emptyEnv
 
+resolveModule :: A.Module -> R (Term',Term')
+resolveModule (A.Module t1 t2) = (,) <$> resolveTerm t1 <*> resolveTerm t2
+  
 resolveTerm :: A.Term -> R (Term Id Id)
 resolveTerm (A.Concl c) = do
   (c'id,c') <- resolveConstr c

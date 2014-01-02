@@ -1,6 +1,9 @@
-entrypoints Term ;
+
+entrypoints Module ;
 
 layout "of" ;
+
+Module. Module ::= "TYPE" Term "TERM" Term;
 
 First.  Proj ::= ".1" ;
 Second. Proj ::= ".2" ;
