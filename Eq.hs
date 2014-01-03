@@ -4,9 +4,7 @@ import Terms
 import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad.RWS
-import Control.Monad.Error
 import Control.Applicative
-import Fresh
 import Ident
 import Display
 import TCM
@@ -116,10 +114,10 @@ testConstr :: (r~Id,n~Id) => Constr n r -> Constr n r -> TC Bool
 testConstr (Hyp h1) (Hyp h2) = (==) <$> aliasOf h1 <*> aliasOf h2
 testConstr (Lam x1 t1) (Lam x2 t2) = local (addAlias' x1 x2) $ testTerm t1 t2
 testConstr (Pair a1 b1)(Pair a2 b2) = testConc a1 a2 >> testConc b1 b2
-testConstr (Pi x1 a1 t1) (Pi x2 a2 t2) = testConc a1 a2 >> (local (addAlias' x1 x2) $ testTerm t1 t2)
+testConstr (Pi x1 a1 t1) (Pi x2 a2 t2) = testConc a2 a1 >> (local (addAlias' x1 x2) $ testTerm t1 t2)
 testConstr (Sigma x1 a1 t1) (Sigma x2 a2 t2) = testConc a1 a2 >> (local (addAlias' x1 x2) $ testTerm t1 t2)
 testConstr (Tag t1)(Tag t2) = return $ t1 == t2
 testConstr (Fin ts1)(Fin ts2) = return $ ts1 == ts2
-testConstr (Universe x1)(Universe x2) = return $ x1 == x2
+testConstr (Universe x1)(Universe x2) = return $ x1 <= x2 -- yes, we do subtyping ..
 testConstr _ _ = return False
 

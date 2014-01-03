@@ -13,6 +13,8 @@ import Ident
 import Display
 import TCM
 
+-- TODO: don't return a boolean.
+
 checkTyp :: Term' -> (Either Doc Bool,[Doc])
 checkTyp t = runTC (nextUnique t) emptyHeap chk
   where chk = do tell ["Start"]
@@ -109,13 +111,23 @@ checkConstr (Hyp h) t = inferHyp h $ \t' -> do
   v <- testConstr t' t
   when (not v) $ throwError $ pretty t <> " /= " <> pretty t'
   return True
-checkConstr t (Universe s) = checkConstrSort t s
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_
   checkConAgainstTerm b_ =<< substTC xx a_ tb_
 checkConstr (Lam x b_) (Pi xx ta_ tb_) = do
   addCtx x ta_ $ checkTermAgainstTerm b_ tb_
 checkConstr (Tag t) (Fin ts) = return (t `elem` ts)
+checkConstr (Sigma xx ta_ tb_) (Universe s) = do
+  checkConclSort ta_ s
+  addCtx xx ta_ $ checkSort tb_ s
+checkConstr (Pi xx ta_ tb_) (Universe s) = do
+  checkConclSort ta_ s
+  addCtx xx ta_ $ checkSort tb_ s
+checkConstr (Fin _) (Universe s) = return True
+checkConstr (Universe s') (Universe s)
+  | s' < s = return True
+  | otherwise = throwError $ int s' <> " is not a subsort of" <> int s
+
 checkConstr v t = throwError $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
 
 checkSort :: (n~Id,r~Id) => Term n r -> Int -> TC Bool
@@ -123,17 +135,5 @@ checkSort t s = checkBindings t $ \c -> checkConclSort c s
 
 checkConclSort c s = do
   tell ["checking " <> pretty c <> " has sort " <> pretty s]
-  lookHeapC c $ \c' -> checkConstrSort c' s
+  lookHeapC c $ \c' -> checkConstr c' (Universe s)
 
-checkConstrSort :: (n~Id,r~Id) => Constr n r -> Int -> TC Bool
-checkConstrSort (Sigma xx ta_ tb_) s = do
-  checkConclSort ta_ s
-  addCtx xx ta_ $ checkSort tb_ s
-checkConstrSort (Pi xx ta_ tb_) s = do
-  checkConclSort ta_ s
-  addCtx xx ta_ $ checkSort tb_ s
-checkConstrSort (Fin _) s = return True
-checkConstrSort (Universe s') s
-  | s' < s = return True
-  | otherwise = throwError $ int s' <> " is not a subsort of" <> int s
-checkConstrSort t _ = throwError $ pretty t <> " is not a type"
