@@ -70,7 +70,7 @@ inferHyp :: (n~Id,r~Id) => Hyp r -> (Constr n r -> TC Bool) -> TC Bool
 inferHyp h k = do
   ctx <- context <$> ask
   case M.lookup h ctx of
-    Nothing -> throwError $ "Panic: " <> pretty h <> " hyp. not found in context."
+    Nothing -> terr $ "Panic: " <> pretty h <> " hyp. not found in context."
     Just c -> do
       lookHeapC c k
 
@@ -84,7 +84,7 @@ checkBindings (Constr x c t1) k = do
     checkBindings t1 k
 checkBindings (Destr x d t1) k = inferDestr d $ \dt -> do
   tell ["inferred " <> pretty d <> " to be " <> pretty dt]
-  addCtx x dt (addDestr x d $ checkBindings t1 k)
+  addCtx x dt $ addDestr x d $ checkBindings t1 k
 checkBindings (Case x bs) k =
   inferHyp x $ \xt ->
   case xt of

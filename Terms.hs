@@ -24,7 +24,7 @@ instance Pretty Proj where
    pretty Terms.Second = ".2"
 
 data Branch n r = Br Tag (Term n r)
-    deriving (Show)
+    deriving (Show, Functor)
 
 instance (Pretty r, Pretty n) => Pretty (Branch n r) where
   pretty (Br tag t) = "'" <> text tag <> "->" <> pretty t
@@ -38,7 +38,7 @@ data Term n r where
   Case :: Hyp n -> [Branch n r] -> Term n r
   Constr :: Conc n -> Constr n r -> Term n r -> Term n r
   Conc :: Conc r -> Term n r  -- ^ Conclude
-    deriving (Show)
+    deriving (Show, Functor)
 
 instance (Pretty r, Pretty n) => Pretty (Term n r) where
   pretty (Destr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
@@ -66,7 +66,7 @@ data Constr n r where
   Tag :: Tag -> Constr n r
   Fin :: [Tag] -> Constr n r
   Universe :: Int -> Constr n r
-    deriving (Show)
+    deriving (Show, Functor)
 
 instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Hyp h) = pretty h
@@ -79,8 +79,8 @@ instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Universe x) = "*" <> subscriptPretty x
 type DC n r = Either (Destr r) (Constr n r)
 
-data Heap n r = Heap { heapConstr :: Map (Conc n) (DC n r)
-                     , heapCuts :: Map (Hyp n) (Conc r)
+data Heap n r = Heap { heapConstr :: Map (Conc n) (DC n r) -- TODO: no need for destr. here.
+                     , heapCuts :: Map (Hyp n) (Either (Destr r) (Constr n r)) -- TODO: manage cuts here!
                      , heapDestr :: Map (Destr r) (Hyp n)
                      , heapAlias :: Map r r
                      , context :: Map n (Conc r) -- ^ types

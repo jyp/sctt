@@ -23,6 +23,9 @@ instance (Pretty a, Pretty b) => Pretty (Either a b) where
   pretty (Left a) = "◂ " <> pretty a
   pretty (Right a) = "▸ " <> pretty a
 
+instance (Pretty a, Pretty b) => Pretty (a,b) where
+  pretty (a,b) = "(" <> pretty a <> "," <> pretty b <> ")"
+
 scriptPretty :: String -> Int -> Doc
 scriptPretty s = text . scriptShow s
 

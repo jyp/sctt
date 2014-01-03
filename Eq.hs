@@ -28,6 +28,7 @@ getAlias h x = M.findWithDefault x x h
 addAliases :: [(Id,Id)] -> TC Bool -> TC Bool
 addAliases [] k = k
 addAliases as k = do
+  tell ["Adding aliases: "<> pretty as]
   h <- addAliases' as <$> ask
   let hD' :: M.Map (Destr Id) [Hyp Id]
       hD' = M.mapKeysWith (++) (fmap (getAlias $ heapAlias h)) $ fmap (:[]) $ heapDestr h
@@ -35,7 +36,7 @@ addAliases as k = do
       hD'' = fmap myhead hD'
       classes = M.elems hD'
       aliases = [(x,y) | (x:xs) <- classes, y <- xs]
-  local (\h -> h {heapDestr = hD''}) $
+  local (\h2 -> h2 {heapDestr = hD'', heapAlias = heapAlias h}) $
     addAliases aliases k
 
 addAlias :: Id -> Id -> TC Bool -> TC Bool
@@ -88,9 +89,10 @@ addConstr :: Conc Id -> Constr' -> TC Bool -> TC Bool
 addConstr x c k = do
   tell ["Adding construction " <> pretty x <> " = " <> pretty c]
   hC <- heapConstr <$> ask
+  hA <- heapAlias <$> ask
   case c of
     Tag t | Just (Right (Tag t')) <- M.lookup x hC, t /= t' -> return True
-    _ -> local (addConstr' x $ Right c) k
+    _ -> local (addConstr' x $ Right $ getAlias hA <$> c) k
 
 onConcl :: Term' -> (Conc Id -> TC Bool) -> TC Bool
 onConcl (Conc c) k = k c
