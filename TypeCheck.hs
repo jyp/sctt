@@ -15,6 +15,11 @@ import TCM
 
 -- TODO: don't return a boolean.
 
+terr :: Doc -> TC a
+terr msg = do
+  h <- ask
+  throwError $ sep [hang "heap" 2 (pretty h), msg]
+
 checkTyp :: Term' -> (Either Doc Bool,[Doc])
 checkTyp t = runTC (nextUnique t) emptyHeap chk
   where chk = do tell ["Start"]
@@ -88,7 +93,7 @@ checkBindings (Case x bs) k =
         when (tag `notElem` ts) $ throwError $ "type error in case on " <> pretty x <> ": " <> text tag <> " not in " <> pretty xt
         addConstr x (Tag tag) $ checkBindings t1 k
       return $ and rs
-    _ -> throwError $ pretty x <> " has not a fin. set type"
+    _ -> terr $ pretty x <> " has not a fin. type, but " <> pretty xt
 
 checkTermAgainstTerm :: (n~Id,r~Id) => Term n r -> Term n r -> TC Bool
 checkTermAgainstTerm e t = checkBindings e $ \c -> checkConAgainstTerm c t
@@ -103,7 +108,7 @@ checkConcl v t = do
 
 checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> TC Bool
 checkConclAgainstConstr v t = lookHeapC v $ \v' -> do
-  tell ["checking construction " <> pretty v' <> ":" <> text (show t)]
+  tell [hang "checking construction " 2 (sep ["val " <> pretty v', "typ " <> pretty t])]
   checkConstr v' t
 
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> TC Bool

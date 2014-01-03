@@ -41,10 +41,7 @@ resolveTerm (A.Concl c) = do
   return $ c' $ Conc c'id
 resolveTerm (A.Destr x c t) = do
   (c'id,c') <- resolveDestr c
-  insert' con x c'id $ c' <$> resolveTerm t
--- resolveTerm (A.Destr x c t) = do
---   c' <- resolveDestr c x
---   c' <$> resolveTerm t
+  insert' hyp x c'id $ c' <$> resolveTerm t
 resolveTerm (A.Case x bs) = do
   (x'id,x') <- resolveDestr x
   bs' <- forM bs $ \(A.Br tag t) -> do
@@ -56,7 +53,7 @@ resolveDestr (A.V x) = do
   x' <- resolveVar hyp x
   case x' of
     Just x'' -> return (x'',id) 
-
+    Nothing -> error $ "Unknown variable: " ++ show x
 
 resolveDestr (A.Appl f x) = do
   (f'id,f') <- resolveDestr f
@@ -109,7 +106,7 @@ resolveConstr (A.Tag t) = do
   return (r,Constr r (Tag $ resolveTag t))
 resolveConstr (A.Fin ts) = do 
   r <- freshIdR
-  return (r,Constr r (Fin $ mapM resolveTag ts))
+  return (r,Constr r (Fin $ map resolveTag ts))
 resolveConstr (A.Univ (A.Nat (_,n))) = do
   r <- freshIdR
   return (r,Constr r (Universe $ read n))

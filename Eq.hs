@@ -86,7 +86,7 @@ addDestr x d k = do
 -- | return true if fizzled, otherwise call the continuation.  
 addConstr :: Conc Id -> Constr' -> TC Bool -> TC Bool
 addConstr x c k = do
-  tell ["Adding construction " <> pretty x]
+  tell ["Adding construction " <> pretty x <> " = " <> pretty c]
   hC <- heapConstr <$> ask
   case c of
     Tag t | Just (Right (Tag t')) <- M.lookup x hC, t /= t' -> return True

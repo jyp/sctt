@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, DeriveFunctor, TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE GADTs, DeriveFunctor, TemplateHaskell, OverloadedStrings, RecordWildCards #-}
 
 
 module Terms where
@@ -43,7 +43,7 @@ data Term n r where
 instance (Pretty r, Pretty n) => Pretty (Term n r) where
   pretty (Destr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
   pretty (Constr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
-  pretty (Case x bs) = "case " <> pretty x <> hang "of" 2 (braces $ sep $ punctuate "." $ map pretty bs)
+  pretty (Case x bs) = hang ("case " <> pretty x <> " of") 2 (braces $ sep $ punctuate "." $ map pretty bs)
   pretty (Conc x) = pretty x
   
 data Destr r where
@@ -85,6 +85,18 @@ data Heap n r = Heap { heapConstr :: Map (Conc n) (DC n r)
                      , heapAlias :: Map r r
                      , context :: Map n (Conc r) -- ^ types
                      }
+
+instance (Pretty k, Pretty v) => Pretty (Map k v) where
+  pretty m = sep [pretty k <> " ↦ " <> pretty v | (k,v) <- M.toList m]
+  
+instance (Pretty r, Pretty n) => Pretty (Heap n r) where
+  pretty (Heap {..}) = sep [hang lab 2  v
+                           | (lab,v) <- [("constr" ,pretty heapConstr)
+                                        ,("cuts"   ,pretty heapCuts)
+                                        ,("destr"  ,pretty heapDestr)
+                                        ,("alias"  ,pretty heapAlias)
+                                        ,("context",pretty context)]
+                             ]
 
 emptyHeap :: Heap n r
 emptyHeap = Heap M.empty M.empty M.empty M.empty M.empty

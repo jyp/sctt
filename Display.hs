@@ -19,6 +19,10 @@ instance Pretty Int where
 instance Pretty Bool where
   pretty = text . show
 
+instance (Pretty a, Pretty b) => Pretty (Either a b) where
+  pretty (Left a) = "◂ " <> pretty a
+  pretty (Right a) = "▸ " <> pretty a
+
 scriptPretty :: String -> Int -> Doc
 scriptPretty s = text . scriptShow s
 
