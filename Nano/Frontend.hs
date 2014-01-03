@@ -6,7 +6,7 @@ import Nano.Par
 import Nano.Lex
 import Nano.Layout
 import Nano.ErrM
-import Resolve
+import Nano.Resolve
 import Display
 import FeInterface
 
@@ -17,5 +17,5 @@ errToEither (Ok x) = Right x
 errToEither (Bad x) = Left x
 
 fe = FE { pModule = errToEither . Nano.Par.pModule,
-          resolveModule = Resolve.resolve,
+          resolveModule = Nano.Resolve.resolve,
           myLLexer = resolveLayout True . myLexer}

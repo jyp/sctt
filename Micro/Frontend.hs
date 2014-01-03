@@ -6,7 +6,7 @@ import Micro.Par
 import Micro.Lex
 import Micro.Layout
 import Micro.ErrM
-import ResolveMicro
+import Micro.Resolve
 import Display
 import FeInterface
 
@@ -17,5 +17,5 @@ errToEither (Ok x) = Right x
 errToEither (Bad x) = Left x
 
 fe = FE { pModule = errToEither . Micro.Par.pModule,
-          resolveModule = ResolveMicro.resolve,
+          resolveModule = Micro.Resolve.resolve,
           myLLexer = resolveLayout True . myLexer}

@@ -11,10 +11,15 @@ import Control.Monad.Error
 import Display
 import TCM
 import FeInterface
-import Micro.Frontend
+import qualified Micro.Frontend
+import qualified Nano.Frontend
+import System.FilePath
+
 
 chooseFrontEnd :: FilePath -> FrontEnd
-chooseFrontEnd _ = fe
+chooseFrontEnd p = case takeExtension p of
+  ".na" -> Nano.Frontend.fe
+  ".ma" -> Micro.Frontend.fe
 
 type Verbosity = Int
 
@@ -36,7 +41,7 @@ run fe@FE{..} s fname = let ts = myLLexer s in case pModule ts of
      putStrV 1 $ "Tokens:" <+> pretty ts
      throwError $ text $ fname ++ ": parse failed: " ++ err
    Right tree -> do
-      let Right (rTyp,rVal) = resolveModule tree
+      let Right (rVal,rTyp) = resolveModule tree
       putStrV 4 $ "[Resolved value]" $$ pretty rVal
       putStrV 4 $ "[Resolved type]" $$ pretty rTyp
       let (res,info) = typeCheck rVal rTyp

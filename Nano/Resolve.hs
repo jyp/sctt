@@ -2,7 +2,7 @@
 GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, RankNTypes,
 DeriveFunctor #-}
 
-module Resolve where
+module Nano.Resolve where
 
 import Terms
 import qualified Nano.Abs as A
@@ -13,31 +13,7 @@ import Data.Map (Map)
 import Control.Monad.Reader
 import Control.Applicative
 import TCM
-
-newtype K k a = K {fromK :: k} deriving Functor
-newtype I a = I {fromI :: a} deriving Functor
-data Env = Env {envHyp :: Map String Id,
-                envCon :: Map String Id}
-           deriving Show
-
-emptyEnv = Env M.empty M.empty
-
-newtype Lens a b = L {fromLens :: forall f. Functor f => (b -> f b) -> (a -> f a)}
-view :: Lens a b -> a -> b
-view (L g) r = fromK (g K r)
-
-set :: forall a b. Lens a b -> b -> a -> a
-set (L l) x r = runReader (l ((\_ -> ask) :: b -> Reader b b) r) x
-
-upd :: Lens a b -> (b -> b) -> (a -> a)
-upd (L l) f a = fromI $ l (I . f) a
-
-hyp,con :: Lens Env (Map String Id)
-con = L $ \f (Env h c) -> fmap (Env h) (f c)
-hyp = L $ \f (Env h c) -> fmap (flip Env c) (f h)
-  
-newtype R a = R {fromR :: ReaderT Env FreshM a}
-  deriving (Functor, Applicative, Monad, MonadReader Env)
+import RM
 
 resolveVar :: (Lens Env (Map String Id)) -> A.Var -> R Id
 resolveVar l (A.Var (_,x)) = do
@@ -56,9 +32,12 @@ insert l (A.Var (_,x)) k = do
   local (upd l $ M.insert x v) (k v)
 
 
-resolve :: A.Term -> Term'
-resolve t =  runFreshM $ runReaderT (fromR $ resolveTerm t) emptyEnv 
+resolve :: A.Module -> Either String (Term',Term')
+resolve t = Right $ runFreshM $ runReaderT (fromR $ resolveModule t) emptyEnv 
 
+resolveModule :: A.Module -> R (Term',Term')
+resolveModule (A.Module t1 t2) = (,) <$> resolveTerm t1 <*> resolveTerm t2
+ 
 resolveTerm :: A.Term -> R (Term Id Id)
 resolveTerm (A.Constr x c t) = do
   c' <- resolveConstr c
