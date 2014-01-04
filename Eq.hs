@@ -8,8 +8,8 @@ import Control.Applicative
 import Ident
 import Display
 import TCM
+import Data.Bifunctor
 
--- FIXME: apply aliases to cuts.
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
 addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
 
@@ -20,7 +20,7 @@ addAlias' src trg h@Heap{..} = h{heapAlias = f <$> M.insert src trg heapAlias }
 addAliases' :: Ord r => [(r,r)] -> Heap n r -> Heap n r
 addAliases' = foldr (.) id . map (uncurry addAlias')
 
-addConstr' :: Ord n => n -> DC n r -> Heap n r -> Heap n r
+addConstr' :: Ord n => n -> Constr n r -> Heap n r -> Heap n r
 addConstr' src trg h@Heap{..} = h{heapConstr = M.insert src trg heapConstr }
 
 addDestr' :: Ord r => Destr r -> n -> Heap n r -> Heap n r
@@ -34,12 +34,17 @@ addAliases as k = do
   tell ["Adding aliases: "<> pretty as]
   h <- addAliases' as <$> ask
   let hD' :: M.Map (Destr Id) [Hyp Id]
-      hD' = M.mapKeysWith (++) (fmap (getAlias $ heapAlias h)) $ fmap (:[]) $ heapDestr h
+      applyAlias = getAlias $ heapAlias h
+      hD' = M.mapKeysWith (++) (fmap applyAlias) $ fmap (:[]) $ heapDestr h
       myhead (x:_) = x
       hD'' = fmap myhead hD'
       classes = M.elems hD'
       aliases = [(x,y) | (x:xs) <- classes, y <- xs]
-  local (\h2 -> h2 {heapDestr = hD'', heapAlias = heapAlias h}) $
+      -- apply aliases to redexes
+      -- todo: remove orphan redexes?
+      hC' :: M.Map (Hyp Id) (DeCo Id)
+      hC' =  bimap (applyAlias <$>) id <$> heapCuts h
+  local (\h2 -> h2 {heapDestr = hD'', heapAlias = heapAlias h, heapCuts = hC'}) $
     addAliases aliases k
 
 addAlias :: Id -> Id -> TC Bool -> TC Bool
@@ -59,9 +64,7 @@ lookHeapC x k = do
   lk <- M.lookup x . heapConstr <$> ask
   case lk of
     Nothing -> error "Construction not found"
-    Just (Right c) -> k c
-    -- Just (Left d) -> eval1 d $ \d' -> onConcl d' $ \c ->
-    --                local (addAlias' x c) (lookHeapC c k)
+    Just c -> k c
 
 hnf' :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
 hnf' c k = lookHeapC c $ \c' -> case c' of
@@ -97,7 +100,7 @@ addDestr x d k = do
       d' = getAlias aHeap <$> d
       y = getEliminated d
   case M.lookup y cHeap of
-    Just _ -> local (addConstr' x $ Left d') k
+    Just _ -> local (addCut' x $ Left d') k
     Nothing -> case M.lookup d' dHeap of
       Just y -> addAlias y x k
       Nothing -> local (addDestr' d' x) k
@@ -110,8 +113,8 @@ addConstr x c k = do
   hC <- heapConstr <$> ask
   hA <- heapAlias <$> ask
   case c of
-    Tag t | Just (Right (Tag t')) <- M.lookup x hC, t /= t' -> return True
-    _ -> local (addConstr' x $ Right $ getAlias hA <$> c) k
+    Tag t | Just (Tag t') <- M.lookup x hC, t /= t' -> return True
+    _ -> local (addConstr' x $ getAlias hA <$> c) k
 
 onConcl :: Term' -> (Conc Id -> TC Bool) -> TC Bool
 onConcl (Conc c) k = k c

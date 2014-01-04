@@ -77,10 +77,9 @@ instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Tag t) = "'" <> text t
   pretty (Fin ts) = braces $ sep $ punctuate "," $ map text ts
   pretty (Universe x) = "*" <> subscriptPretty x
-type DC n r = Either (Destr r) (Constr n r)
 type DeCo r = Either (Destr r) (Conc r)
 
-data Heap n r = Heap { heapConstr :: Map (Conc n) (DC n r) -- TODO: no need for destr. here.
+data Heap n r = Heap { heapConstr :: Map (Conc n) (Constr n r) -- TODO: no need for destr. here.
                      , heapCuts :: Map (Hyp n) (DeCo r)
                      , heapDestr :: Map (Destr r) (Hyp n)
                      , heapAlias :: Map r r
