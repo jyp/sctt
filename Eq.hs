@@ -1,4 +1,4 @@
-{-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings #-}
+{-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
 module Eq where
 import Terms
 import qualified Data.Map as M
@@ -9,6 +9,7 @@ import Ident
 import Display
 import TCM
 import Data.Bifunctor
+import Data.Maybe (isJust)
 
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
 addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
@@ -75,36 +76,39 @@ hnf' c k = lookHeapC c $ \c' -> case c' of
 hnf :: (r~Id,n~Id) => n -> (TC Bool) -> (Conc r -> TC Bool) -> TC Bool
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
 hnf x notFound k = do
-  lk <- M.lookup x . heapCuts <$> ask
+  h <- ask
+  let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
   case lk of
     Nothing -> notFound
     Just (Right c) -> k c
-    Just (Left d) -> eval1 d $ \d' -> onConcl d' $ \c ->
+    Just (Left d) -> eval1 d notFound $ \d' -> onConcl d' $ \c ->
                    local (addCut' x $ Right c) (k c)
 
-eval1 :: (r~Id,n~Id) => Destr r -> (Term n r -> TC Bool) -> TC Bool
-eval1 (Proj p f) k = do
-  lookHeapC p $ \(Pair a_ b_) -> k $ Conc $ case f of
+-- eval1 :: (r~Id,n~Id) => Destr r -> (Term n r -> TC Bool) -> TC Bool
+eval1 (Proj p f) notFound k = do
+  hnf p notFound $ \p' -> lookHeapC p' $ \(Pair a_ b_) -> k $ Conc $ case f of
     Terms.First -> a_; Second -> b_
-eval1 (App f a_) k = lookHeapC f $ \(Lam xx bb) -> do
+eval1 (App f a_) notFound k = hnf f notFound $ \f' -> lookHeapC f $ \(Lam xx bb) -> do
     k =<< substTC xx a_ bb
-eval1 (Cut _ _) k = error "cut cannot be found as target in cut maps"
+eval1 d notFound _ = error $ "cannot be found as target in cut maps: " ++ show d
+
+addFin :: Id -> String -> TC Bool -> TC Bool
+addFin x t k = do
+  h <- ask
+  case M.lookup x (heapTags h) of
+    Just t' | t /= t' -> return True -- conflicting tags, abort.
+    _ -> local (\h' -> h' {heapTags = M.insert x t (heapTags h')}) k
 
 addDestr :: Hyp Id -> Destr Id -> TC Bool -> TC Bool
 addDestr x (Cut c _ct) k = local (addCut' x $ Right c) k
 addDestr x d k = do
   h <- ask
-  let dHeap = heapDestr h
-      aHeap = heapAlias h
-      cHeap = heapConstr h
-      d' = getAlias aHeap <$> d
-      y = getEliminated d
-  case M.lookup y cHeap of
-    Just _ -> local (addCut' x $ Left d') k
-    Nothing -> case M.lookup d' dHeap of
-      Just y -> addAlias y x k
-      Nothing -> local (addDestr' d' x) k
-
+  let d' = getAlias (heapAlias h) <$> d
+  local (addCut' x $ Left d') $ case M.lookup d' (heapDestr h) of
+     Just y -> addAlias y x k
+     Nothing -> local (addDestr' d' x) $ case d' of
+         Tag' t -> addFin x t k
+         _ -> k
 
 -- | return true if fizzled, otherwise call the continuation.  
 addConstr :: Conc Id -> Constr' -> TC Bool -> TC Bool
@@ -121,7 +125,7 @@ onConcl (Conc c) k = k c
 onConcl (Destr x d t1) k = addDestr x d (onConcl t1 k)
 onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)
 onConcl (Case x bs) k = and <$> forM bs (\(Br tag t1) ->
-  addConstr x (Tag tag) $ onConcl t1 k)
+  addDestr x (Tag' tag) $ onConcl t1 k)
 
 testTerm :: (r~Id,n~Id) =>   Term n r -> Term n r -> TC Bool
 testTerm t1 t2 = onConcl t1 $ \c1 -> onConcl t2 $ \c2 -> testConc c1 c2
@@ -129,10 +133,19 @@ testTerm t1 t2 = onConcl t1 $ \c1 -> onConcl t2 $ \c2 -> testConc c1 c2
 testConc :: (r~Id,n~Id) => Conc r -> Conc r -> TC Bool
 testConc x_1 x_2
   | x_1 == x_2 = return True -- optimisation, so equal deep structures are not traversed.
-  | otherwise = lookHeapC x_1 $ \c1 -> lookHeapC x_2 $ \c2 -> testConstr c1 c2
+  | otherwise = do
+      lookHeapC x_1 $ \c1 -> lookHeapC x_2 $ \c2 -> testConstr' c1 c2
 
+dbgTest msg x y = tell ["Testing " <> msg <> ": " <> pretty x <> " <= " <> pretty y]
+
+testConstr' c1 c2 = do
+  dbgTest "Construction " c1 c2
+  testConstr c1 c2
+  
 testConstr :: (r~Id,n~Id) => Constr n r -> Constr n r -> TC Bool
-testConstr (Hyp h1) (Hyp h2) = (==) <$> aliasOf h1 <*> aliasOf h2 -- FIXME: evaluation
+testConstr (Hyp a1) (Hyp a2) = testHyp a1 a2
+testConstr (Hyp a1) c2 = hnf a1 nope $ \c1 -> lookHeapC c1 $ \c1' -> testConstr c1' c2
+testConstr c1 (Hyp a2) = hnf a2 nope $ \c2 -> lookHeapC c2 $ \c2' -> testConstr c1 c2'
 testConstr (Lam x1 t1) (Lam x2 t2) = local (addAlias' x1 x2) $ testTerm t1 t2
 testConstr (Pair a1 b1)(Pair a2 b2) = testConc a1 a2 >> testConc b1 b2
 testConstr (Pi x1 a1 t1) (Pi x2 a2 t2) = testConc a2 a1 >> (local (addAlias' x1 x2) $ testTerm t1 t2)
@@ -141,4 +154,23 @@ testConstr (Tag t1)(Tag t2) = return $ t1 == t2
 testConstr (Fin ts1)(Fin ts2) = return $ ts1 == ts2
 testConstr (Universe x1)(Universe x2) = return $ x1 <= x2 -- yes, we do subtyping: TODO make that clean in the names
 testConstr _ _ = return False
+testHyp a1 a2 = do
+  dbgTest "Hyp " a1 a2
+  h1 <- aliasOf a1
+  h2 <- aliasOf a2
+  d1 <- lookDestr h1
+  d2 <- lookDestr h2
+  or <$> forM [pure $ h1 == h2,
+               pure $ isJust d1 && isJust d2 && d1 == d2,
+               testApps d1 d2,
+               hnf h1 nope $ \c1 -> hnf h2 nope $ \c2 -> testConc c1 c2] id
+    
+nope :: TC Bool
+nope = return False
 
+lookDestr x = do
+  hC <- heapCuts <$> ask
+  return $ M.lookup x hC
+
+testApps (Just (Left (App f1 a1))) (Just (Left (App f2 a2))) = (f1 == f2 &&) <$> testConc a1 a2
+testApps _ _ = return False

@@ -90,7 +90,7 @@ checkBindings (Case x bs) k =
     Fin ts -> do
       rs <- forM bs $ \(Br tag t1) -> do
         when (tag `notElem` ts) $ throwError $ "type error in case on " <> pretty x <> ": " <> text tag <> " not in " <> pretty xt
-        addConstr x (Tag tag) $ checkBindings t1 k
+        addDestr x (Tag' tag) $ checkBindings t1 k
       return $ and rs
     _ -> terr $ pretty x <> " has not a fin. type, but " <> pretty xt
 
@@ -113,13 +113,13 @@ checkConclAgainstConstr v t = lookHeapC v $ \v' -> do
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> TC Bool
 checkConstr (Hyp h) t = inferHyp h $ \t' -> do
   v <- testConstr t' t
-  when (not v) $ throwError $ pretty t <> " /= " <> pretty t'
+  when (not v) $ terr $ pretty t <> " not a subtype of " <> pretty t'
   return True
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_
   checkConAgainstTerm b_ =<< substTC xx a_ tb_
 checkConstr (Lam x b_) (Pi xx ta_ tb_) = do
-  addCtx x ta_ $ checkTermAgainstTerm b_ tb_
+  addCtx x ta_ $ addAlias xx x $ checkTermAgainstTerm b_ tb_
 checkConstr (Tag t) (Fin ts) = return (t `elem` ts)
 checkConstr (Sigma xx ta_ tb_) (Universe s) = do
   checkConclSort ta_ s
