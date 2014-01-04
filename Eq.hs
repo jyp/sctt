@@ -9,6 +9,9 @@ import Ident
 import Display
 import TCM
 
+-- FIXME: apply aliases to cuts.
+addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
+addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
 
 addAlias' :: Ord r => r -> r -> Heap n r -> Heap n r
 addAlias' src trg h@Heap{..} = h{heapAlias = f <$> M.insert src trg heapAlias }
@@ -45,19 +48,11 @@ addAlias src trg = addAliases [(src,trg)]
 aliasOf :: Id -> TC Id
 aliasOf x = flip getAlias x . heapAlias <$> ask
 
-eval1 :: (r~Id,n~Id) => Destr r -> (Term n r -> TC Bool) -> TC Bool 
-eval1 (Proj p f) k = do
-  lookHeapC p $ \(Pair a_ b_) -> k $ Conc $ case f of
-    Terms.First -> a_; Second -> b_
-eval1 (App f a_) k = lookHeapC f $ \(Lam xx bb) -> do
-    k =<< substTC xx a_ bb
-
 getEliminated (Proj x _) = x
 getEliminated (App x _) = x
 
 
 -- | Look for some constructed value in the heap.
--- TODO: rename to lookAndEval
 lookHeapC :: (r~Id,n~Id) => n -> (Constr n r -> TC Bool) -> TC Bool
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
 lookHeapC x k = do
@@ -65,11 +60,35 @@ lookHeapC x k = do
   case lk of
     Nothing -> error "Construction not found"
     Just (Right c) -> k c
+    -- Just (Left d) -> eval1 d $ \d' -> onConcl d' $ \c ->
+    --                local (addAlias' x c) (lookHeapC c k)
+
+hnf' :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
+hnf' c k = lookHeapC c $ \c' -> case c' of
+  (Hyp x) -> hnf x (k (Hyp x)) $ \c'' -> hnf' c'' k
+  _ -> k c'
+
+-- | Look for a redex, and evaluate to head normal form.
+hnf :: (r~Id,n~Id) => n -> (TC Bool) -> (Conc r -> TC Bool) -> TC Bool
+-- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
+hnf x notFound k = do
+  lk <- M.lookup x . heapCuts <$> ask
+  case lk of
+    Nothing -> notFound
+    Just (Right c) -> k c
     Just (Left d) -> eval1 d $ \d' -> onConcl d' $ \c ->
-                   local (addAlias' x c) (lookHeapC c k)
+                   local (addCut' x $ Right c) (k c)
+
+eval1 :: (r~Id,n~Id) => Destr r -> (Term n r -> TC Bool) -> TC Bool
+eval1 (Proj p f) k = do
+  lookHeapC p $ \(Pair a_ b_) -> k $ Conc $ case f of
+    Terms.First -> a_; Second -> b_
+eval1 (App f a_) k = lookHeapC f $ \(Lam xx bb) -> do
+    k =<< substTC xx a_ bb
+eval1 (Cut _ _) k = error "cut cannot be found as target in cut maps"
 
 addDestr :: Hyp Id -> Destr Id -> TC Bool -> TC Bool
-addDestr x (Cut c _ct) k = addAlias x c k
+addDestr x (Cut c _ct) k = local (addCut' x $ Right c) k
 addDestr x d k = do
   h <- ask
   let dHeap = heapDestr h
@@ -107,19 +126,16 @@ testTerm t1 t2 = onConcl t1 $ \c1 -> onConcl t2 $ \c2 -> testConc c1 c2
 testConc :: (r~Id,n~Id) => Conc r -> Conc r -> TC Bool
 testConc x_1 x_2
   | x_1 == x_2 = return True -- optimisation, so equal deep structures are not traversed.
-  | otherwise = do
-    a1 <- aliasOf x_1
-    a2 <- aliasOf x_2
-    lookHeapC a1 $ \c1 -> lookHeapC a2 $ \c2 -> testConstr c1 c2
+  | otherwise = lookHeapC x_1 $ \c1 -> lookHeapC x_2 $ \c2 -> testConstr c1 c2
 
 testConstr :: (r~Id,n~Id) => Constr n r -> Constr n r -> TC Bool
-testConstr (Hyp h1) (Hyp h2) = (==) <$> aliasOf h1 <*> aliasOf h2
+testConstr (Hyp h1) (Hyp h2) = (==) <$> aliasOf h1 <*> aliasOf h2 -- FIXME: evaluation
 testConstr (Lam x1 t1) (Lam x2 t2) = local (addAlias' x1 x2) $ testTerm t1 t2
 testConstr (Pair a1 b1)(Pair a2 b2) = testConc a1 a2 >> testConc b1 b2
 testConstr (Pi x1 a1 t1) (Pi x2 a2 t2) = testConc a2 a1 >> (local (addAlias' x1 x2) $ testTerm t1 t2)
 testConstr (Sigma x1 a1 t1) (Sigma x2 a2 t2) = testConc a1 a2 >> (local (addAlias' x1 x2) $ testTerm t1 t2)
 testConstr (Tag t1)(Tag t2) = return $ t1 == t2
 testConstr (Fin ts1)(Fin ts2) = return $ ts1 == ts2
-testConstr (Universe x1)(Universe x2) = return $ x1 <= x2 -- yes, we do subtyping ..
+testConstr (Universe x1)(Universe x2) = return $ x1 <= x2 -- yes, we do subtyping: TODO make that clean in the names
 testConstr _ _ = return False
 

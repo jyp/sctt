@@ -71,8 +71,7 @@ inferHyp h k = do
   ctx <- context <$> ask
   case M.lookup h ctx of
     Nothing -> terr $ "Panic: " <> pretty h <> " hyp. not found in context."
-    Just c -> do
-      lookHeapC c k
+    Just c -> hnf' c k
 
 -- maintains the invariant that every hyp. has an entry in the context.
 checkBindings :: (n~Id,r~Id) => Term n r -> (Conc r -> TC Bool) -> TC Bool
@@ -104,7 +103,7 @@ checkConAgainstTerm c t = onConcl t $ \t' -> checkConcl c t'
 checkConcl :: (n~Id,r~Id) => Conc r -> r -> TC Bool
 checkConcl v t = do
   tell ["checking conclusion " <> pretty v <> ":" <> pretty t]
-  lookHeapC t $ \t' -> checkConclAgainstConstr v t'
+  hnf' t $ \t' -> checkConclAgainstConstr v t'
 
 checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> TC Bool
 checkConclAgainstConstr v t = lookHeapC v $ \v' -> do
@@ -131,14 +130,14 @@ checkConstr (Pi xx ta_ tb_) (Universe s) = do
 checkConstr (Fin _) (Universe s) = return True
 checkConstr (Universe s') (Universe s)
   | s' < s = return True
-  | otherwise = throwError $ int s' <> " is not a subsort of" <> int s
+  | otherwise = terr $ int s' <> " is not a subsort of" <> int s
 
-checkConstr v t = throwError $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
+checkConstr v t = terr $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
 
 checkSort :: (n~Id,r~Id) => Term n r -> Int -> TC Bool
 checkSort t s = checkBindings t $ \c -> checkConclSort c s
 
 checkConclSort c s = do
   tell ["checking " <> pretty c <> " has sort " <> pretty s]
-  lookHeapC c $ \c' -> checkConstr c' (Universe s)
+  hnf' c $ \c' -> checkConstr c' (Universe s)
 
