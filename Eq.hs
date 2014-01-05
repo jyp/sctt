@@ -57,7 +57,6 @@ aliasOf x = flip getAlias x . heapAlias <$> ask
 getEliminated (Proj x _) = x
 getEliminated (App x _) = x
 
-
 -- | Look for some constructed value in the heap.
 lookHeapC :: (r~Id,n~Id) => n -> (Constr n r -> TC Bool) -> TC Bool
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
@@ -69,7 +68,11 @@ lookHeapC x k = do
 
 hnf' :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
 hnf' c k = lookHeapC c $ \c' -> case c' of
-  (Hyp x) -> hnf x (k (Hyp x)) $ \c'' -> hnf' c'' k
+  (Hyp x) -> do
+     ts <- heapTags <$> ask
+     case M.lookup x ts of
+       Just tag -> k (Tag tag)
+       Nothing -> hnf x (k (Hyp x)) $ \c'' -> hnf' c'' k
   _ -> k c'
 
 -- | Look for a redex, and evaluate to head normal form.
@@ -107,7 +110,7 @@ addDestr x d k = do
   local (addCut' x $ Left d') $ case M.lookup d' (heapDestr h) of
      Just y -> addAlias y x k
      Nothing -> local (addDestr' d' x) $ case d' of
-         Tag' t -> addFin x t k
+         -- Tag' t -> addFin x t k
          _ -> k
 
 -- | return true if fizzled, otherwise call the continuation.  
@@ -125,16 +128,15 @@ onConcl (Conc c) k = k c
 onConcl (Destr x d t1) k = addDestr x d (onConcl t1 k)
 onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)
 onConcl (Case x bs) k = and <$> forM bs (\(Br tag t1) ->
-  addDestr x (Tag' tag) $ onConcl t1 k)
+  addFin x tag $ onConcl t1 k)
 
 testTerm :: (r~Id,n~Id) =>   Term n r -> Term n r -> TC Bool
 testTerm t1 t2 = onConcl t1 $ \c1 -> onConcl t2 $ \c2 -> testConc c1 c2
 
 testConc :: (r~Id,n~Id) => Conc r -> Conc r -> TC Bool
 testConc x_1 x_2
-  | x_1 == x_2 = return True -- optimisation, so equal deep structures are not traversed.
-  | otherwise = do
-      lookHeapC x_1 $ \c1 -> lookHeapC x_2 $ \c2 -> testConstr' c1 c2
+  | x_1 == x_2 = return True -- optimisation, so equal structures are not deeply traversed.
+  | otherwise = hnf' x_1 $ \c1 -> hnf' x_2 $ \c2 -> testConstr' c1 c2
 
 dbgTest msg x y = tell ["Testing " <> msg <> ": " <> pretty x <> " <= " <> pretty y]
 
@@ -144,8 +146,6 @@ testConstr' c1 c2 = do
   
 testConstr :: (r~Id,n~Id) => Constr n r -> Constr n r -> TC Bool
 testConstr (Hyp a1) (Hyp a2) = testHyp a1 a2
-testConstr (Hyp a1) c2 = hnf a1 nope $ \c1 -> lookHeapC c1 $ \c1' -> testConstr c1' c2
-testConstr c1 (Hyp a2) = hnf a2 nope $ \c2 -> lookHeapC c2 $ \c2' -> testConstr c1 c2'
 testConstr (Lam x1 t1) (Lam x2 t2) = local (addAlias' x1 x2) $ testTerm t1 t2
 testConstr (Pair a1 b1)(Pair a2 b2) = testConc a1 a2 >> testConc b1 b2
 testConstr (Pi x1 a1 t1) (Pi x2 a2 t2) = testConc a2 a1 >> (local (addAlias' x1 x2) $ testTerm t1 t2)
@@ -162,9 +162,8 @@ testHyp a1 a2 = do
   d2 <- lookDestr h2
   or <$> forM [pure $ h1 == h2,
                pure $ isJust d1 && isJust d2 && d1 == d2,
-               testApps d1 d2,
-               hnf h1 nope $ \c1 -> hnf h2 nope $ \c2 -> testConc c1 c2] id
-    
+               testApps d1 d2] id
+
 nope :: TC Bool
 nope = return False
 

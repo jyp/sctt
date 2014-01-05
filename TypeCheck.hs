@@ -90,7 +90,7 @@ checkBindings (Case x bs) k =
     Fin ts -> do
       rs <- forM bs $ \(Br tag t1) -> do
         when (tag `notElem` ts) $ throwError $ "type error in case on " <> pretty x <> ": " <> text tag <> " not in " <> pretty xt
-        addDestr x (Tag' tag) $ checkBindings t1 k
+        addFin x tag $ checkBindings t1 k
       return $ and rs
     _ -> terr $ pretty x <> " has not a fin. type, but " <> pretty xt
 

@@ -6,7 +6,7 @@ module Display (Pretty(..), Doc, ($$), (<+>), text, hang, vcat, parensIf, sep, c
 import Prelude hiding (length, reverse)
 import Text.PrettyPrint.HughesPJ
 import Numeric (showIntAtBase)
-
+import qualified Data.Map as M
 class Pretty a where
   pretty :: a -> Doc
 
@@ -25,6 +25,9 @@ instance (Pretty a, Pretty b) => Pretty (Either a b) where
 
 instance (Pretty a, Pretty b) => Pretty (a,b) where
   pretty (a,b) = "(" <> pretty a <> "," <> pretty b <> ")"
+
+instance (Pretty k, Pretty v) => Pretty (M.Map k v) where
+  pretty m = sep [pretty k <> " ↦ " <> pretty v | (k,v) <- M.toList m]
 
 scriptPretty :: String -> Int -> Doc
 scriptPretty s = text . scriptShow s

@@ -47,14 +47,14 @@ instance (Pretty r, Pretty n) => Pretty (Term n r) where
   pretty (Conc x) = pretty x
 
 data Destr r where
-  Tag' :: String -> Destr r
+  -- Tag' :: String -> Destr r -- TODO: probably not needed after all ...
   App :: Hyp r -> Conc r -> Destr r
   Proj :: Hyp r -> Proj -> Destr r
   Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
     deriving (Show, Eq, Ord, Functor)
 
 instance Pretty r => Pretty (Destr r) where
-  pretty (Tag' v) = "'" <> text v -- TODO: probably not needed after all ...
+  -- pretty (Tag' v) = "'" <> text v
   pretty (App f x) = pretty f <> " " <> pretty x
   pretty (Proj x p) = pretty x <> pretty p
   pretty (Cut x t) = pretty x <> ":" <> pretty t
@@ -89,9 +89,6 @@ data Heap n r = Heap { heapConstr :: Map (Conc n) (Constr n r)
                      , context :: Map n (Conc r) -- ^ types
                      }
 
-instance (Pretty k, Pretty v) => Pretty (Map k v) where
-  pretty m = sep [pretty k <> " ↦ " <> pretty v | (k,v) <- M.toList m]
-  
 instance (Pretty r, Pretty n) => Pretty (Heap n r) where
   pretty (Heap {..}) = sep [hang lab 2  v
                            | (lab,v) <- [("constr" ,pretty heapConstr)
