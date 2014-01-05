@@ -78,19 +78,25 @@ hnf' c k = lookHeapC c $ \c' -> case c' of
 hnf :: (r~Id,n~Id) => Hyp n -> (TC Bool) -> (Conc r -> TC Bool) -> TC Bool
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
 hnf x notFound k = do
+  tell ["Evaluating hyp: " <> pretty x]
   h <- ask
   let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
   case lk of
-    Nothing -> notFound
-    Just (Right c) -> k c
-    Just (Left d) -> eval1 d notFound $ \d' -> onConcl d' $ \c ->
-                   local (addCut' x $ Right c) (k c)
+    Nothing -> do
+      notFound
+    Just (Right c) -> do
+      tell ["  Is evaluated to concl: " <> pretty c]
+      k c
+    Just (Left d) -> do
+      tell ["Evaluating destr: " <> pretty d]
+      eval1 d notFound $ \d' -> onConcl d' $ \c ->
+         local (addCut' x $ Right c) (k c)
 
 -- eval1 :: (r~Id,n~Id) => Destr r -> (Term n r -> TC Bool) -> TC Bool
 eval1 (Proj p f) notFound k = do
   hnf p notFound $ \p' -> lookHeapC p' $ \(Pair a_ b_) -> k $ Conc $ case f of
     Terms.First -> a_; Second -> b_
-eval1 (App f a_) notFound k = hnf f notFound $ \f' -> lookHeapC f $ \(Lam xx bb) -> do
+eval1 (App f a_) notFound k = hnf f notFound $ \f' -> lookHeapC f' $ \(Lam xx bb) -> do
     k =<< substTC xx a_ bb
 eval1 d notFound _ = error $ "cannot be found as target in cut maps: " ++ show d
 
