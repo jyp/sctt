@@ -90,6 +90,12 @@ resolveConstr (A.Pi x c t) = do
   insert hyp x $ \x' -> do
     t' <- resolveTerm t
     return (r,c' . Constr r (Pi x' c'id t'))
+resolveConstr (A.Fun c t) = do
+  (c'id,c') <- resolveConstr c
+  r <- freshIdR
+  t' <- resolveTerm t
+  x' <- freshIdR
+  return (r,c' . Constr r (Pi x' c'id t'))
 resolveConstr (A.Sigma x c t) = do
   (c'id,c') <- resolveConstr c
   r <- freshIdR

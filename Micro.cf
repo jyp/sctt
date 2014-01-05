@@ -27,16 +27,17 @@ Proj.   Destr ::= Destr Proj;
 Cut.    Destr ::= Constr2 ":" Constr;
 
 -- Copy.   Constr2 ::= "@" Var;
+Tag.    Constr3 ::= Tag ;
+Fin.    Constr3 ::= "{" [Tag] "}" ;
+Univ.   Constr3 ::= "*" Nat;
 Lam.    Constr2 ::= "\\" Var "->" Term2;
+Fun.    Constr2 ::= Constr3 "->" Term2;
 Pi.     Constr2 ::= "(" Var ":" Constr ")" "->" Term2;
 Pair.   Constr2 ::= "(" Constr "," Constr ")";
 Sigma.  Constr2 ::= "(" Var ":" Constr ")" "X" Term2;
-Tag.    Constr2 ::= Tag ;
-Fin.    Constr2 ::= "{" [Tag] "}" ;
-Univ.   Constr2 ::= "*" Nat;
 Hyp.    Constr1 ::= Destr;
 
-coercions Constr 2;
+coercions Constr 3;
 
 position token Var (letter)((letter|digit|'-'|'_'|'\'')*) ;
 position token Nat digit+ ;
