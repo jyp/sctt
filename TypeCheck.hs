@@ -15,10 +15,6 @@ import TCM
 
 -- TODO: don't return a boolean.
 
-terr :: Doc -> TC a
-terr msg = do
-  h <- ask
-  throwError $ sep [hang "heap" 2 (pretty h), msg]
 
 checkTyp :: Term' -> (Either Doc Bool,[Doc])
 checkTyp t = runTC (nextUnique t) emptyHeap chk
@@ -50,8 +46,9 @@ inferDestr (App f a_) k =
   case ft of
     (Pi x t_ u) -> do
        checkConcl a_ t_
-       retTyp <- substTC x a_ u
-       onConcl retTyp k
+       x' <- liftTC freshId
+       retTyp <- substTC x x' u
+       onConcl (Destr x' (Cut a_ t_) retTyp) k
     _ -> throwError $ pretty f <> " has not a function type"
 inferDestr (Proj p f) k =
   inferHyp p $ \pt ->
@@ -82,7 +79,7 @@ checkBindings (Constr x c t1) k = do
     -- tell ["constructed" <> pretty x]
     checkBindings t1 k
 checkBindings (Destr x d t1) k = inferDestr d $ \dt -> do
-  tell ["inferred " <> pretty d <> " to be " <> pretty dt]
+  tell ["inferred " <> pretty d <> " to be of type " <> pretty dt]
   addCtx x dt $ addDestr x d $ checkBindings t1 k
 checkBindings (Case x bs) k =
   inferHyp x $ \xt ->

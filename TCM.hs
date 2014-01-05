@@ -30,4 +30,8 @@ liftTC x = TC $ lift $ lift x
 
 substTC xx a_ bb = liftTC (subst xx a_ bb)
 
+terr :: Doc -> TC a
+terr msg = do
+  h <- ask
+  throwError $ sep [hang "heap" 2 (pretty h), msg]
 

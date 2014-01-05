@@ -58,12 +58,11 @@ getEliminated (Proj x _) = x
 getEliminated (App x _) = x
 
 -- | Look for some constructed value in the heap.
-lookHeapC :: (r~Id,n~Id) => n -> (Constr n r -> TC Bool) -> TC Bool
--- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
+lookHeapC :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
 lookHeapC x k = do
   lk <- M.lookup x . heapConstr <$> ask
   case lk of
-    Nothing -> error "Construction not found"
+    Nothing -> terr $ "Construction not found: " <> pretty x
     Just c -> k c
 
 hnf' :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
@@ -76,7 +75,7 @@ hnf' c k = lookHeapC c $ \c' -> case c' of
   _ -> k c'
 
 -- | Look for a redex, and evaluate to head normal form.
-hnf :: (r~Id,n~Id) => n -> (TC Bool) -> (Conc r -> TC Bool) -> TC Bool
+hnf :: (r~Id,n~Id) => Hyp n -> (TC Bool) -> (Conc r -> TC Bool) -> TC Bool
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
 hnf x notFound k = do
   h <- ask
@@ -107,6 +106,7 @@ addDestr x (Cut c _ct) k = local (addCut' x $ Right c) k
 addDestr x d k = do
   h <- ask
   let d' = getAlias (heapAlias h) <$> d
+  tell ["Adding destr. " <> pretty x <> " = " <> pretty d  <> " ; aliased to " <> pretty d']
   local (addCut' x $ Left d') $ case M.lookup d' (heapDestr h) of
      Just y -> addAlias y x k
      Nothing -> local (addDestr' d' x) $ case d' of
@@ -143,7 +143,7 @@ dbgTest msg x y = tell ["Testing " <> msg <> ": " <> pretty x <> " <= " <> prett
 testConstr' c1 c2 = do
   dbgTest "Construction " c1 c2
   testConstr c1 c2
-  
+
 testConstr :: (r~Id,n~Id) => Constr n r -> Constr n r -> TC Bool
 testConstr (Hyp a1) (Hyp a2) = testHyp a1 a2
 testConstr (Lam x1 t1) (Lam x2 t2) = local (addAlias' x1 x2) $ testTerm t1 t2
