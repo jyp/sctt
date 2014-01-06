@@ -54,25 +54,24 @@ addAlias src trg = addAliases [(src,trg)]
 aliasOf :: Id -> TC Id
 aliasOf x = flip getAlias x . heapAlias <$> ask
 
-getEliminated (Proj x _) = x
-getEliminated (App x _) = x
-
 -- | Look for some constructed value in the heap.
-lookHeapC :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
-lookHeapC x k = do
+lookHeapC :: (r~Id,n~Id) => Conc n -> TC (Constr n r)
+lookHeapC x = do
   lk <- M.lookup x . heapConstr <$> ask
   case lk of
     Nothing -> terr $ "Construction not found: " <> pretty x
-    Just c -> k c
+    Just c -> return c
 
 hnf' :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
-hnf' c k = lookHeapC c $ \c' -> case c' of
-  (Hyp x) -> do
-     ts <- heapTags <$> ask
-     case M.lookup x ts of
-       Just tag -> k (Tag tag)
-       Nothing -> hnf x (k (Hyp x)) $ \c'' -> hnf' c'' k
-  _ -> k c'
+hnf' c k = do
+  c' <- lookHeapC c
+  case c' of
+    (Hyp x) -> do
+       ts <- heapTags <$> ask
+       case M.lookup x ts of
+         Just tag -> k (Tag tag)
+         Nothing -> hnf x (k (Hyp x)) $ \c'' -> hnf' c'' k
+    _ -> k c'
 
 -- | Look for a redex, and evaluate to head normal form.
 hnf :: (r~Id,n~Id) => Hyp n -> (TC Bool) -> (Conc r -> TC Bool) -> TC Bool
@@ -94,11 +93,16 @@ hnf x notFound k = do
 
 -- eval1 :: (r~Id,n~Id) => Destr r -> (Term n r -> TC Bool) -> TC Bool
 eval1 (Proj p f) notFound k = do
-  hnf p notFound $ \p' -> lookHeapC p' $ \(Pair a_ b_) -> k $ Conc $ case f of
-    Terms.First -> a_; Second -> b_
-eval1 (App f a_) notFound k = hnf f notFound $ \f' -> lookHeapC f' $ \(Lam xx bb) -> do
+  hnf p notFound $ \p' -> do
+    (Pair a_ b_) <- lookHeapC p'
+    k $ Conc $ case f of
+       Terms.First -> a_
+       Second -> b_
+eval1 (App f a_) notFound k = do
+  hnf f notFound $ \f' -> do
+    (Lam xx bb) <- lookHeapC f'
     k =<< substTC xx a_ bb
-eval1 d notFound _ = error $ "cannot be found as target in cut maps: " ++ show d
+eval1 d _ _ = error $ "cannot be found as target in cut maps: " ++ show d
 
 addFin :: Id -> String -> TC Bool -> TC Bool
 addFin x t k = do

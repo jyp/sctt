@@ -16,11 +16,6 @@ import TCM
 -- TODO: don't return a boolean.
 
 
-checkTyp :: Term' -> (Either Doc Bool,[Doc])
-checkTyp t = runTC (nextUnique t) emptyHeap chk
-  where chk = do tell ["Start"]
-                 checkSort t 100000
-
 typeCheck :: Term' -> Term' -> (Either Doc Bool,[Doc])
 typeCheck a t = runTC (max (nextUnique t) (nextUnique a)) emptyHeap chk
   where chk = do tell ["Start"]
@@ -103,7 +98,8 @@ checkConcl v t = do
   hnf' t $ \t' -> checkConclAgainstConstr v t'
 
 checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> TC Bool
-checkConclAgainstConstr v t = lookHeapC v $ \v' -> do
+checkConclAgainstConstr v t = do
+  v' <- lookHeapC v
   tell [hang "checking construction " 2 (sep ["val " <> pretty v', "typ " <> pretty t])]
   checkConstr v' t
 
