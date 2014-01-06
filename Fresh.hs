@@ -3,12 +3,10 @@ module Fresh where
 import Control.Applicative hiding (empty)
 import Control.Monad.State
 import Control.Arrow ((&&&))
-import Control.Monad
 import Ident
 import Data.Bifoldable
 
 import Data.Bitraversable
-import Data.Bifoldable
 import Data.Bifunctor
 import Data.Maybe (fromMaybe)
 fromNames ::  Bitraversable p => p Name Name -> p Id Id
@@ -33,7 +31,7 @@ fromNamesFlag safe x = runFreshM (evalStateT (bitraverse fresh_name look x) [])
               then error $ "Unknown identifier : " ++ s
               else fresh_name s
         Just x -> return x
-        
+
 names :: Bifoldable t => t name ref -> [name]
 names = biconcatMap (\ n -> [n]) (\ _r -> [])
 
