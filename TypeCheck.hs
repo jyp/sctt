@@ -7,6 +7,7 @@ import Control.Monad.Reader
 import Control.Monad.Error
 import Control.Monad.Writer
 import Control.Applicative
+import Eval
 import Eq
 import Fresh
 import Ident
@@ -14,7 +15,6 @@ import Display
 import TCM
 
 -- TODO: don't return a boolean.
-
 
 typeCheck :: Term' -> Term' -> (Either Doc Bool,[Doc])
 typeCheck a t = runTC (max (nextUnique t) (nextUnique a)) emptyHeap chk
@@ -55,6 +55,8 @@ inferDestr (Proj p f) k =
            x' <- liftTC freshId
            u' <- substTC x x' u
            onConcl (Destr x' (Proj p Terms.First) u') k
+           -- TODO: is the substitution needed? can one just give a
+           -- definition for x? Could there be other instances of x around somehow?
     _ -> throwError $ pretty p <> " has not a pair type"
 
 -- Direct lookup of type in the context
@@ -120,7 +122,7 @@ checkConstr (Sigma xx ta_ tb_) (Universe s) = do
 checkConstr (Pi xx ta_ tb_) (Universe s) = do
   checkConclSort ta_ s
   addCtx xx ta_ $ checkSort tb_ s
-checkConstr (Fin _) (Universe s) = return True
+checkConstr (Fin _) (Universe _s) = return True
 checkConstr (Universe s') (Universe s)
   | s' < s = return True
   | otherwise = terr $ int s' <> " is not a subsort of" <> int s
