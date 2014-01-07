@@ -1,5 +1,4 @@
-TYPE
-  *2
 TERM
   *1
-  
+TYPE
+  *2

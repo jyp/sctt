@@ -13,31 +13,29 @@ T.  Tag      ::= "'" Var;
 Br. Branch   ::= Tag "->" Term;
 
 separator Branch ".";
-Concl.  Term2 ::=    Constr ;
-Case.  Term2 ::= "case" Destr "of" "{" [Branch] "}";
+Concl.  Term2 ::=    DC ;
+Case.  Term2 ::= "case" DC "of" "{" [Branch] "}";
 
-Destr. Term1 ::=    Var "=" Destr ";" Term1;
+Destr. Term1 ::=    Var "=" DC ";" Term1;
 -- Constr.  Term1 ::=    Var ":=" Constr ";" Term1;
 
 coercions Term 2;
 
-V.      Destr ::= Var;
-Appl.   Destr ::= Destr Constr2;
-Proj.   Destr ::= Destr Proj;
-Cut.    Destr ::= Constr2 ":" Constr;
 
--- Copy.   Constr2 ::= "@" Var;
-Tag.    Constr3 ::= Tag ;
-Fin.    Constr3 ::= "{" [Tag] "}" ;
-Univ.   Constr3 ::= "*" Nat;
-Lam.    Constr2 ::= "\\" Var "->" Term2;
-Fun.    Constr2 ::= Constr3 "->" Term2;
-Pi.     Constr2 ::= "(" Var ":" Constr ")" "->" Term2;
-Pair.   Constr2 ::= "(" Constr "," Constr ")";
-Sigma.  Constr2 ::= "(" Var ":" Constr ")" "X" Term2;
-Hyp.    Constr1 ::= Destr;
+Tag.    DC3 ::= Tag ;
+V.      DC3 ::= Var;
+Pair.   DC3 ::= "(" DC "," DC ")";
+Lam.    DC3 ::= "\\" Var "->" Term2;
+Proj.   DC3 ::= DC3 Proj;
+Fin.    DC3 ::= "{" [Tag] "}" ;
+Univ.   DC3 ::= "*" Nat;
+Appl.   DC2 ::= DC2 DC3;
+Fun.    DC1 ::= DC2 "->" Term2;
+Pi.     DC1 ::= "(" Var ":" DC ")" "->" Term2;
+Sigma.  DC1 ::= "(" Var ":" DC ")" "X" Term2;
+Cut.    DC  ::= DC1 ":" DC;
 
-coercions Constr 3;
+coercions DC 4;
 
 position token Var (letter)((letter|digit|'-'|'_'|'\'')*) ;
 position token Nat digit+ ;

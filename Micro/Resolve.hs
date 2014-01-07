@@ -48,7 +48,7 @@ resolveTerm (A.Case x bs) = do
     (resolveTag tag,) <$> resolveTerm t
   return (x' $ Case x'id [Br tag t' | (tag,t') <- bs'])
 
-resolveDestr :: A.Destr -> R (Id,Slice)
+resolveDestr :: A.DC -> R (Id,Slice)
 resolveDestr (A.V x) = do
   x' <- resolveVar hyp x
   case x' of
@@ -69,16 +69,13 @@ resolveDestr (A.Cut x t) = do
   (t'id,t') <- resolveConstr t
   r <- freshIdR
   return (r, x'.t'.Destr r (Cut x'id t'id))
+resolveDestr _ = do
+  error "Cuts must be explicit via use of ="
 
 resolveProj (A.First) = First
 resolveProj (A.Second) = Second
 
-resolveConstr :: A.Constr -> R (Id,Slice)
--- resolveConstr (A.Copy x) = Hyp <$> resolveVar con x
-resolveConstr (A.Hyp h) = do
-  r <- freshIdR
-  (h'id,h') <- resolveDestr h
-  return (r,h' . Constr r (Hyp h'id))
+resolveConstr :: A.DC -> R (Id,Slice)
 resolveConstr (A.Lam x t) =
   insert hyp x $ \x' -> do
     r <- freshIdR
@@ -116,6 +113,10 @@ resolveConstr (A.Fin ts) = do
 resolveConstr (A.Univ (A.Nat (_,n))) = do
   r <- freshIdR
   return (r,Constr r (Universe $ read n))
+resolveConstr h = do
+  r <- freshIdR
+  (h'id,h') <- resolveDestr h
+  return (r,h' . Constr r (Hyp h'id))
 
 
 resolveTag (A.T (A.Var (_,x))) = x
