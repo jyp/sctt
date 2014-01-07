@@ -41,7 +41,7 @@ inferDestr (App f a_) k =
   case ft of
     (Pi x t_ u) -> do
        checkConcl a_ t_
-       x' <- liftTC $ freshFrom "Π"
+       x' <- liftTC $ refreshId x
        retTyp <- substTC x x' u
        onConcl (Destr x' (Cut a_ t_) retTyp) k
     _ -> throwError $ pretty f <> " has not a function type"
@@ -111,7 +111,7 @@ checkConclAgainstConstr v t = do
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> TC Bool
 checkConstr (Hyp h) t = inferHyp h $ \t' -> do
   v <- testConstr t' t
-  when (not v) $ terr $ pretty t <> " not a subtype of " <> pretty t'
+  when (not v) $ terr $ pretty t <> " not a subtype of " <> pretty t' <> " hence the type of " <> pretty h <> " is wrong"
   return True
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_

@@ -90,15 +90,14 @@ hnf x notFound k = do
       eval1 d notFound $ \c ->
          local (addCut' x $ Right c) (k c)
 
--- eval1 :: (r~Id,n~Id) => Destr r -> (Term n r -> TC Bool) -> TC Bool
+eval1 :: (r~Id,n~Id) => Destr r -> TC Bool -> (Conc r -> TC Bool) -> TC Bool
 eval1 (Proj p f) notFound k = do
   hnf p notFound $ \p' -> do
     (Pair a_ b_) <- lookHeapC p'
     k $ case f of
        Terms.First -> a_
        Second -> b_
-eval1 (App f a_) notFound k = do
-  hnf f notFound $ \f' -> do
+eval1 (App f a_) notFound k = hnf f notFound $ \f' -> do
     (Lam xx bb) <- lookHeapC f'
     x' <- liftTC $ freshFrom "λ"
     bb' <- substTC xx x' bb
