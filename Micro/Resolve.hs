@@ -69,8 +69,8 @@ resolveDestr (A.Cut x t) = do
   (t'id,t') <- resolveConstr t
   r <- freshIdR
   return (r, x'.t'.Destr r (Cut x'id t'id))
-resolveDestr _ = do
-  error "Cuts must be explicit via use of ="
+resolveDestr x = do
+  error $ "Tryed to make an inline cut. (Cuts must be explicit via use of =)\n" ++ show x
 
 resolveProj (A.First) = First
 resolveProj (A.Second) = Second
