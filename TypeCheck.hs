@@ -84,9 +84,9 @@ checkBindings (Case x bs) k =
   inferHyp x $ \xt ->
   case xt of
     Fin ts -> do
-      rs <- forM bs $ \(Br tag t1) -> do
-        when (tag `notElem` ts) $ throwError $ "type error in case on " <> pretty x <> ": " <> text tag <> " not in " <> pretty xt
-        addFin x tag $ checkBindings t1 k
+      let ts' = [t | Br t _ <- bs]
+      when (ts /= ts') $ terr $ "mismatching tags in case on " <> pretty x
+      rs <- forM bs $ \(Br tag t1) -> addFin x tag $ checkBindings t1 k
       return $ and rs
     _ -> terr $ pretty x <> " has not a fin. type, but " <> pretty xt
 
