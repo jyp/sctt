@@ -10,10 +10,12 @@ import Control.Monad.Writer
 import Control.Monad.RWS
 import Control.Monad.Error
 import Control.Applicative
+import Data.Map (Map)
 
-type Heap' = Heap Id Id
 type Term' = Term Id Id
 type Constr' = Constr Id Id
+type Heap' = Heap Id Id
+
 
 newtype TC a = TC {fromTC :: ErrorT Doc (RWST Heap' [Doc] () FreshM) a} 
   deriving (Functor, Applicative, Monad, MonadReader Heap', MonadWriter [Doc], MonadError Doc)
@@ -34,4 +36,6 @@ terr :: Doc -> TC a
 terr msg = do
   h <- ask
   throwError $ sep [hang "heap" 2 (pretty h), msg]
+
+
 

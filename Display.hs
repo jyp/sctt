@@ -1,4 +1,4 @@
-{-# LANGUAGE PackageImports, GADTs, KindSignatures, StandaloneDeriving, EmptyDataDecls, FlexibleInstances, OverloadedStrings #-}
+{-# LANGUAGE PackageImports, GADTs, KindSignatures, StandaloneDeriving, EmptyDataDecls, FlexibleInstances, OverloadedStrings, OverlappingInstances #-}
 
 module Display (Pretty(..), Doc, ($$), (<+>), text, hang, vcat, parensIf, sep, comma, nest, parens, braces, int,
                 subscriptPretty, superscriptPretty, subscriptShow, render, punctuate) where
@@ -27,8 +27,11 @@ instance (Pretty a, Pretty b) => Pretty (a,b) where
   pretty (a,b) = "(" <> pretty a <> "," <> pretty b <> ")"
 
 instance (Pretty k, Pretty v) => Pretty (M.Map k v) where
-  pretty m = sep [pretty k <> " ↦ " <> pretty v | (k,v) <- M.toList m]
+  pretty m = sep $ punctuate ";" [pretty k <> " ↦ " <> pretty v | (k,v) <- M.toList m]
 
+instance Pretty String where
+  pretty = text
+  
 scriptPretty :: String -> Int -> Doc
 scriptPretty s = text . scriptShow s
 

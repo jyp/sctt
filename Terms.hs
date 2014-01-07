@@ -40,24 +40,12 @@ data Term n r where
   Conc :: Conc r -> Term n r  -- ^ Conclude
     deriving (Show, Functor)
 
-instance (Pretty r, Pretty n) => Pretty (Term n r) where
-  pretty (Destr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
-  pretty (Constr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
-  pretty (Case x bs) = hang ("case " <> pretty x <> " of") 2 (braces $ sep $ punctuate "." $ map pretty bs)
-  pretty (Conc x) = pretty x
-
 data Destr r where
   -- Tag' :: String -> Destr r -- TODO: probably not needed after all ...
   App :: Hyp r -> Conc r -> Destr r
   Proj :: Hyp r -> Proj -> Destr r
   Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
     deriving (Show, Eq, Ord, Functor)
-
-instance Pretty r => Pretty (Destr r) where
-  -- pretty (Tag' v) = "'" <> text v
-  pretty (App f x) = pretty f <> " " <> pretty x
-  pretty (Proj x p) = pretty x <> pretty p
-  pretty (Cut x t) = pretty x <> ":" <> pretty t
 
 data Constr n r where
   Hyp :: Hyp r -> Constr n r
@@ -70,6 +58,18 @@ data Constr n r where
   Universe :: Int -> Constr n r
     deriving (Show, Functor)
 
+instance (Pretty r, Pretty n) => Pretty (Term n r) where
+  pretty (Destr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
+  pretty (Constr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
+  pretty (Case x bs) = hang ("case " <> pretty x <> " of") 2 (braces $ sep $ punctuate "." $ map pretty bs)
+  pretty (Conc x) = pretty x
+
+instance Pretty r => Pretty (Destr r) where
+  -- pretty (Tag' v) = "'" <> text v
+  pretty (App f x) = pretty f <> " " <> pretty x
+  pretty (Proj x p) = pretty x <> pretty p
+  pretty (Cut x t) = pretty x <> ":" <> pretty t
+
 instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Hyp h) = pretty h
   pretty (Lam x b) = "\\" <> pretty x <> " -> " <> (pretty b)
@@ -79,6 +79,7 @@ instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Tag t) = "'" <> text t
   pretty (Fin ts) = braces $ sep $ punctuate "," $ map text ts
   pretty (Universe x) = "*" <> subscriptPretty x
+
 type DeCo r = Either (Destr r) (Conc r)
 
 data Heap n r = Heap { heapConstr :: Map (Conc n) (Constr n r)
@@ -94,10 +95,8 @@ instance (Pretty r, Pretty n) => Pretty (Heap n r) where
                            | (lab,v) <- [("constr" ,pretty heapConstr)
                                         ,("cuts"   ,pretty heapCuts)
                                         ,("destr"  ,pretty heapDestr)
+                                        ,("tags"   ,pretty heapTags)
                                         ,("alias"  ,pretty heapAlias)
                                         ,("context",pretty context)]
                              ]
-
-emptyHeap :: Heap n r
-emptyHeap = Heap M.empty M.empty M.empty M.empty M.empty M.empty
 

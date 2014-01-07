@@ -10,6 +10,10 @@ import Display
 import TCM
 import Data.Bifunctor
 import Fresh (freshFrom)
+
+emptyHeap :: Heap n r
+emptyHeap = Heap M.empty M.empty M.empty M.empty M.empty M.empty
+
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
 addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
 
