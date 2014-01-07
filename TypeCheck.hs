@@ -99,8 +99,7 @@ checkConAgainstTerm c t = onConcl t $ \t' -> checkConcl c t'
 checkConcl :: (n~Id,r~Id) => Conc r -> r -> TC Bool
 checkConcl v t = do
   tell ["checking conclusion " <> pretty v <> ":" <> pretty t]
-  t' <- lookHeapC t
-  checkConclAgainstConstr v t'
+  hnf' t $ \t' -> checkConclAgainstConstr v t'
 
 checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> TC Bool
 checkConclAgainstConstr v t = do
