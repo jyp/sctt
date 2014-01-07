@@ -37,7 +37,7 @@ inferDestr (Cut v vt) k = do
   checkConcl v vt
   k vt
 inferDestr (App f a_) k =
-  inferHyp f $ \ft -> 
+  inferHyp f $ \ft ->
   case ft of
     (Pi x t_ u) -> do
        checkConcl a_ t_
@@ -99,7 +99,8 @@ checkConAgainstTerm c t = onConcl t $ \t' -> checkConcl c t'
 checkConcl :: (n~Id,r~Id) => Conc r -> r -> TC Bool
 checkConcl v t = do
   tell ["checking conclusion " <> pretty v <> ":" <> pretty t]
-  hnf' t $ \t' -> checkConclAgainstConstr v t'
+  t' <- lookHeapC t
+  checkConclAgainstConstr v t'
 
 checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> TC Bool
 checkConclAgainstConstr v t = do
@@ -114,7 +115,9 @@ checkConstr (Hyp h) t = inferHyp h $ \t' -> do
   return True
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_
-  checkConAgainstTerm b_ =<< substTC xx a_ tb_
+  x' <- liftTC $ freshFrom "P"
+  tb' <- substTC xx x' tb_
+  checkConAgainstTerm b_ (Destr x' (Cut a_ ta_) tb')
 checkConstr (Lam x b_) (Pi xx ta_ tb_) = do
   addCtx x ta_ $ addAlias xx x $ checkTermAgainstTerm b_ tb_
 checkConstr (Tag t) (Fin ts) = return (t `elem` ts)
@@ -136,5 +139,5 @@ checkSort t s = checkBindings t $ \c -> checkConclSort c s
 
 checkConclSort c s = do
   tell ["checking " <> pretty c <> " has sort " <> pretty s]
-  hnf' c $ \c' -> checkConstr c' (Universe s)
-
+  c' <- lookHeapC c
+  checkConstr c' (Universe s)
