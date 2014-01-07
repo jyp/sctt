@@ -1,4 +1,4 @@
-{-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
+{-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards, TypeSynonymInstances, FlexibleInstances #-}
 module Eval where
 import Terms
 import qualified Data.Map as M
@@ -145,3 +145,69 @@ onConcl (Destr x d t1) k = addDestr x d (onConcl t1 k)
 onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)
 onConcl (Case x bs) k = mconcat <$> forM bs (\(Br tag t1) ->
   addFin x tag $ onConcl t1 k)
+
+class Prettier a where
+  prettier :: a -> TC Doc
+
+pConc :: Conc Id -> TC Doc
+pConc x = prettier =<< lookHeapC x
+
+pHyp :: Hyp Id -> TC Doc
+pHyp x = do
+  h <- ask
+  let ts = heapTags h
+  case M.lookup x ts of
+     Just tag -> return $ "'" <> text tag
+     _ -> do
+       let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
+       case lk of
+         Nothing -> return $ pretty x
+         Just (Right c) -> pConc c
+         Just (Left d) -> prettier d
+
+instance Prettier Term' where
+  prettier (Conc c) = pConc c
+  prettier (Destr h d t) = addDestr h d $ prettier t
+  prettier (Constr x c t) = addConstr x c $ prettier t
+  prettier (Case x bs) = do
+    bs' <- mapM prettier bs
+    h <- pHyp x
+    return $ hang ("case " <> h <> " of") 2 (braces $ sep $ punctuate "." $ bs')
+
+instance Prettier Constr' where
+  prettier (Hyp h) = pHyp h
+  prettier (Lam x b) = do
+    b' <- prettier b
+    return $ "\\" <> pretty x <> " -> " <> b'
+  prettier (Pi x t b) = do
+    t' <- pConc t
+    b' <- prettier b
+    return $ parens (pretty x <>":"<> t') <> " -> " <> b'
+  prettier (Sigma x t b) = do
+    t' <- pConc  t
+    b' <- prettier b
+    return $ parens (pretty x <>":"<> t') <> " × " <> b'
+  prettier (Pair a b) = do
+    a' <- pConc  a
+    b' <- pConc  b
+    return $ parens $ a' <> "," <> b'
+  prettier x = return $ pretty x
+
+
+instance Prettier Destr' where
+  prettier (App f x) = do
+    f' <- pHyp f
+    x' <- pConc x
+    return $ f' <+> x'
+  prettier (Proj x p) = do
+    x' <- pHyp x
+    return $ x' <> pretty p
+  prettier (Cut x t) = do
+    x' <- pConc x
+    t' <- pConc t
+    return $ x' <+> ":" <+> t'
+
+   
+instance Prettier Branch' where
+  prettier (Br tag t) = (\x -> "'" <> text tag <> "->" <> x) <$> prettier t
+

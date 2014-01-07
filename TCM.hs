@@ -14,7 +14,9 @@ import Data.Map (Map)
 
 type Term' = Term Id Id
 type Constr' = Constr Id Id
+type Destr' = Destr Id
 type Heap' = Heap Id Id
+type Branch' = Branch Id Id
 
 
 newtype TC a = TC {fromTC :: ErrorT Doc (RWST Heap' [Doc] () FreshM) a} 
@@ -36,6 +38,3 @@ terr :: Doc -> TC a
 terr msg = do
   h <- ask
   throwError $ sep [hang "heap" 2 (pretty h), msg]
-
-
-

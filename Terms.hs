@@ -26,9 +26,6 @@ instance Pretty Proj where
 data Branch n r = Br Tag (Term n r)
     deriving (Show, Functor)
 
-instance (Pretty r, Pretty n) => Pretty (Branch n r) where
-  pretty (Br tag t) = "'" <> text tag <> "->" <> pretty t
-  
 instance Bifoldable Term where  bifoldMap = bifoldMapDefault
 instance Bifunctor Term where  bimap = bimapDefault
 instance Bitraversable Term where  bitraverse = $(genTraverse ''Term)
@@ -63,6 +60,9 @@ instance (Pretty r, Pretty n) => Pretty (Term n r) where
   pretty (Constr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
   pretty (Case x bs) = hang ("case " <> pretty x <> " of") 2 (braces $ sep $ punctuate "." $ map pretty bs)
   pretty (Conc x) = pretty x
+
+instance (Pretty r, Pretty n) => Pretty (Branch n r) where
+  pretty (Br tag t) = "'" <> text tag <> "->" <> pretty t
 
 instance Pretty r => Pretty (Destr r) where
   -- pretty (Tag' v) = "'" <> text v
