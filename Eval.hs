@@ -9,7 +9,7 @@ import Ident
 import Display
 import TCM
 import Data.Bifunctor
-
+import Fresh (freshFrom)
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
 addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
 
@@ -87,20 +87,22 @@ hnf x notFound k = do
       k c
     Just (Left d) -> do
       tell ["Evaluating destr: " <> pretty d]
-      eval1 d notFound $ \d' -> onConcl d' $ \c ->
+      eval1 d notFound $ \c ->
          local (addCut' x $ Right c) (k c)
 
 -- eval1 :: (r~Id,n~Id) => Destr r -> (Term n r -> TC Bool) -> TC Bool
 eval1 (Proj p f) notFound k = do
   hnf p notFound $ \p' -> do
     (Pair a_ b_) <- lookHeapC p'
-    k $ Conc $ case f of
+    k $ case f of
        Terms.First -> a_
        Second -> b_
 eval1 (App f a_) notFound k = do
   hnf f notFound $ \f' -> do
     (Lam xx bb) <- lookHeapC f'
-    k =<< substTC xx a_ bb
+    x' <- liftTC $ freshFrom "λ"
+    bb' <- substTC xx x' bb
+    onConcl (Destr x' (Cut a_ (error "body of lambda should not be checked again.")) bb') k
 eval1 d _ _ = error $ "cannot be found as target in cut maps: " ++ show d
 
 addFin :: Monoid a => Id -> String -> TC a -> TC a
