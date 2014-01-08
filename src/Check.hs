@@ -43,11 +43,14 @@ lookHyp :: Hyp -> CheckM
 
 whnf :: Term -> CheckM RTerm
 
+shouldBePi :: Type -> CheckM PiType
+
 infer :: LTerm -> CheckM Type
 infer d =
   case d of
     LHyp x -> lookHyp x >>= \case
       IsHyp   a -> return a
       IsAlias y -> infer y
-    App x y_ -> infer x >>= \case
-
+    App x y_ -> infer x >>= shouldBePi >>= \ (PiType a b) -> do
+      check y_ a
+      apply b x

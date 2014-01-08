@@ -31,10 +31,10 @@ instance Bifunctor Term where  bimap = bimapDefault
 instance Bitraversable Term where  bitraverse = $(genTraverse ''Term)
 
 data Term n r where
-  Destr :: Hyp n -> Destr r -> Term n r -> Term n r
-  Case :: Hyp n -> [Branch n r] -> Term n r
+  Destr  :: Hyp n  -> Destr r -> Term n r -> Term n r
+  Case   :: Hyp r  -> [Branch n r] -> Term n r
   Constr :: Conc n -> Constr n r -> Term n r -> Term n r
-  Conc :: Conc r -> Term n r  -- ^ Conclude
+  Conc   :: Conc r -> Term n r  -- ^ Conclude
     deriving (Show, Functor)
 
 data Destr r where
@@ -83,11 +83,11 @@ instance (Pretty r, Pretty n) => Pretty (Constr n r) where
 type DeCo r = Either (Destr r) (Conc r)
 
 data Heap n r = Heap { heapConstr :: Map (Conc n) (Constr n r)
-                     , heapCuts :: Map (Hyp n) (DeCo r)
-                     , heapDestr :: Map (Destr r) (Hyp n)
-                     , heapTags :: Map r String
-                     , heapAlias :: Map r r
-                     , context :: Map n (Conc r) -- ^ types
+                     , heapCuts   :: Map (Hyp n) (DeCo r)
+                     , heapDestr  :: Map (Destr r) (Hyp n)
+                     , heapTags   :: Map r String
+                     , heapAlias  :: Map r r
+                     , context    :: Map n (Conc r) -- ^ types
                      }
 
 instance (Pretty r, Pretty n) => Pretty (Heap n r) where

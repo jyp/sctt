@@ -77,7 +77,7 @@ hnf' c k = do
     _ -> k c'
 
 -- | Look for a redex, and evaluate to head normal form.
-hnf :: (r~Id,n~Id) => Hyp n -> (TC Bool) -> (Conc r -> TC Bool) -> TC Bool
+hnf :: (r~Id,n~Id) => Hyp n -> TC Bool -> (Conc r -> TC Bool) -> TC Bool
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
 hnf x notFound k = do
   tell ["Evaluating hyp: " <> pretty x]
@@ -125,26 +125,27 @@ addDestr x d k = do
      Just y -> addAlias y x k
      Nothing -> local (addDestr' d' x) k
 
--- | return true if fizzled, otherwise call the continuation.  
+-- | return true if fizzled, otherwise call the continuation.
 addConstr :: Monoid a => Conc Id -> Constr' -> TC a -> TC a
 addConstr x c k = do
   tell ["Adding construction " <> pretty x <> " = " <> pretty c]
   hC <- heapConstr <$> ask
   hA <- heapAlias <$> ask
   case c of
-    Tag t | Just (Tag t') <- M.lookup x hC, t /= t' -> return mempty
+    Tag t | Just (Tag t') <- M.lookup x hC -> if t /= t' then return mempty else k
     _ -> local (addConstr' x $ getAlias hA <$> c) k
 
 instance Monoid Bool where
   mempty = True
   mappend = (&&)
-  
+
 onConcl :: Monoid a => Term' -> (Conc Id -> TC a) -> TC a
-onConcl (Conc c) k = k c
-onConcl (Destr x d t1) k = addDestr x d (onConcl t1 k)
+onConcl (Conc c)        k = k c
+onConcl (Destr x d t1)  k = addDestr x d (onConcl t1 k)
 onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)
-onConcl (Case x bs) k = mconcat <$> forM bs (\(Br tag t1) ->
-  addFin x tag $ onConcl t1 k)
+onConcl (Case x bs)     k = mconcat <$> do
+  forM bs $ \(Br tag t1) ->
+    addFin x tag $ onConcl t1 k
 
 class Prettier a where
   prettier :: a -> TC Doc
@@ -207,7 +208,7 @@ instance Prettier Destr' where
     t' <- pConc t
     return $ x' <+> ":" <+> t'
 
-   
+
 instance Prettier Branch' where
   prettier (Br tag t) = (\x -> "'" <> text tag <> "->" <> x) <$> prettier t
 
