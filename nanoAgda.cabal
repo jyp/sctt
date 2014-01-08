@@ -1,0 +1,30 @@
+name:                nanoAgda
+version:             0.1.0.0
+synopsis:            nanoAgda: a core language for type theory
+-- description:
+-- license:
+-- license-file:
+author:              Jean-Philippe Bernardy
+-- copyright:
+category:            Language
+build-type:          Custom
+cabal-version:       >=1.8
+
+executable nac
+  main-is:             Main.hs
+  hs-source-dirs:      ./
+  ghc-options:         -Wall
+  build-tools:         alex, happy
+  other-modules: Nano.Lex, Nano.Par, Micro.Lex, Micro.Par
+  build-depends:       base >= 4,
+                       geniplate ==0.6.*,
+                       bifunctors,
+                       genifunctors,
+                       mtl ==2.1.*,
+                       pretty ==1.1.*,
+                       containers >=0.4,
+                       -- pretty-show,
+                       array ==0.4.*,
+                       filepath,
+                       -- process,
+                       cmdargs

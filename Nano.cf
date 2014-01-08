@@ -1,0 +1,41 @@
+entrypoints Module ;
+
+layout "of" ;
+
+Module. Module ::= "TERM" Term "TYPE" Term ;
+
+First.  Proj ::= ".1" ;
+Second. Proj ::= ".2" ;
+
+separator Tag ",";
+T.  Tag      ::= "'" Var;
+Br. Branch   ::= Tag "->" Term;
+
+separator Branch ".";
+Concl.  Term2 ::=    Var ;
+Case.   Term2 ::=    "case" Var "of" "{" [Branch] "}";
+
+Destr.  Term1 ::=    Var "=" Destr ";" Term1;
+Constr. Term1 ::=    Var "=" Constr ";" Term1;
+
+coercions Term 2;
+
+Appl.   Destr ::= Var Var;
+Proj.   Destr ::= Var Proj;
+Cut.    Destr ::= Var ":" Var;
+
+Hyp.    Constr ::= Var;
+Lam.    Constr ::= "\\" Var "->" Term2;
+Pi.     Constr ::= "(" Var ":" Var ")" "->" Term2;
+Pair.   Constr ::= "(" Var "," Var ")";
+Sigma.  Constr ::= "(" Var ":" Var ")" "X" Term2;
+Tag.    Constr ::= Tag ;
+Fin.    Constr ::= "{" [Tag] "}" ;
+Univ.   Constr ::= "*" Nat;
+
+position token Var (letter)((letter|digit|'-'|'_'|'\'')*) ;
+position token Nat digit+ ;
+
+comment "{-" "-}" ;
+comment "--" ;
+
