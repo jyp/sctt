@@ -73,36 +73,32 @@ hnf' c k = do
        ts <- heapTags <$> ask
        case M.lookup x ts of
          Just tag -> k (Tag tag)
-         Nothing -> hnf x (k (Hyp x)) $ \c'' -> hnf' c'' k
+         Nothing -> hnf x (k (Hyp x)) k  -- Todo: update heap here too?
     _ -> k c'
 
 -- | Look for a redex, and evaluate to head normal form.
-hnf :: (r~Id,n~Id) => Hyp n -> TC Bool -> (Conc r -> TC Bool) -> TC Bool
+hnf :: (r~Id,n~Id) => Hyp n -> TC Bool -> (Constr n r -> TC Bool) -> TC Bool
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
 hnf x notFound k = do
   tell ["Evaluating hyp: " <> pretty x]
   h <- ask
   let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
   case lk of
-    Nothing -> do
-      notFound
+    Nothing -> notFound
     Just (Right c) -> do
       tell ["  Is evaluated to concl: " <> pretty c]
-      k c
+      hnf' c k
     Just (Left d) -> do
       tell ["Evaluating destr: " <> pretty d]
-      eval1 d notFound $ \c ->
-         local (addCut' x $ Right c) (k c)
+      eval1 d notFound $ \c -> local (addCut' x $ Right c) (hnf' c k)
 
 eval1 :: (r~Id,n~Id) => Destr r -> TC Bool -> (Conc r -> TC Bool) -> TC Bool
 eval1 (Proj p f) notFound k = do
-  hnf p notFound $ \p' -> do
-    (Pair a_ b_) <- lookHeapC p'
+  hnf p notFound $ \ (Pair a_ b_) ->
     k $ case f of
        Terms.First -> a_
        Second -> b_
-eval1 (App f a_) notFound k = hnf f notFound $ \f' -> do
-    (Lam xx bb) <- lookHeapC f'
+eval1 (App f a_) notFound k = hnf f notFound $ \ (Lam xx bb) -> do
     x' <- liftTC $ freshFrom "λ"
     bb' <- substTC xx x' bb
     onConcl (Destr x' (Cut a_ (error "body of lambda should not be checked again.")) bb') k
