@@ -17,7 +17,7 @@ testTerm t1 t2 = onConcl t1 $ \c1 -> onConcl t2 $ \c2 -> testConc c1 c2
 testConc :: (r~Id,n~Id) => Conc r -> Conc r -> TC Bool
 testConc x_1 x_2
   | x_1 == x_2 = return True -- optimisation, so equal structures are not deeply traversed.
-  | otherwise = hnf' x_1 $ \c1 -> hnf' x_2 $ \c2 -> testConstr' c1 c2
+  | otherwise = hnf x_1 $ \c1 -> hnf x_2 $ \c2 -> testConstr' c1 c2
 
 dbgTest msg x y = tell ["Testing " <> msg <> ": " <> pretty x <> " <= " <> pretty y]
 

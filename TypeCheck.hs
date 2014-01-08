@@ -67,7 +67,7 @@ inferHyp h k = do
   ctx <- context <$> ask
   case M.lookup h ctx of
     Nothing -> terr $ "Panic: " <> pretty h <> " hyp. not found in context."
-    Just c -> hnf' c k
+    Just c -> hnf c k
 
 -- maintains the invariant that every hyp. has an entry in the context.
 checkBindings :: (n~Id,r~Id) => Term n r -> (Conc r -> TC Bool) -> TC Bool
@@ -99,7 +99,7 @@ checkConAgainstTerm c t = onConcl t $ \t' -> checkConcl c t'
 checkConcl :: (n~Id,r~Id) => Conc r -> r -> TC Bool
 checkConcl v t = do
   tell ["checking conclusion " <> pretty v <> ":" <> pretty t]
-  hnf' t $ \t' -> checkConclAgainstConstr v t'
+  hnf t $ \t' -> checkConclAgainstConstr v t'
 
 checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> TC Bool
 checkConclAgainstConstr v t = do
