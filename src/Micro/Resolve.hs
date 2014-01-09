@@ -42,6 +42,7 @@ resolveTerm (A.Concl c) = do
 resolveTerm (A.Destr x c t) = do
   (c'id,c') <- resolveDestr c
   insert' hyp x c'id $ c' <$> resolveTerm t
+  -- here we should change c'id to contain the string x.
 resolveTerm (A.Case x bs) = do
   (x'id,x') <- resolveDestr x
   bs' <- forM bs $ \(A.Br tag t) -> do
