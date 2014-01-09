@@ -34,7 +34,7 @@ resolve t = Right $ runFreshM $ runReaderT (fromR $ resolveModule t) emptyEnv
 
 resolveModule :: A.Module -> R (Term',Term')
 resolveModule (A.Module t1 t2) = (,) <$> resolveTerm t1 <*> resolveTerm t2
-  
+
 resolveTerm :: A.Term -> R (Term Id Id)
 resolveTerm (A.Concl c) = do
   (c'id,c') <- resolveConstr c

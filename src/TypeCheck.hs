@@ -55,7 +55,7 @@ inferDestr (Proj p f) k =
          Terms.Second -> do
            x' <- liftTC $ freshFrom "Σ"
            u' <- substTC x x' u
-           onConcl (Destr x' (Proj p Terms.First) u') k
+           addCtx x' t_ $ onConcl (Destr x' (Proj p Terms.First) u') k
            -- TODO: is the substitution needed? can one just give a
            -- definition for x? No: there can be other instances of x.
            -- A cleaner version would be to refresh binders every time
