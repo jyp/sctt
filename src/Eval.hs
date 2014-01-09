@@ -1,7 +1,6 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
 module Eval(hnf, onConcl) where
 
-import Data.Bifunctor
 import qualified Data.Map as M
 import Data.Monoid
 import Control.Monad.RWS
@@ -14,7 +13,7 @@ import TCM
 import Fresh (freshFrom)
 import Heap
 
-hnf :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
+hnf :: (Monoid a,r~Id,n~Id) => Conc n -> (Constr n r -> TC a) -> TC a
 hnf c k = do
   c' <- lookHeapC c
   case c' of
@@ -27,7 +26,7 @@ hnf c k = do
 
 
 -- | Look for a redex, and evaluate to head normal form.
-hnfHyp :: (r~Id,n~Id) => Hyp n -> TC Bool -> (Constr n r -> TC Bool) -> TC Bool
+hnfHyp :: (Monoid a,r~Id,n~Id) => Hyp n -> TC a -> (Constr n r -> TC a) -> TC a
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
 hnfHyp x notFound k = do
   tell ["Evaluating hyp: " <> pretty x]
@@ -42,7 +41,7 @@ hnfHyp x notFound k = do
       tell ["Evaluating destr: " <> pretty d]
       hnfDestr d notFound $ \c -> local (addCut' x $ Right c) (hnf c k)
 
-hnfDestr :: (r~Id,n~Id) => Destr r -> TC Bool -> (Conc r -> TC Bool) -> TC Bool
+hnfDestr :: (Monoid a,r~Id,n~Id) => Destr r -> TC a -> (Conc r -> TC a) -> TC a
 hnfDestr d notFound k = case d of
    (Proj p f) -> do
           hnfHyp p notFound $ block $ \ (Pair a_ b_) ->
