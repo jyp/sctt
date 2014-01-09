@@ -83,8 +83,8 @@ instance (Pretty r, Pretty n) => Pretty (Constr n r) where
 type DeCo r = Either (Destr r) (Conc r)
 
 data Heap n r = Heap { heapConstr :: Map (Conc n) (Constr n r)
-                     , heapCuts   :: Map (Hyp n) (DeCo r)
-                     , heapDestr  :: Map (Destr r) (Hyp n)
+                     , heapCuts   :: Map (Hyp n) (DeCo r)  -- TODO: rename to heapDestr
+                     , heapDestr  :: Map (Destr r) (Hyp n) -- TODO: rename to heapDestr'
                      , heapTags   :: Map r String
                      , heapAlias  :: Map r r
                      , context    :: Map n (Conc r) -- ^ types

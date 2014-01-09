@@ -65,49 +65,51 @@ lookHeapC x = do
     Nothing -> terr $ "Construction not found: " <> pretty x
     Just c -> return c
 
-hnf' :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
-hnf' c k = do
+hnf :: (r~Id,n~Id) => Conc n -> (Constr n r -> TC Bool) -> TC Bool
+hnf c k = do
   c' <- lookHeapC c
   case c' of
     (Hyp x) -> do
        ts <- heapTags <$> ask
        case M.lookup x ts of
-         Just tag -> k (Tag tag)
-         Nothing -> hnf x (k (Hyp x)) $ \c'' -> hnf' c'' k
+         Just tag -> k (Tag tag) -- Todo: update heap here too?
+         Nothing -> hnfHyp x (k (Hyp x)) k  -- Todo: update heap here too?
     _ -> k c'
 
+
 -- | Look for a redex, and evaluate to head normal form.
-hnf :: (r~Id,n~Id) => Hyp n -> TC Bool -> (Conc r -> TC Bool) -> TC Bool
+hnfHyp :: (r~Id,n~Id) => Hyp n -> TC Bool -> (Constr n r -> TC Bool) -> TC Bool
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
-hnf x notFound k = do
+hnfHyp x notFound k = do
   tell ["Evaluating hyp: " <> pretty x]
   h <- ask
   let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
   case lk of
-    Nothing -> do
-      notFound
+    Nothing -> notFound
     Just (Right c) -> do
       tell ["  Is evaluated to concl: " <> pretty c]
-      k c
+      hnf c k
     Just (Left d) -> do
       tell ["Evaluating destr: " <> pretty d]
-      eval1 d notFound $ \c ->
-         local (addCut' x $ Right c) (k c)
+      hnfDestr d notFound $ \c -> local (addCut' x $ Right c) (hnf c k)
 
-eval1 :: (r~Id,n~Id) => Destr r -> TC Bool -> (Conc r -> TC Bool) -> TC Bool
-eval1 (Proj p f) notFound k = do
-  hnf p notFound $ \p' -> do
-    (Pair a_ b_) <- lookHeapC p'
-    k $ case f of
-       Terms.First -> a_
-       Second -> b_
-eval1 (App f a_) notFound k = hnf f notFound $ \f' -> do
-    (Lam xx bb) <- lookHeapC f'
-    x' <- liftTC $ freshFrom "λ"
-    bb' <- substTC xx x' bb
-    onConcl (Destr x' (Cut a_ (error "body of lambda should not be checked again.")) bb') k
-eval1 d _ _ = error $ "cannot be found as target in cut maps: " ++ show d
+hnfDestr :: (r~Id,n~Id) => Destr r -> TC Bool -> (Conc r -> TC Bool) -> TC Bool
+hnfDestr d notFound k = case d of
+   (Proj p f) -> do
+          hnfHyp p notFound $ block $ \ (Pair a_ b_) ->
+            k $ case f of
+               Terms.First -> a_
+               Second -> b_
+   (App f a_) -> hnfHyp f notFound $ block $ \ (Lam xx bb) -> do
+            x' <- liftTC $ freshFrom "λ"
+            bb' <- substTC xx x' bb
+            onConcl (Destr x' (Cut a_ (error "body of lambda should not be checked again.")) bb') k
+   _ -> error $ "cannot be found as target in cut maps: " ++ show d
 
+  where block k' c = case c of
+          Hyp _ -> notFound
+          _ -> k' c
+          
 addFin :: Monoid a => Id -> String -> TC a -> TC a
 addFin x t k = do
   h <- ask
