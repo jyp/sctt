@@ -19,13 +19,33 @@ type Heap' = Heap Id Id
 type Branch' = Branch Id Id
 
 
-newtype TC a = TC {fromTC :: ErrorT Doc (RWST Heap' [Doc] () FreshM) a} 
+type DeCo r = Either (Destr r) (Conc r)
+
+data Heap n r = Heap { heapConstr :: Map (Conc n) (Constr n r)
+                     , heapCuts   :: Map (Hyp n) (DeCo r)  -- TODO: rename to heapDestr
+                     , heapDestr  :: Map (Destr r) (Hyp n) -- TODO: rename to heapDestr'
+                     , heapTags   :: Map r String
+                     , heapAlias  :: Map r r
+                     , context    :: Map n (Conc r) -- ^ types
+                     }
+
+instance (Pretty r, Pretty n) => Pretty (Heap n r) where
+  pretty (Heap {..}) = sep [hang lab 2  v
+                           | (lab,v) <- [("constr" ,pretty heapConstr)
+                                        ,("cuts"   ,pretty heapCuts)
+                                        ,("destr"  ,pretty heapDestr)
+                                        ,("tags"   ,pretty heapTags)
+                                        ,("alias"  ,pretty heapAlias)
+                                        ,("context",pretty context)]
+                             ]
+
+newtype TC a = TC {fromTC :: ErrorT Doc (RWST Heap' [Doc] () FreshM) a}
   deriving (Functor, Applicative, Monad, MonadReader Heap', MonadWriter [Doc], MonadError Doc)
 
 instance Error Doc where
   noMsg = "unknown error"
   strMsg = text
-  
+
 runTC :: Unique -> Heap' -> TC a -> (Either Doc a,[Doc])
 runTC u h0 (TC x) = runFreshMFromUnique u $ evalRWST (runErrorT x) h0 ()
 

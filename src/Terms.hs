@@ -79,24 +79,3 @@ instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Tag t) = "'" <> text t
   pretty (Fin ts) = braces $ sep $ punctuate "," $ map text ts
   pretty (Universe x) = "*" <> subscriptPretty x
-
-type DeCo r = Either (Destr r) (Conc r)
-
-data Heap n r = Heap { heapConstr :: Map (Conc n) (Constr n r)
-                     , heapCuts   :: Map (Hyp n) (DeCo r)  -- TODO: rename to heapDestr
-                     , heapDestr  :: Map (Destr r) (Hyp n) -- TODO: rename to heapDestr'
-                     , heapTags   :: Map r String
-                     , heapAlias  :: Map r r
-                     , context    :: Map n (Conc r) -- ^ types
-                     }
-
-instance (Pretty r, Pretty n) => Pretty (Heap n r) where
-  pretty (Heap {..}) = sep [hang lab 2  v
-                           | (lab,v) <- [("constr" ,pretty heapConstr)
-                                        ,("cuts"   ,pretty heapCuts)
-                                        ,("destr"  ,pretty heapDestr)
-                                        ,("tags"   ,pretty heapTags)
-                                        ,("alias"  ,pretty heapAlias)
-                                        ,("context",pretty context)]
-                             ]
-

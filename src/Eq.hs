@@ -9,7 +9,9 @@ import Ident
 import Display
 import TCM
 import Data.Maybe (isJust)
+import Heap
 import Eval
+
 
 testTerm :: (r~Id,n~Id) =>   Term n r -> Term n r -> TC Bool
 testTerm t1 t2 = onConcl t1 $ \c1 -> onConcl t2 $ \c2 -> testConc c1 c2

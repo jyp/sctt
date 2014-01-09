@@ -13,6 +13,7 @@ import Fresh
 import Ident
 import Display
 import TCM
+import Heap
 
 -- TODO: don't return a boolean.
 

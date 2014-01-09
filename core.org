@@ -21,14 +21,13 @@
       | let _x = c   in n | construction  |
 
   d ::=    Destruction
-     | x       | alias                      |
      | y _z    | application                |
      | z.p     | projection                 |
      | _x : _y | cut (not in normal forms!) |
 
   c     Constructions
-    ::= x
-      | _x       |               | use of hyp. |
+    ::= 
+      | x        |               | use of hyp. |
       | λ x. n   | Π (x : _y). n | functions   |
       | (_x, _y) | Σ (x : _y). n | pairs       |
       | 't       | {'ts}         | tags        |
@@ -37,10 +36,11 @@
 * Environments
 
   e ::= Environment entry
-      | x      | new hypothesis     |
-      | x = d  | defined hypothesis |
-      | _x = c | defined conclusion |
-      | 't = x | constraint         |
+      | x : _y | new hypothesis     | context
+      | x = y  | alias              | heapAlias
+      | x = d  | defined hypothesis | heapCuts, heapDestr
+      | _x = c | defined conclusion | heapConstr
+      | 't = x | constraint         | heapTags
 
   γ,h ::= e*  Environment   (or heap)
 
