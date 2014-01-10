@@ -1,5 +1,5 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
-module Eq where
+module Eq (testConstr) where
 import Terms
 import qualified Data.Map as M
 import Data.Monoid
@@ -8,7 +8,6 @@ import Control.Applicative
 import Ident
 import Display
 import TCM
-import Data.Maybe (isJust)
 import Heap
 import Eval
 
@@ -43,19 +42,20 @@ testHyp a1 a2 = do
   dbgTest "Hyp " a1 a2
   h1 <- aliasOf a1
   h2 <- aliasOf a2
-  d1 <- lookDestr h1
-  d2 <- lookDestr h2
-  res <- or <$> sequence
-     [pure $ h1 == h2,
-      pure $ isJust d1 && isJust d2 && d1 == d2,
-      testApps d1 d2]
-  tell ["  looked up to be: " <> pretty d1 <> " and "<> pretty d2]
-  tell ["  so the result is: " <> pretty res]
-  return res
-  
+  md1 <- lookDestr h1
+  md2 <- lookDestr h2
+  if h1 == h2 then return True
+              else case (md1,md2) of
+     (Just (Left d1), Just (Left d2)) -> testDestr d1 d2
+       -- we don't have to care about the 'right' case here: if the
+       -- hyp were evaluated, then the hnf reduction would have taken
+       -- care of further evaluation before reaching this point.
+     _ -> return False
+
 lookDestr x = do
   hC <- heapCuts <$> ask
   return $ M.lookup x hC
 
-testApps (Just (Left (App f1 a1))) (Just (Left (App f2 a2))) = (&&) <$> testHyp f1 f2 <*> testConc a1 a2
-testApps _ _ = return False
+testDestr (Proj p1 f1) (Proj p2 f2) = (&&) <$> pure (f1 == f2) <*> testHyp p1 p2
+testDestr (App f1 a1) (App f2 a2) = (&&) <$> testHyp f1 f2 <*> testConc a1 a2
+testDestr _ _ = return False
