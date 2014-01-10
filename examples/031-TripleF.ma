@@ -4,8 +4,9 @@ TERM
   refl = (\A -> \x -> \P -> \p -> p)
        : (A : *0) -> (x:A) -> Eq A x x;
   Bool = { 'true, 'false } : *0;
-  tripleF = (\f -> \x -> 
-                case x of {
+  tripleF = (\f -> \x0 ->
+                ( x := x0;
+                case x0 of {
                    'true  -> case f x of {
                         'true  -> refl Bool 'true.
                         'false -> refl Bool 'false.
@@ -14,7 +15,7 @@ TERM
                         'true  -> refl Bool 'true.
                         'false -> refl Bool 'false.
                    }.
-                })
+                }))
           : (f: Bool -> Bool) -> (x : Bool) ->
                 Eq Bool (f x) (f (f (f x)));
   *0

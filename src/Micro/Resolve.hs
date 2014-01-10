@@ -20,9 +20,14 @@ resolveVar l (A.Var (_,x)) = M.lookup x . view l <$> ask
 
 liftR x = R $ lift $ x
 freshIdR = liftR freshId
+
+freshFromV :: A.Var -> R Id
+freshFromV (A.Var (_,x)) = do
+  liftR $ freshFrom x
+  
 insert :: (Lens Env (Map String Id)) -> A.Var -> (Id -> R a) -> R a
-insert l y@(A.Var (_,x)) k = do
-  v <- liftR $ freshFrom x
+insert l y k = do
+  v <- freshFromV y
   insert' l y v (k v)
 
 insert' l (A.Var (_,x)) v = local (upd l $ M.insert x v)
@@ -41,8 +46,14 @@ resolveTerm (A.Concl c) = do
   return $ c' $ Conc c'id
 resolveTerm (A.Destr x c t) = do
   (c'id,c') <- resolveDestr c
-  insert' hyp x c'id $ c' <$> resolveTerm t
-  -- here we should change c'id to contain the string x.
+  x' <- freshFromV x
+  r <- insert' hyp x c'id $ c' <$> resolveTerm t
+  liftR $ subst c'id x' r
+resolveTerm (A.Constr x c t) = do
+  (c'id,c') <- resolveConstr c
+  x' <- freshFromV x
+  r <- insert' con x c'id $ c' <$> resolveTerm t
+  liftR $ subst c'id x' r
 resolveTerm (A.Case x bs) = do
   (x'id,x') <- resolveDestr x
   bs' <- forM bs $ \(A.Br tag t) -> do
@@ -77,6 +88,11 @@ resolveProj (A.First) = First
 resolveProj (A.Second) = Second
 
 resolveConstr :: A.DC -> R (Id,Slice)
+resolveConstr (A.V x) = do
+  x' <- resolveVar con x
+  case x' of
+    Nothing -> embedHyp (A.V x)
+    Just x'' -> return (x'',id)
 resolveConstr (A.Lam x t) =
   insert hyp x $ \x' -> do
     r <- freshIdR
@@ -114,7 +130,9 @@ resolveConstr (A.Fin ts) = do
 resolveConstr (A.Univ (A.Nat (_,n))) = do
   r <- freshIdR
   return (r,Constr r (Universe $ read n))
-resolveConstr h = do
+resolveConstr h = embedHyp h
+                  
+embedHyp h = do
   r <- freshIdR
   (h'id,h') <- resolveDestr h
   return (r,h' . Constr r (Hyp h'id))

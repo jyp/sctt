@@ -16,8 +16,8 @@ separator Branch ".";
 Concl.  Term2 ::=    DC ;
 Case.  Term2 ::= "case" DC "of" "{" [Branch] "}";
 
-Destr. Term1 ::=    Var "=" DC ";" Term1;
--- Constr.  Term1 ::=    Var ":=" Constr ";" Term1;
+Destr.   Term1 ::=    Var "="  DC ";" Term1;
+Constr.  Term1 ::=    Var ":=" DC ";" Term1;
 
 coercions Term 2;
 
