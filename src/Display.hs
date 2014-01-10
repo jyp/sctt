@@ -29,6 +29,9 @@ instance (Pretty a, Pretty b) => Pretty (a,b) where
 instance (Pretty k, Pretty v) => Pretty (M.Map k v) where
   pretty m = sep $ punctuate ";" [pretty k <> " ↦ " <> pretty v | (k,v) <- M.toList m]
 
+instance Pretty a => (Pretty (Maybe a)) where
+  pretty Nothing = "¿"
+  pretty (Just x) = "¡" <> pretty x
 instance Pretty String where
   pretty = text
   

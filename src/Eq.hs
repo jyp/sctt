@@ -37,20 +37,25 @@ testConstr (Tag t1)(Tag t2) = return $ t1 == t2
 testConstr (Fin ts1)(Fin ts2) = return $ ts1 == ts2
 testConstr (Universe x1)(Universe x2) = return $ x1 <= x2 -- yes, we do subtyping: TODO make that clean in the names
 testConstr _ _ = return False
+
+testHyp :: Hyp Id -> Hyp Id -> TC Bool
 testHyp a1 a2 = do
   dbgTest "Hyp " a1 a2
   h1 <- aliasOf a1
   h2 <- aliasOf a2
   d1 <- lookDestr h1
   d2 <- lookDestr h2
-  or <$> sequence
+  res <- or <$> sequence
      [pure $ h1 == h2,
       pure $ isJust d1 && isJust d2 && d1 == d2,
       testApps d1 d2]
-
+  tell ["  looked up to be: " <> pretty d1 <> " and "<> pretty d2]
+  tell ["  so the result is: " <> pretty res]
+  return res
+  
 lookDestr x = do
   hC <- heapCuts <$> ask
   return $ M.lookup x hC
 
-testApps (Just (Left (App f1 a1))) (Just (Left (App f2 a2))) = (f1 == f2 &&) <$> testConc a1 a2
+testApps (Just (Left (App f1 a1))) (Just (Left (App f2 a2))) = (&&) <$> testHyp f1 f2 <*> testConc a1 a2
 testApps _ _ = return False
