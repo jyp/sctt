@@ -7,11 +7,11 @@ TERM
   tripleF = (\f -> \x0 ->
                 ( x := x0;
                 case x0 of {
-                   'true  -> case f x of {
+                   'true  -> case f x0 of {
                         'true  -> refl Bool 'true.
                         'false -> refl Bool 'false.
                    }.
-                   'false -> case f x of {
+                   'false -> case f x0 of {
                         'true  -> refl Bool 'true.
                         'false -> refl Bool 'false.
                    }.

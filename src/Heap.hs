@@ -115,7 +115,7 @@ pHyp :: Hyp Id -> TC Doc
 pHyp x = do
   h <- ask
   let ts = heapTags h
-  case M.lookup x ts of
+  case M.lookup x ts of -- FIXME: first apply aliases!
      Just tag -> return $ "'" <> text tag
      _ -> do
        let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
