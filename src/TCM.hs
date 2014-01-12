@@ -54,6 +54,12 @@ liftTC x = TC $ lift $ lift x
 
 substTC xx a_ bb = liftTC (subst xx a_ bb)
 
+substByDestr :: (r~Id,n~Id) => Hyp r -> Destr r -> Term n r -> TC (Term n r)
+substByDestr h d t = do
+  x' <- liftTC $ refreshId h
+  t' <- substTC h x' t
+  return $ Destr x' d t'
+
 terr :: Doc -> TC a
 terr msg = do
   h <- ask

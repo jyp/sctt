@@ -42,18 +42,17 @@ inferDestr (App f a_) k =
   case ft of
     (Pi x t_ u) -> do
        checkConcl a_ t_
-       x' <- liftTC $ refreshId x
-       retTyp <- substTC x x' u
-       onConcl (Destr x' (Cut a_ t_) retTyp) k
+       retTyp <- substByDestr x (Cut a_ t_) u
+       onConcl retTyp k
     _ -> throwError $ pretty f <> " has not a function type"
 inferDestr (Proj p f) k =
   inferHyp p $ \pt ->
   case pt of
-    (Sigma x t_ u) -> do
+    Sigma x t_ u -> do
        case f of
          Terms.First -> k t_
          Terms.Second -> do
-           x' <- liftTC $ freshFrom "Σ"
+           x' <- liftTC $ freshFrom " "
            u' <- substTC x x' u
            addCtx x' t_ $ onConcl (Destr x' (Proj p Terms.First) u') k
            -- TODO: is the substitution needed? can one just give a
@@ -121,9 +120,8 @@ checkConstr (Hyp _) t = error "dealt with above"
 -- checkConstr (Rec n t) =
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_
-  x' <- liftTC $ freshFrom "P"
-  tb' <- substTC xx x' tb_
-  checkConAgainstTerm b_ (Destr x' (Cut a_ ta_) tb')
+  tb' <- substByDestr xx (Cut a_ ta_) tb_
+  checkConAgainstTerm b_  tb'
 checkConstr (Lam x b_) (Pi xx ta_ tb_) = do
   addCtx x ta_ $ addAlias xx x $ checkTermAgainstTerm b_ tb_
 checkConstr tag@(Tag t) ty@(Fin ts) = unless  (t `elem` ts) $ terr $

@@ -17,6 +17,7 @@ hnf :: (Monoid a,r~Id,n~Id) => Conc n -> (Constr n r -> TC a) -> TC a
 hnf c k = do
   c' <- lookHeapC c
   case c' of
+    -- (Rec r t) -> hnf (subst' r c) k
     (Hyp x) -> do
        ts <- heapTags <$> ask
        case M.lookup x ts of
@@ -49,9 +50,8 @@ hnfDestr d notFound k = case d of
                Terms.First -> a_
                Second -> b_
    (App f a_) -> hnfHyp f notFound $ block $ \ (Lam xx bb) -> do
-            x' <- liftTC $ freshFrom "λ"
-            bb' <- substTC xx x' bb
-            onConcl (Destr x' (Cut a_ (error "body of lambda should not be checked again.")) bb') k
+            bb' <- substByDestr xx (Cut a_ (error "body of lambda should not be checked again.")) bb
+            onConcl bb' k
    _ -> error $ "cannot be found as target in cut maps: " ++ show d
 
   where block k' c = case c of
