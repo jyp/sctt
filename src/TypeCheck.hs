@@ -64,11 +64,14 @@ inferDestr (Proj p f) k =
 
 -- Direct lookup of type in the context
 inferHyp :: (n~Id,r~Id) => Hyp r -> (Constr n r -> TC ()) -> TC ()
-inferHyp h k = do
+inferHyp h k = (\c -> hnf c k) =<< inferHyp' h
+
+inferHyp' :: (n~Id,r~Id) => Hyp r -> TC (Conc r)
+inferHyp' h = do
   ctx <- context <$> ask
   case M.lookup h ctx of
     Nothing -> terr $ "Panic: " <> pretty h <> " hyp. not found in context."
-    Just c -> hnf c k
+    Just c -> return c
 
 -- maintains the invariant that every hyp. has an entry in the context.
 checkBindings :: (n~Id,r~Id) => Term n r -> (Conc r -> TC ()) -> TC ()
@@ -99,18 +102,23 @@ checkConAgainstTerm c t = onConcl t $ \t' -> checkConcl c t'
 checkConcl :: (n~Id,r~Id) => Conc r -> r -> TC ()
 checkConcl v t = do
   tell ["checking conclusion " <> pretty v <> ":" <> pretty t]
-  hnf t $ \t' -> checkConclAgainstConstr v t'
-
-checkConclAgainstConstr :: (n~Id,r~Id) => Conc r -> Constr n r -> TC ()
-checkConclAgainstConstr v t = do
   v' <- lookHeapC v
-  tell [hang "checking construction " 2 (sep ["val " <> pretty v', "typ " <> pretty t])]
-  checkConstr v' t
+  checkConstrAgainstConcl v' t
+
+checkConstrAgainstConcl :: (n~Id,r~Id) => Constr n r -> Conc r -> TC ()
+checkConstrAgainstConcl (Hyp h) u = checkHyp h u
+checkConstrAgainstConcl v t = do
+  tell [hang "checking construction " 2 (sep ["val " <> pretty v, "typ " <> pretty t])]
+  hnf t $ \t' -> checkConstr v t'
+
+checkHyp h u = do
+  t <- inferHyp' h
+  eq <- testConc t u
+  unless eq $ terr $ pretty t <> " not a subtype of " <> pretty u <> " hence the type of " <> pretty h <> " is wrong"
 
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> TC ()
-checkConstr (Hyp h) t = inferHyp h $ \t' -> do
-  v <- testConstr t' t
-  unless v $ terr $ pretty t <> " not a subtype of " <> pretty t' <> " hence the type of " <> pretty h <> " is wrong"
+checkConstr (Hyp _) t = error "dealt with above"
+-- checkConstr (Rec n t) =
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_
   x' <- liftTC $ freshFrom "P"
@@ -127,7 +135,7 @@ checkConstr (Pi xx ta_ tb_) (Universe s) = do
   checkConclSort ta_ s
   addCtx xx ta_ $ checkSort tb_ s
 checkConstr (Fin _) (Universe _s) = return ()
-checkConstr (Universe s') (Universe s) = 
+checkConstr (Universe s') (Universe s) =
   unless (s' < s) $ terr $ int s' <> " is not a subsort of" <> int s
 
 checkConstr v t = terr $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
@@ -138,4 +146,9 @@ checkSort t s = checkBindings t $ \c -> checkConclSort c s
 checkConclSort c s = do
   tell ["checking " <> pretty c <> " has sort " <> pretty s]
   c' <- lookHeapC c
-  checkConstr c' (Universe s)
+  case c' of
+    Hyp h -> do
+      t <- inferHyp' h
+      eq <- hnf t $ \t' -> testConstr t' (Universe s)
+      unless eq $ terr $ pretty t <> " not a type of sort " <> pretty s
+    _ -> checkConstr c' (Universe s)

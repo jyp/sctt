@@ -1,5 +1,5 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
-module Eq (testConstr) where
+module Eq (testConstr, testConc) where
 import Terms
 import qualified Data.Map as M
 import Data.Monoid
