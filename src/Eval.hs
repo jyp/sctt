@@ -17,7 +17,9 @@ hnf :: (Monoid a,r~Id,n~Id) => Conc n -> (Constr n r -> TC a) -> TC a
 hnf c k = do
   c' <- lookHeapC c
   case c' of
-    -- (Rec r t) -> hnf (subst' r c) k
+    (Rec r t) -> do
+       body <- substByDestr r (Cut c (error "rec. typ.")) t
+       onConcl body $ \body' -> hnf body' k
     (Hyp x) -> do
        ts <- heapTags <$> ask
        case M.lookup x ts of

@@ -98,7 +98,7 @@ checkTermAgainstTerm e t = checkBindings e $ \c -> checkConAgainstTerm c t
 checkConAgainstTerm :: (n~Id,r~Id) => Conc r -> Term n r -> TC ()
 checkConAgainstTerm c t = onConcl t $ \t' -> checkConcl c t'
 
-checkConcl :: (n~Id,r~Id) => Conc r -> r -> TC ()
+checkConcl :: (n~Id,r~Id) => Conc r -> Conc r -> TC ()
 checkConcl v t = do
   tell ["checking conclusion " <> pretty v <> ":" <> pretty t]
   v' <- lookHeapC v
@@ -106,6 +106,7 @@ checkConcl v t = do
 
 checkConstrAgainstConcl :: (n~Id,r~Id) => Constr n r -> Conc r -> TC ()
 checkConstrAgainstConcl (Hyp h) u = checkHyp h u
+checkConstrAgainstConcl (Rec n b) t = addCtx n t $ checkTermAgainstTerm b (Conc t)
 checkConstrAgainstConcl v t = do
   tell [hang "checking construction " 2 (sep ["val " <> pretty v, "typ " <> pretty t])]
   hnf t $ \t' -> checkConstr v t'
@@ -117,7 +118,6 @@ checkHyp h u = do
 
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> TC ()
 checkConstr (Hyp _) t = error "dealt with above"
--- checkConstr (Rec n t) =
 checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
   checkConcl a_ ta_
   tb' <- substByDestr xx (Cut a_ ta_) tb_
@@ -141,12 +141,8 @@ checkConstr v t = terr $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, 
 checkSort :: (n~Id,r~Id) => Term n r -> Int -> TC ()
 checkSort t s = checkBindings t $ \c -> checkConclSort c s
 
+checkConclSort :: (n~Id,r~Id) => Conc r -> Int -> TC ()
 checkConclSort c s = do
   tell ["checking " <> pretty c <> " has sort " <> pretty s]
-  c' <- lookHeapC c
-  case c' of
-    Hyp h -> do
-      t <- inferHyp' h
-      eq <- hnf t $ \t' -> testConstr t' (Universe s)
-      unless eq $ terr $ pretty t <> " not a type of sort " <> pretty s
-    _ -> checkConstr c' (Universe s)
+  s' <- liftTC $ freshFrom $ show s
+  addConstr s' (Universe s) $ checkConcl c s' -- TODO: don't allocate duplicate sort names.

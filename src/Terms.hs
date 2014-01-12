@@ -6,8 +6,6 @@ module Terms where
 import Data.Bitraversable
 import Data.Bifoldable
 import Data.Bifunctor
-import qualified Data.Map as M
-import Data.Map (Map)
 import Data.Generics.Genifunctors
 import Display
 import Data.Monoid
@@ -46,6 +44,7 @@ data Destr r where
 
 data Constr n r where
   Hyp :: Hyp r -> Constr n r
+  Rec :: Hyp r -> Term n r -> Constr n r
   Lam :: Hyp n -> Term n r -> Constr n r
   Pi :: Hyp n -> Conc r -> Term n r -> Constr n r
   Sigma :: Hyp n -> Conc r -> Term n r -> Constr n r
