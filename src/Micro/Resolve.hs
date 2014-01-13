@@ -15,16 +15,27 @@ import Control.Applicative
 import TCM
 import RM
 
+-- | Naming utilies
+
+nameVar (A.Var (_,x)) = x
+
+nameProj x A.First = x ++ ".1"
+nameProj x A.Second = x ++ ".2"
+
+nameLeft x = x ++ "ˡ"
+nameRight x = x ++ "ʳ"
+
+nameCut x _ = x
+
 resolveVar :: (Lens Env (Map String Id)) -> A.Var -> R (Maybe Id)
 resolveVar l (A.Var (_,x)) = M.lookup x . view l <$> ask
 
 liftR x = R $ lift $ x
 freshIdR = liftR freshId
-
+freshFromR x = liftR $ freshFrom x
 freshFromV :: A.Var -> R Id
-freshFromV (A.Var (_,x)) = do
-  liftR $ freshFrom x
-  
+freshFromV x = freshFromR $ nameVar x
+
 insert :: (Lens Env (Map String Id)) -> A.Var -> (Id -> R a) -> R a
 insert l y k = do
   v <- freshFromV y
@@ -40,101 +51,97 @@ resolve t = Right $ runFreshM $ runReaderT (fromR $ resolveModule t) emptyEnv
 resolveModule :: A.Module -> R (Term',Term')
 resolveModule (A.Module t1 t2) = (,) <$> resolveTerm t1 <*> resolveTerm t2
 
-resolveTerm :: A.Term -> R (Term Id Id)
-resolveTerm (A.Concl c) = do
-  (c'id,c') <- resolveConstr c
+resolveTerm ::  A.Term -> R (Term Id Id)
+resolveTerm x = resolveTerm' "top" x
+
+resolveTerm' :: String -> A.Term -> R (Term Id Id)
+resolveTerm' name (A.Destr x c t) = do
+  (c'id,c') <- resolveDestr (nameVar x) c
+  insert' hyp x c'id $ c' <$> resolveTerm' name t
+resolveTerm' name (A.Concl c) = do
+  (c'id,c') <- resolveConstr name c
   return $ c' $ Conc c'id
-resolveTerm (A.Destr x c t) = do
-  (c'id,c') <- resolveDestr c
-  x' <- freshFromV x
-  r <- insert' hyp x c'id $ c' <$> resolveTerm t
-  liftR $ subst c'id x' r
-resolveTerm (A.Constr x c t) = do
-  (c'id,c') <- resolveConstr c
-  x' <- freshFromV x
-  r <- insert' con x c'id $ c' <$> resolveTerm t
-  liftR $ subst c'id x' r
-resolveTerm (A.Case x bs) = do
-  (x'id,x') <- resolveDestr x
-  bs' <- forM bs $ \(A.Br tag t) -> do
-    (resolveTag tag,) <$> resolveTerm t
+resolveTerm' name (A.Case x bs) = do
+  (x'id,x') <- resolveDestr name x
+  bs' <- forM bs $ \(A.Br tag@(A.T tag') t) -> do
+    (resolveTag tag,) <$> resolveTerm' (name ++ "|" ++ nameVar tag') t
   return (x' $ Case x'id [Br tag t' | (tag,t') <- bs'])
 
-resolveDestr :: A.DC -> R (Id,Slice)
-resolveDestr (A.V x) = do
+resolveDestr :: String -> A.DC -> R (Id,Slice)
+resolveDestr _ (A.V x) = do
   x' <- resolveVar hyp x
   case x' of
-    Just x'' -> return (x'',id) 
+    Just x'' -> return (x'',id)
     Nothing -> error $ "Unknown variable: " ++ show x
 
-resolveDestr (A.Appl f x) = do
-  (f'id,f') <- resolveDestr f
-  (x'id,x') <- resolveConstr x
-  r <- freshIdR
+resolveDestr name (A.Appl f x) = do
+  (f'id,f') <- resolveDestr (name ++ "ᶠ") f
+  (x'id,x') <- resolveConstr (name ++ "ᵃ") x
+  r <- freshFromR name
   return (r,f' . x' . Destr r (App f'id x'id))
-resolveDestr (A.Proj p f) = do
-  (p'id,p') <- resolveDestr p
-  r <- freshIdR
+resolveDestr name (A.Proj p f) = do
+  (p'id,p') <- resolveDestr (name ++ "ᵖ") p
+  r <- freshFromR name
   return (r,p'.Destr r (Proj p'id $ resolveProj f))
-resolveDestr (A.Cut x t) = do
-  (x'id,x') <- resolveConstr x
-  (t'id,t') <- resolveConstr t
-  r <- freshIdR
+resolveDestr name (A.Cut x t) = do
+  (x'id,x') <- resolveConstr (nameLeft name) x
+  (t'id,t') <- resolveConstr (nameRight name) t
+  r <- freshFromR name
   return (r, x'.t'.Destr r (Cut x'id t'id))
-resolveDestr x = do
+resolveDestr _ x = do
   error $ "Tryed to make an inline cut. (Cuts must be explicit via use of =)\n" ++ show x
 
 resolveProj (A.First) = First
 resolveProj (A.Second) = Second
 
-resolveConstr :: A.DC -> R (Id,Slice)
-resolveConstr (A.V x) = do
+resolveConstr :: String -> A.DC -> R (Id,Slice)
+resolveConstr _name (A.V x) = do
   x' <- resolveVar con x
   case x' of
-    Nothing -> embedHyp (A.V x)
+    Nothing -> embedHyp (nameVar x) (A.V x)
     Just x'' -> return (x'',id)
-resolveConstr (A.Lam x t) =
+resolveConstr name (A.Lam x t) =
   insert hyp x $ \x' -> do
-    r <- freshIdR
-    t' <- resolveTerm t
+    r <- freshFromR name
+    t' <- resolveTerm' name t
     return (r,Constr r (Lam x' t'))
-resolveConstr (A.Pi x c t) = do
-  (c'id,c') <- resolveConstr c
-  r <- freshIdR
+resolveConstr name (A.Pi x c t) = do
+  (c'id,c') <- resolveConstr (nameLeft name) c
+  r <- freshFromR name
   insert hyp x $ \x' -> do
-    t' <- resolveTerm t
+    t' <- resolveTerm' (nameRight name) t
     return (r,c' . Constr r (Pi x' c'id t'))
-resolveConstr (A.Fun c t) = do
-  (c'id,c') <- resolveConstr c
-  r <- freshIdR
-  t' <- resolveTerm t
+resolveConstr name (A.Fun c t) = do
+  (c'id,c') <- resolveConstr (nameLeft name) c
+  r <- freshFromR name
+  t' <- resolveTerm' (nameRight name) t
   x' <- freshIdR
   return (r,c' . Constr r (Pi x' c'id t'))
-resolveConstr (A.Sigma x c t) = do
-  (c'id,c') <- resolveConstr c
+resolveConstr name (A.Sigma x c t) = do
+  (c'id,c') <- resolveConstr (nameRight name) c
   r <- freshIdR
   insert hyp x $ \x' -> do
-    t' <- resolveTerm t
+    t' <- resolveTerm' (nameLeft name) t
     return (r,c' . Constr r (Sigma x' c'id t'))
-resolveConstr (A.Pair a b) = do
-  (a'id,a') <- resolveConstr a
-  (b'id,b') <- resolveConstr b
+resolveConstr name (A.Pair a b) = do
+  (a'id,a') <- resolveConstr (name ++ ".1") a
+  (b'id,b') <- resolveConstr (name ++ ".2") b
   r <- freshIdR
   return (r,a'.b'.Constr r (Pair a'id b'id))
-resolveConstr (A.Tag t) = do
-  r <- freshIdR
+resolveConstr name (A.Tag t) = do
+  r <- freshFromR name
   return (r,Constr r (Tag $ resolveTag t))
-resolveConstr (A.Fin ts) = do 
-  r <- freshIdR
+resolveConstr name (A.Fin ts) = do
+  r <- freshFromR name
   return (r,Constr r (Fin $ map resolveTag ts))
-resolveConstr (A.Univ (A.Nat (_,n))) = do
-  r <- freshIdR
+resolveConstr name (A.Univ (A.Nat (_,n))) = do
+  r <- freshFromR name
   return (r,Constr r (Universe $ read n))
-resolveConstr h = embedHyp h
-                  
-embedHyp h = do
+resolveConstr name h = embedHyp name h
+
+embedHyp name h = do
   r <- freshIdR
-  (h'id,h') <- resolveDestr h
+  (h'id,h') <- resolveDestr name h
   return (r,h' . Constr r (Hyp h'id))
 
 
