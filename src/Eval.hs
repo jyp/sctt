@@ -1,5 +1,5 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
-module Eval(hnf, onConcl) where
+module Eval(hnf, onConcl, addTag) where
 
 import qualified Data.Map as M
 import Data.Monoid
@@ -11,6 +11,7 @@ import Ident
 import Display
 import TCM
 import Heap
+import Fresh (freshFrom)
 
 hnf :: (Monoid a,r~Id,n~Id) => Conc n -> (Constr n r -> TC a) -> TC a
 hnf c k = do
@@ -19,11 +20,7 @@ hnf c k = do
     (Rec r t) -> do
        body <- substByDestr r (Cut c (error "rec. typ.")) t
        onConcl body $ \body' -> hnf body' k
-    (Hyp x) -> do
-       ts <- heapTags <$> ask
-       case M.lookup x ts of
-         Just tag -> k (Tag tag) -- Todo: update heap here too?
-         Nothing -> hnfHyp x (k (Hyp x)) k  -- Todo: update heap here too?
+    (Hyp x) -> hnfHyp x (k (Hyp x)) k  -- Todo: update heap here too?
     _ -> k c'
 
 
@@ -67,5 +64,17 @@ onConcl (Conc c)        k = k c
 onConcl (Destr x d t1)  k = normalizeAndAddDestr x d (onConcl t1 k)
 onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)
 onConcl (Case x bs)     k = mconcat <$> do
-  forM bs $ \(Br tag t1) ->
-    addFin x tag $ onConcl t1 k
+    forM bs $ \(Br tag t1) ->
+      addTag x tag $ onConcl t1 k
+
+addTag :: forall a. Monoid a => Hyp Id -> String -> TC a -> TC a
+addTag x t k = do
+  tell ["Adding tag " <> pretty x <> " = '" <> text t]
+  hnfHyp x addTag' $ \(Tag t') ->
+    if t == t' then k else return mempty  -- conflicting tags, abort.
+ where addTag' :: Monoid a => TC a
+       addTag' = do
+         tName <- liftTC $ freshFrom t
+         addConstr tName (Tag t) $  -- todo: don't instroduce a name for an existing tag.
+           local (addCut' x $ Right tName) k
+

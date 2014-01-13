@@ -89,7 +89,7 @@ checkBindings (Case x bs) k =
     Fin ts -> do
       let ts' = [t | Br t _ <- bs]
       when (ts /= ts') $ terr $ "mismatching tags in case on " <> pretty x
-      forM_ bs $ \(Br tag t1) -> addFin x tag $ checkBindings t1 k
+      forM_ bs $ \(Br tag t1) -> addTag x tag $ checkBindings t1 k
     _ -> terr $ pretty x <> " has not a fin. type, but " <> pretty xt
 
 checkTermAgainstTerm :: (n~Id,r~Id) => Term n r -> Term n r -> TC ()

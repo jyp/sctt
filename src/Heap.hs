@@ -14,7 +14,7 @@ import Display
 import TCM
 
 emptyHeap :: Heap n r
-emptyHeap = Heap M.empty M.empty M.empty M.empty M.empty M.empty
+emptyHeap = Heap M.empty M.empty M.empty M.empty M.empty
 
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
 addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
@@ -67,13 +67,6 @@ lookHeapC x = do
     Nothing -> terr $ "Construction not found: " <> pretty x
     Just c -> return c
 
-addFin :: Monoid a => Id -> String -> TC a -> TC a
-addFin x t k = do
-  h <- ask
-  tell ["Adding tag " <> pretty x <> " = '" <> text t]
-  case M.lookup x (heapTags h) of
-    Just t' | t /= t' -> return mempty -- conflicting tags, abort.
-    _ -> local (\h' -> h' {heapTags = M.insert x t (heapTags h')}) k
 
 addDestr :: Hyp Id -> Destr Id -> TC a -> TC a
 addDestr x (Cut c _ct) k = local (addCut' x $ Right c) k
@@ -112,15 +105,11 @@ pConc x = prettier =<< lookHeapC x
 pHyp :: Hyp Id -> TC Doc
 pHyp x = do
   h <- ask
-  let ts = heapTags h
-  case M.lookup x ts of -- FIXME: first apply aliases!
-     Just tag -> return $ "'" <> text tag
-     _ -> do
-       let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
-       case lk of
-         Nothing -> return $ pretty x
-         Just (Right c) -> pConc c
-         Just (Left d) -> prettier d
+  let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
+  case lk of
+    Nothing -> return $ pretty x
+    Just (Right c) -> pConc c
+    Just (Left d) -> prettier d
 
 instance Prettier Term' where
   prettier (Conc c) = pConc c
