@@ -5,9 +5,10 @@ import Data.Function (on)
 import Data.Char
 import Numeric
 import Display
+import qualified Text.PrettyPrint.HughesPJ as P
 
 instance Pretty Id where
-  pretty i = text $ show i
+  pretty (Id n (Unique i) _) = text n P.<> subscriptPretty i
 
 type Name = String
 
@@ -42,4 +43,3 @@ instance Eq Id where
 
 instance Ord Id where
     compare = compare `on` id_unique
-

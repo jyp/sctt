@@ -42,10 +42,10 @@ run fe@FE{..} s fname = let ts = myLLexer s in case pModule ts of
      throwError $ text $ fname ++ ": parse failed: " ++ err
    Right tree -> do
       let Right (rVal,rTyp) = resolveModule tree
-      putStrV 4 $ "[Resolved value]" $$ pretty rVal
-      putStrV 4 $ "[Resolved type]" $$ pretty rTyp
+      putStrV 1 $ "[Resolved value]" $$ pretty rVal
+      putStrV 1 $ "[Resolved type]" $$ pretty rTyp
       let (res,info) = typeCheck rVal rTyp
-      mapM_ (putStrV 0) info
+      mapM_ (putStrV 2) info
       case res of
         Left err -> throwError err
         Right _ -> return ()
@@ -56,4 +56,3 @@ main = do
   let (errs,oks) = partitionEithers results
   mapM_ (putStrLn . render) errs
   putStrLn $ show (length oks) ++ "/" ++ show (length results) ++ " files typecheck."
-

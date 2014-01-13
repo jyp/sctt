@@ -108,7 +108,8 @@ checkConstrAgainstConcl :: (n~Id,r~Id) => Constr n r -> Conc r -> TC ()
 checkConstrAgainstConcl (Hyp h) u = checkHyp h u
 checkConstrAgainstConcl (Rec n b) t = addCtx n t $ checkTermAgainstTerm b (Conc t)
 checkConstrAgainstConcl v t = do
-  tell [hang "checking construction " 2 (sep ["val " <> pretty v, "typ " <> pretty t])]
+  tell ["checking construction"
+        $$+ (sep ["val" <+> pretty v, "typ" <+> pretty t])]
   hnf t $ \t' -> checkConstr v t'
 
 checkHyp h u = do
@@ -144,5 +145,5 @@ checkSort t s = checkBindings t $ \c -> checkConclSort c s
 checkConclSort :: (n~Id,r~Id) => Conc r -> Int -> TC ()
 checkConclSort c s = do
   tell ["checking " <> pretty c <> " has sort " <> pretty s]
-  s' <- liftTC $ freshFrom $ show s
+  s' <- liftTC $ freshFrom $ ("*" ++ subscriptShow s ++ " ")
   addConstr s' (Universe s) $ checkConcl c s' -- TODO: don't allocate duplicate sort names.

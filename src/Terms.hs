@@ -55,13 +55,15 @@ data Constr n r where
     deriving (Show, Functor)
 
 instance (Pretty r, Pretty n) => Pretty (Term n r) where
-  pretty (Destr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
-  pretty (Constr x v t) = pretty x <> "=" <> pretty v <> ";" $$ pretty t
-  pretty (Case x bs) = hang ("case " <> pretty x <> " of") 2 (braces $ sep $ punctuate "." $ map pretty bs)
+  pretty (Destr x v t) = pretty x <+> "=" $$+ pretty v <+> ";" $$ pretty t
+  pretty (Constr x v t) = pretty x <+> "=" $$+ pretty v <+> ";" $$ pretty t
+  pretty (Case x bs) =
+      "case " <> pretty x <> " of" $$+
+        (braces $ sep $ punctuate "." $ map pretty bs)
   pretty (Conc x) = pretty x
 
 instance (Pretty r, Pretty n) => Pretty (Branch n r) where
-  pretty (Br tag t) = "'" <> text tag <> "->" <> pretty t
+  pretty (Br tag t) = "'" <> text tag <> "->" $$+ pretty t
 
 instance Pretty r => Pretty (Destr r) where
   -- pretty (Tag' v) = "'" <> text v
@@ -71,10 +73,14 @@ instance Pretty r => Pretty (Destr r) where
 
 instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Hyp h) = pretty h
-  pretty (Rec x b) = "rec " <> pretty x <> " -> " <> (pretty b)
-  pretty (Lam x b) = "\\" <> pretty x <> " -> " <> (pretty b)
-  pretty (Pi x t b) = parens (pretty x <>":"<>pretty t) <> " -> " <>  (pretty b)
-  pretty (Sigma x t b) = parens (pretty x <>":"<>pretty t) <> " × " <> (pretty b)
+  pretty (Rec x b) = ("rec " <> pretty x <> " ->") $$+ (pretty b)
+  pretty (Lam x b) = ("\\" <> pretty x <> " ->") $$+ (pretty b)
+  pretty (Pi x t b) =
+      (parens (pretty x <>":"<>pretty t) <> " ->")
+      $$+ (pretty b)
+  pretty (Sigma x t b) =
+      (parens (pretty x <>":"<>pretty t) <> " ×")
+      $$+ (pretty b)
   pretty (Pair a b) = parens $ pretty a <> "," <> pretty b
   pretty (Tag t) = "'" <> text t
   pretty (Fin ts) = braces $ sep $ punctuate "," $ map text ts

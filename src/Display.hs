@@ -1,6 +1,6 @@
 {-# LANGUAGE PackageImports, GADTs, KindSignatures, StandaloneDeriving, EmptyDataDecls, FlexibleInstances, OverloadedStrings, OverlappingInstances #-}
 
-module Display (Pretty(..), Doc, ($$), (<+>), text, hang, vcat, parensIf, sep, comma, nest, parens, braces, int,
+module Display (Pretty(..), Doc, ($$), ($+$), (<+>), ($$+), ($$++), text, hang, vcat, parensIf, sep, comma, nest, parens, braces, int,
                 subscriptPretty, superscriptPretty, subscriptShow, render, punctuate) where
 
 import Prelude hiding (length, reverse)
@@ -34,7 +34,7 @@ instance Pretty a => (Pretty (Maybe a)) where
   pretty (Just x) = "¡" <> pretty x
 instance Pretty String where
   pretty = text
-  
+
 scriptPretty :: String -> Int -> Doc
 scriptPretty s = text . scriptShow s
 
@@ -56,3 +56,16 @@ parensIf :: Bool -> Doc -> Doc
 parensIf True  = parens
 parensIf False = id
 
+-- default indentation
+indentation :: Int
+indentation = 2
+
+-- Usefull hang operators
+($$+) :: Doc -> Doc -> Doc
+d $$+ d' = hang d indentation d'
+
+($$++) :: Doc -> Doc -> Doc
+d $$++ d' = vcat [d, nest indentation d']
+
+infixl 9 $$+
+infixl 9 $$++
