@@ -118,10 +118,10 @@ resolveConstr name (A.Fun c t) = do
   x' <- freshIdR
   return (r,c' . Constr r (Pi x' c'id t'))
 resolveConstr name (A.Sigma x c t) = do
-  (c'id,c') <- resolveConstr (nameRight name) c
+  (c'id,c') <- resolveConstr (nameLeft name) c
   r <- freshIdR
   insert hyp x $ \x' -> do
-    t' <- resolveTerm' (nameLeft name) t
+    t' <- resolveTerm' (nameRight name) t
     return (r,c' . Constr r (Sigma x' c'id t'))
 resolveConstr name (A.Pair a b) = do
   (a'id,a') <- resolveConstr (name ++ ".1") a
