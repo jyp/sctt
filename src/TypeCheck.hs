@@ -145,5 +145,5 @@ checkSort t s = checkBindings t $ \c -> checkConclSort c s
 checkConclSort :: (n~Id,r~Id) => Conc r -> Int -> TC ()
 checkConclSort c s = do
   tell ["checking " <> pretty c <> " has sort " <> pretty s]
-  s' <- liftTC $ freshFrom $ show s
+  s' <- liftTC $ freshFrom $ ("*" ++ subscriptShow s ++ " ")
   addConstr s' (Universe s) $ checkConcl c s' -- TODO: don't allocate duplicate sort names.
