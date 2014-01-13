@@ -5,13 +5,8 @@ module Heap where
 import Control.Monad.RWS
 import Control.Applicative
 
-import Data.Bitraversable
-import Data.Bifoldable
 import Data.Bifunctor
 import qualified Data.Map as M
-import Data.Map (Map)
-import Data.Generics.Genifunctors
-import Data.Monoid
 
 import Terms
 import Ident
@@ -75,6 +70,7 @@ lookHeapC x = do
 addFin :: Monoid a => Id -> String -> TC a -> TC a
 addFin x t k = do
   h <- ask
+  tell ["Adding tag " <> pretty x <> " = '" <> text t]
   case M.lookup x (heapTags h) of
     Just t' | t /= t' -> return mempty -- conflicting tags, abort.
     _ -> local (\h' -> h' {heapTags = M.insert x t (heapTags h')}) k

@@ -10,7 +10,6 @@ import Terms
 import Ident
 import Display
 import TCM
-import Fresh (freshFrom)
 import Heap
 
 hnf :: (Monoid a,r~Id,n~Id) => Conc n -> (Constr n r -> TC a) -> TC a
