@@ -61,6 +61,9 @@ resolveTerm' name (A.Destr x c t) = do
 resolveTerm' name (A.Concl c) = do
   (c'id,c') <- resolveConstr name c
   return $ c' $ Conc c'id
+resolveTerm' name (A.Constr x c t) = do
+  (c'id,c') <- resolveConstr (nameVar x) c
+  insert' con x c'id $ c' <$> resolveTerm' name t
 resolveTerm' name (A.Case x bs) = do
   (x'id,x') <- resolveDestr name x
   bs' <- forM bs $ \(A.Br tag@(A.T tag') t) -> do
