@@ -26,13 +26,14 @@ Tag.    DC3 ::= Tag ;
 V.      DC3 ::= Var;
 Pair.   DC3 ::= "(" DC "," DC ")";
 Lam.    DC3 ::= "\\" Var "->" Term2;
+Rec.    DC3 ::= "rec" Var "->" Term2;
 Proj.   DC3 ::= DC3 Proj;
 Fin.    DC3 ::= "{" [Tag] "}" ;
 Univ.   DC3 ::= "*" Nat;
 Appl.   DC2 ::= DC2 DC3;
 Fun.    DC1 ::= DC2 "->" Term2;
 Pi.     DC1 ::= "(" Var ":" DC ")" "->" Term2;
-Sigma.  DC1 ::= "(" Var ":" DC ")" "X" Term2;
+Sigma.  DC1 ::= "(" Var ":" DC ")" "*" Term2;
 Cut.    DC  ::= DC1 ":" DC;
 
 coercions DC 4;

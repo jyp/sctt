@@ -93,6 +93,11 @@ resolveConstr (A.V x) = do
   case x' of
     Nothing -> embedHyp (A.V x)
     Just x'' -> return (x'',id)
+resolveConstr (A.Rec x t) = 
+  insert hyp x $ \x' -> do
+    r <- freshIdR
+    t' <- resolveTerm t
+    return (r,Constr r (Rec x' t'))
 resolveConstr (A.Lam x t) =
   insert hyp x $ \x' -> do
     r <- freshIdR

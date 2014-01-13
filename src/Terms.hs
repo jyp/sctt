@@ -44,7 +44,7 @@ data Destr r where
 
 data Constr n r where
   Hyp :: Hyp r -> Constr n r
-  Rec :: Hyp r -> Term n r -> Constr n r
+  Rec :: Hyp n -> Term n r -> Constr n r
   Lam :: Hyp n -> Term n r -> Constr n r
   Pi :: Hyp n -> Conc r -> Term n r -> Constr n r
   Sigma :: Hyp n -> Conc r -> Term n r -> Constr n r
@@ -71,6 +71,7 @@ instance Pretty r => Pretty (Destr r) where
 
 instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Hyp h) = pretty h
+  pretty (Rec x b) = "rec " <> pretty x <> " -> " <> (pretty b)
   pretty (Lam x b) = "\\" <> pretty x <> " -> " <> (pretty b)
   pretty (Pi x t b) = parens (pretty x <>":"<>pretty t) <> " -> " <>  (pretty b)
   pretty (Sigma x t b) = parens (pretty x <>":"<>pretty t) <> " × " <> (pretty b)
