@@ -139,8 +139,9 @@ resolveConstr name (A.Univ (A.Nat (_,n))) = do
   return (r,Constr r (Universe $ read n))
 resolveConstr name h = embedHyp name h
 
+embedHyp :: String -> A.DC -> R (Id, Slice)
 embedHyp name h = do
-  r <- freshIdR
+  r <- freshFromR name
   (h'id,h') <- resolveDestr name h
   return (r,h' . Constr r (Hyp h'id))
 
