@@ -58,7 +58,9 @@ inferDestr (Proj p f) k =
            -- definition for x? No: there can be other instances of x.
            -- A cleaner version would be to refresh binders every time
            -- they are loaded from the heap (lookHeapC)
-    _ -> terr $ pretty p <> " has not a pair type"
+    _ -> do
+      doc_p <- pHyp p
+      terr $ (pretty p <+> "has not a pair type.") $$+ (pretty p <+> "=" $$+ doc_p)
 
 inferHyp :: (n~Id,r~Id) => Hyp r -> (Constr n r -> TC ()) -> TC ()
 inferHyp h k = (\c -> hnfUnfoldRec c k) =<< inferHyp' h
