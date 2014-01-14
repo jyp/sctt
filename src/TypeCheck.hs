@@ -115,7 +115,15 @@ checkConstrAgainstConcl v t = do
 checkHyp h u = do
   t <- inferHyp' h
   eq <- testConc t u
-  unless eq $ terr $ pretty t <> " not a subtype of " <> pretty u <> " hence the type of " <> pretty h <> " is wrong"
+  doc_t <- pConc t
+  doc_u <- pConc u
+  doc_h <- pHyp h
+  unless eq $ terr $
+    pretty t <+> "is not a subtype of" <+> pretty u <+> " in the following context, hence the type of" <+> pretty h <+> "is wrong."
+               $+$ (pretty t <+> "=") $$+ doc_t
+               $+$ (pretty u <+> "=") $$+ doc_u
+               $+$ (pretty h <+> "=") $$+ doc_h
+
 
 checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> TC ()
 checkConstr (Hyp _) t = error "dealt with above"
