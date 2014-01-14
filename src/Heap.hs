@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances  #-}
+{-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances, RecordWildCards  #-}
 
 module Heap where
 
@@ -14,7 +14,10 @@ import Display
 import TCM
 
 emptyHeap :: Heap n r
-emptyHeap = Heap M.empty M.empty M.empty M.empty M.empty
+emptyHeap = Heap 0 M.empty M.empty M.empty M.empty M.empty
+
+enter :: TC a -> TC a
+enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1}) 
 
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
 addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }

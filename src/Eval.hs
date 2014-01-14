@@ -28,16 +28,16 @@ hnf c k = do
 hnfHyp :: (Monoid a,r~Id,n~Id) => Hyp n -> TC a -> (Constr n r -> TC a) -> TC a
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
 hnfHyp x notFound k = do
-  tell ["Evaluating hyp: " <> pretty x]
+  report $ "Evaluating hyp: " <> pretty x
   h <- ask
   let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
   case lk of
     Nothing -> notFound
     Just (Right c) -> do
-      tell ["  Is evaluated to concl: " <> pretty c]
+      report $ "  Is evaluated to concl: " <> pretty c
       hnf c k
     Just (Left d) -> do
-      tell ["Evaluating destr: " <> pretty d]
+      report $ "Evaluating destr: " <> pretty d
       hnfDestr d notFound $ \c -> local (addCut' x $ Right c) (hnf c k)
 
 hnfDestr :: (Monoid a,r~Id,n~Id) => Destr r -> TC a -> (Conc r -> TC a) -> TC a
@@ -69,7 +69,7 @@ onConcl (Case x bs)     k = mconcat <$> do
 
 addTag :: forall a. Monoid a => Hyp Id -> String -> TC a -> TC a
 addTag x t k = do
-  tell ["Adding tag " <> pretty x <> " = '" <> text t]
+  report $ "Adding tag " <> pretty x <> " = '" <> text t
   hnfHyp x addTag' $ \(Tag t') ->
     if t == t' then k else return mempty  -- conflicting tags, abort.
  where addTag' :: Monoid a => TC a

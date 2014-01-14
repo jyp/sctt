@@ -19,7 +19,7 @@ import Heap
 
 typeCheck :: Term' -> Term' -> (Either Doc (),[Doc])
 typeCheck a t = runTC (max (nextUnique t) (nextUnique a)) emptyHeap chk
-  where chk = do tell ["Start"]
+  where chk = do report $ "Start"
                  checkSort t 100000
                  checkTermAgainstTerm a t
 
@@ -28,7 +28,7 @@ addCtx' x t h@Heap{..} = h{context = M.insert x t context }
 
 addCtx :: Id -> Conc Id -> (TC ()) -> TC ()
 addCtx x t k = do
-  tell ["Adding hyp " <> pretty x <> ":" <> pretty t]
+  report $ "Adding hyp " <> pretty x <> ":" <> pretty t
   local (addCtx' x t) k
 
 -- Infer the type of a destruction and return it as a normal form.
@@ -76,12 +76,12 @@ inferHyp' h = do
 checkBindings :: (n~Id,r~Id) => Term n r -> (Conc r -> TC ()) -> TC ()
 checkBindings (Conc c) k = k c
 checkBindings (Constr x c t1) k = do
-  -- tell ["constructing" <> pretty x]
+  -- report $ "constructing" <> pretty x
   addConstr x c $ do
-    -- tell ["constructed" <> pretty x]
+    -- report $ "constructed" <> pretty x
     checkBindings t1 k
 checkBindings (Destr x d t1) k = inferDestr d $ \dt -> do
-  tell ["inferred " <> pretty d <> " to be of type " <> pretty dt]
+  report $ "inferred " <> pretty d <> " to be of type " <> pretty dt
   addCtx x dt $ addDestr x d $ checkBindings t1 k
 checkBindings (Case x bs) k =
   inferHyp x $ \xt ->
@@ -100,7 +100,7 @@ checkConAgainstTerm c t = onConcl t $ \t' -> checkConcl c t'
 
 checkConcl :: (n~Id,r~Id) => Conc r -> Conc r -> TC ()
 checkConcl v t = do
-  tell ["checking conclusion " <> pretty v <> ":" <> pretty t]
+  report $ "checking conclusion " <> pretty v <> ":" <> pretty t
   v' <- lookHeapC v
   checkConstrAgainstConcl v' t
 
@@ -108,8 +108,8 @@ checkConstrAgainstConcl :: (n~Id,r~Id) => Constr n r -> Conc r -> TC ()
 checkConstrAgainstConcl (Hyp h) u = checkHyp h u
 checkConstrAgainstConcl (Rec n b) t = addCtx n t $ checkTermAgainstTerm b (Conc t)
 checkConstrAgainstConcl v t = do
-  tell ["checking construction"
-        $$+ (sep ["val" <+> pretty v, "typ" <+> pretty t])]
+  report $ "checking construction"
+        $$+ (sep ["val" <+> pretty v, "typ" <+> pretty t])
   hnf t $ \t' -> checkConstr v t'
 
 checkHyp h u = do
@@ -144,6 +144,6 @@ checkSort t s = checkBindings t $ \c -> checkConclSort c s
 
 checkConclSort :: (n~Id,r~Id) => Conc r -> Int -> TC ()
 checkConclSort c s = do
-  tell ["checking " <> pretty c <> " has sort " <> pretty s]
+  report $ "checking " <> pretty c <> " has sort " <> pretty s
   s' <- liftTC $ freshFrom $ ("*" ++ subscriptShow s ++ " ")
   addConstr s' (Universe s) $ checkConcl c s' -- TODO: don't allocate duplicate sort names.

@@ -21,7 +21,8 @@ type Branch' = Branch Id Id
 
 type DeCo r = Either (Destr r) (Conc r)
 
-data Heap n r = Heap { heapConstr :: Map (Conc n) (Constr n r)
+data Heap n r = Heap { dbgDepth :: Int
+                     , heapConstr :: Map (Conc n) (Constr n r)
                      , heapCuts   :: Map (Hyp n) (DeCo r)  -- TODO: rename to heapDestr
                      , heapDestr  :: Map (Destr r) (Hyp n) -- TODO: rename to heapDestr'
                      , heapAlias  :: Map r r
@@ -62,3 +63,8 @@ terr :: Doc -> TC a
 terr msg = do
   h <- ask
   throwError $ sep [hang "heap" 2 (pretty h), msg]
+
+report :: Doc -> TC ()
+report msg = do
+  lvl <- dbgDepth <$> ask
+  tell [text (replicate lvl ' ') <> msg]
