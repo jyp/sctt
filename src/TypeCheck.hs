@@ -44,7 +44,7 @@ inferDestr (App f a_) k =
        checkConcl a_ t_
        retTyp <- substByDestr x (Cut a_ t_) u
        onConcl retTyp k
-    _ -> throwError $ pretty f <> " has not a function type"
+    _ -> terr $ pretty f <> " has not a function type"
 inferDestr (Proj p f) k =
   inferHyp p $ \pt ->
   case pt of
@@ -59,7 +59,7 @@ inferDestr (Proj p f) k =
            -- definition for x? No: there can be other instances of x.
            -- A cleaner version would be to refresh binders every time
            -- they are loaded from the heap (lookHeapC)
-    _ -> throwError $ pretty p <> " has not a pair type"
+    _ -> terr $ pretty p <> " has not a pair type"
 
 -- Direct lookup of type in the context
 inferHyp :: (n~Id,r~Id) => Hyp r -> (Constr n r -> TC ()) -> TC ()
