@@ -17,7 +17,7 @@ emptyHeap :: Heap n r
 emptyHeap = Heap 0 M.empty M.empty M.empty M.empty M.empty
 
 enter :: TC a -> TC a
-enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1}) 
+enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1})
 
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
 addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
@@ -121,17 +121,17 @@ instance Prettier Term' where
   prettier (Case x bs) = do
     bs' <- mapM prettier bs
     h <- pHyp x
-    return $ hang ("case " <> h <> " of") 2 (braces $ sep $ punctuate "." $ bs')
+    return $ ("case" <+> h <+> "of {") $$+ (sep $ punctuate "." $ bs') $$ "}"
 
 instance Prettier Constr' where
   prettier (Hyp h) = pHyp h
   prettier (Lam x b) = do
     b' <- prettier b
-    return $ "\\" <> pretty x <> " -> " <> b'
+    return $ ("\\" <> pretty x <> " ->") $$+ b'
   prettier (Pi x t b) = do
     t' <- pConc t
     b' <- prettier b
-    return $ parens (pretty x <>":"<> t') <> " -> " <> b'
+    return $ (parens (pretty x <>":"<> t') <+> "->") $$+ b'
   prettier (Sigma x t b) = do
     t' <- pConc  t
     b' <- prettier b
@@ -139,7 +139,7 @@ instance Prettier Constr' where
   prettier (Pair a b) = do
     a' <- pConc  a
     b' <- pConc  b
-    return $ parens $ a' <> "," <> b'
+    return $ parens $ a' $$+ "," $$+ b'
   prettier x = return $ pretty x
 
 instance Prettier Destr' where
@@ -156,4 +156,4 @@ instance Prettier Destr' where
     return $ x' <+> ":" <+> t'
 
 instance Prettier Branch' where
-  prettier (Br tag t) = (\x -> "'" <> text tag <> "->" <> x) <$> prettier t
+  prettier (Br tag t) = (\x -> ("'" <> text tag <> " ->") $$+ x) <$> prettier t
