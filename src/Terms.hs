@@ -36,7 +36,6 @@ data Term n r where
     deriving (Show, Functor)
 
 data Destr r where
-  -- Tag' :: String -> Destr r -- TODO: probably not needed after all ...
   App :: Hyp r -> Conc r -> Destr r
   Proj :: Hyp r -> Proj -> Destr r
   Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
