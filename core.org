@@ -1,6 +1,6 @@
 <2013-12-12 Do>
 
-* Normal forms
+* Syntax
 
   x     Hypothesis variable
   _x    Conclusion variable
@@ -36,11 +36,11 @@
 * Environments
 
   e ::= Environment entry
-      | x : _y | new hypothesis     | context
-      | x = y  | alias              | heapAlias
-      | x = d  | defined hypothesis | heapCuts, heapDestr
-      | _x = c | defined conclusion | heapConstr
-      | 't = x | constraint         | heapTags
+      | x : _y | new hypothesis     | context             |
+      | _x = c | defined conclusion | heapConstr          |
+      | x = y  | alias              | heapAlias           |
+      | x = d  | defined hypothesis | heapCuts, heapDestr |
+      | x = _y | cut                | heapCuts            |
 
   γ,h ::= e*  Environment   (or heap)
 
@@ -224,6 +224,7 @@ h(x) = y.1     h(y)=(_w,_z)  Γ;h ⊢ c ⇇ _w
 ------------------------------------------
 Γ;h ⊢ c ⇇ x
 
+* Evaluation
 * reduction of  n1[n2/x] (never needed!)
 
 0. Check for occurence of x in n1; quick exit to n1 if no occurence. (Optional)

@@ -1,0 +1,27 @@
+* A scientific goal
+We aim to construct a type-theory which can be used as a backend for
+dependently-typed languages such as Agda or Coq. Such a language
+should be
+
+- a type-theory: correctness should be expressible via types
+- low-level: one should be able to translate various high-level
+  languages into this language while retaining properties such as
+  run-time behaviour, etc.
+- minimal: the type-checking program should be amenable to
+  verification.
+
+
+* A SC presentation of TT: Motivation
+  - Evaluate SC as a presentation of TT
+    - ND to SC is "mechanical"... but what does the result look like in practice?
+  - Debug PiSigma
+  - Sharing is expressible (J. Launchbury -- A Natural Semantics for Lazy Evaluation)
+  - Natural syntax for case, etc
+  - Integration of with 
+  - Low-level; as in other compilers.
+
+* Syntax
+
+* Support for 'with'
+  make sure there is a functional dependency form d to x in the environment entries
+  x = d
