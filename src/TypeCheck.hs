@@ -1,10 +1,9 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings #-}
-module TypeCheck where
+module TypeCheck (typeCheck) where
 import Terms
 import qualified Data.Map as M
 
 import Control.Monad.Reader
-import Control.Monad.Error
 import Control.Monad.Writer
 import Control.Applicative
 import Eval
@@ -61,10 +60,10 @@ inferDestr (Proj p f) k =
            -- they are loaded from the heap (lookHeapC)
     _ -> terr $ pretty p <> " has not a pair type"
 
--- Direct lookup of type in the context
 inferHyp :: (n~Id,r~Id) => Hyp r -> (Constr n r -> TC ()) -> TC ()
-inferHyp h k = (\c -> hnf c k) =<< inferHyp' h
+inferHyp h k = (\c -> hnfUnfoldRec c k) =<< inferHyp' h
 
+-- | Mere lookup of type in the context
 inferHyp' :: (n~Id,r~Id) => Hyp r -> TC (Conc r)
 inferHyp' h = do
   ctx <- context <$> ask
@@ -137,7 +136,6 @@ checkConstrAgainstConcl val typ = do
         checkConstr v t = terr $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
 
 
-    
 checkHyp h u = do
   t <- inferHyp' h
   eq <- testConc t u

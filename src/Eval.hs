@@ -1,5 +1,5 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
-module Eval(hnf, onConcl, addTag,unfoldRec) where
+module Eval(hnf, onConcl, addTag,unfoldRec,hnfUnfoldRec) where
 
 import qualified Data.Map as M
 import Data.Monoid
@@ -18,18 +18,24 @@ unfoldRec c r t k = do
   body <- substByDestr r (Cut c (error "rec. typ.")) t
   onConcl body k
 
+hnfUnfoldRec :: (Monoid a,r~Id,n~Id) => Conc Id -> (Constr Id Id -> TC a) -> TC a
+hnfUnfoldRec c k = do
+  hnf c $ \c' -> case c' of
+    Rec r t -> unfoldRec c r t $ \c'' -> hnfUnfoldRec c'' k
+    _ -> k c'
+
 hnf :: (Monoid a,r~Id,n~Id) => Conc n -> (Constr n r -> TC a) -> TC a
 hnf c k = do
   c' <- lookHeapC c
   case c' of
-    (Hyp x) -> hnfHyp x (k (Hyp x)) k  -- Todo: update heap here too?
+    (Hyp x) -> hnfHyp False x (k (Hyp x)) k  -- Todo: update heap here too?
     _ -> k c'
 
 
--- | Look for a redex, and evaluate to head normal form.
-hnfHyp :: (Monoid a,r~Id,n~Id) => Hyp n -> TC a -> (Constr n r -> TC a) -> TC a
+-- | Look for a redex, and evaluate to head normal form. (no Rec allowed in the result)
+hnfHyp :: (Monoid a,r~Id,n~Id) => Bool -> Hyp n -> TC a -> (Constr n r -> TC a) -> TC a
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
-hnfHyp x notFound k = enter $ do
+hnfHyp shouldUnfoldRec x notFound k = enter $ do
   report $ "Evaluating hyp: " <> pretty x
   h <- ask
   let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
@@ -37,19 +43,20 @@ hnfHyp x notFound k = enter $ do
     Nothing -> notFound
     Just (Right c) -> do
       report $ "  Is evaluated to concl: " <> pretty c
-      hnf c k
+      locHnf c k
     Just (Left d) -> do
       report $ "Evaluating destr: " <> pretty d
-      hnfDestr d notFound $ \c -> local (addCut' x $ Right c) (hnf c k)
-
+      hnfDestr d notFound $ \c -> local (addCut' x $ Right c) (locHnf c k)
+ where locHnf = if shouldUnfoldRec then hnfUnfoldRec else hnf
+                  
 hnfDestr :: (Monoid a,r~Id,n~Id) => Destr r -> TC a -> (Conc r -> TC a) -> TC a
 hnfDestr d notFound k = case d of
    (Proj p f) -> do
-          hnfHyp p notFound $ block $ \ (Pair a_ b_) ->
+          hnfHyp True p notFound $ block $ \ (Pair a_ b_) ->
             k $ case f of
                Terms.First -> a_
                Second -> b_
-   (App f a_) -> hnfHyp f notFound $ block $ \ (Lam xx bb) -> do
+   (App f a_) -> hnfHyp True f notFound $ block $ \ (Lam xx bb) -> do
             bb' <- substByDestr xx (Cut a_ (error "body of lambda should not be checked again.")) bb
             onConcl bb' k
    _ -> error $ "cannot be found as target in cut maps: " ++ show d
@@ -72,7 +79,7 @@ onConcl (Case x bs)     k = mconcat <$> do
 addTag :: forall a. Monoid a => Hyp Id -> String -> TC a -> TC a
 addTag x t k = do
   report $ "Adding tag " <> pretty x <> " = '" <> text t
-  hnfHyp x addTag' $ \(Tag t') ->
+  hnfHyp True x addTag' $ \(Tag t') ->
     if t == t' then k else return mempty  -- conflicting tags, abort.
  where addTag' :: Monoid a => TC a
        addTag' = do
