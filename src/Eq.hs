@@ -35,6 +35,7 @@ testConstr (Sigma x1 a1 t1) (Sigma x2 a2 t2) = testConc a1 a2 >> (local (addAlia
 testConstr (Tag t1)(Tag t2) = return $ t1 == t2
 testConstr (Fin ts1)(Fin ts2) = return $ ts1 == ts2
 testConstr (Universe x1)(Universe x2) = return $ x1 <= x2 -- yes, we do subtyping: TODO make that clean in the names
+testConstr (Rec r1 t1)(Rec r2 t2) = local (addAlias' r1 r2) $ testTerm t1 t2 -- note that we don't unfold here!
 testConstr _ _ = return False
 
 testHyp :: Hyp Id -> Hyp Id -> TC Bool

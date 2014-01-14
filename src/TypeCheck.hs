@@ -107,11 +107,37 @@ checkConcl v t = do
 checkConstrAgainstConcl :: (n~Id,r~Id) => Constr n r -> Conc r -> TC ()
 checkConstrAgainstConcl (Hyp h) u = checkHyp h u
 checkConstrAgainstConcl (Rec n b) t = addCtx n t $ checkTermAgainstTerm b (Conc t)
-checkConstrAgainstConcl v t = do
+checkConstrAgainstConcl val typ = do
   report $ "checking construction"
-        $$+ (sep ["val" <+> pretty v, "typ" <+> pretty t])
-  hnf t $ \t' -> checkConstr v t'
+        $$+ (sep ["val" <+> pretty val, "typ" <+> pretty typ])
+  hnf typ $ \typ' -> checkConstr val typ'
+    where
+        checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> TC ()
+        checkConstr (Hyp _) t = error "dealt with above"
+        checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
+          checkConcl a_ ta_
+          tb' <- substByDestr xx (Cut a_ ta_) tb_
+          checkConAgainstTerm b_  tb'
+        checkConstr (Lam x b_) (Pi xx ta_ tb_) = do
+          addCtx x ta_ $ addAlias xx x $ checkTermAgainstTerm b_ tb_
+        checkConstr tag@(Tag t) ty@(Fin ts) = unless  (t `elem` ts) $ terr $
+           pretty tag <> " is not found in " <> pretty ty
+        checkConstr (Sigma xx ta_ tb_) (Universe s) = do
+          checkConclSort ta_ s
+          addCtx xx ta_ $ checkSort tb_ s
+        checkConstr (Pi xx ta_ tb_) (Universe s) = do
+          checkConclSort ta_ s
+          addCtx xx ta_ $ checkSort tb_ s
+        checkConstr (Fin _) (Universe _s) = return ()
+        checkConstr (Universe s') (Universe s) =
+          unless (s' < s) $ terr $ int s' <> " is not a subsort of" <> int s
+        checkConstr x (Rec r t) = do
+          unfoldRec typ r t $ \t' -> checkConstrAgainstConcl x t'
 
+        checkConstr v t = terr $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
+
+
+    
 checkHyp h u = do
   t <- inferHyp' h
   eq <- testConc t u
@@ -124,28 +150,6 @@ checkHyp h u = do
                $+$ (pretty u <+> "=") $$+ doc_u
                $+$ (pretty h <+> "=") $$+ doc_h
 
-
-checkConstr :: (n~Id,r~Id) => Constr n r -> Constr n r -> TC ()
-checkConstr (Hyp _) t = error "dealt with above"
-checkConstr (Pair a_ b_) (Sigma xx ta_ tb_) = do
-  checkConcl a_ ta_
-  tb' <- substByDestr xx (Cut a_ ta_) tb_
-  checkConAgainstTerm b_  tb'
-checkConstr (Lam x b_) (Pi xx ta_ tb_) = do
-  addCtx x ta_ $ addAlias xx x $ checkTermAgainstTerm b_ tb_
-checkConstr tag@(Tag t) ty@(Fin ts) = unless  (t `elem` ts) $ terr $
-   pretty tag <> " is not found in " <> pretty ty
-checkConstr (Sigma xx ta_ tb_) (Universe s) = do
-  checkConclSort ta_ s
-  addCtx xx ta_ $ checkSort tb_ s
-checkConstr (Pi xx ta_ tb_) (Universe s) = do
-  checkConclSort ta_ s
-  addCtx xx ta_ $ checkSort tb_ s
-checkConstr (Fin _) (Universe _s) = return ()
-checkConstr (Universe s') (Universe s) =
-  unless (s' < s) $ terr $ int s' <> " is not a subsort of" <> int s
-
-checkConstr v t = terr $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
 
 checkSort :: (n~Id,r~Id) => Term n r -> Int -> TC ()
 checkSort t s = checkBindings t $ \c -> checkConclSort c s

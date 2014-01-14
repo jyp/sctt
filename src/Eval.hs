@@ -1,5 +1,5 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
-module Eval(hnf, onConcl, addTag) where
+module Eval(hnf, onConcl, addTag,unfoldRec) where
 
 import qualified Data.Map as M
 import Data.Monoid
@@ -13,13 +13,15 @@ import TCM
 import Heap
 import Fresh (freshFrom)
 
+unfoldRec :: Monoid b => Conc Id -> Hyp Id -> Term Id Id -> (Conc Id -> TC b) -> TC b
+unfoldRec c r t k = do
+  body <- substByDestr r (Cut c (error "rec. typ.")) t
+  onConcl body k
+
 hnf :: (Monoid a,r~Id,n~Id) => Conc n -> (Constr n r -> TC a) -> TC a
 hnf c k = do
   c' <- lookHeapC c
   case c' of
-    (Rec r t) -> do
-       body <- substByDestr r (Cut c (error "rec. typ.")) t
-       onConcl body $ \body' -> hnf body' k
     (Hyp x) -> hnfHyp x (k (Hyp x)) k  -- Todo: update heap here too?
     _ -> k c'
 
@@ -27,7 +29,7 @@ hnf c k = do
 -- | Look for a redex, and evaluate to head normal form.
 hnfHyp :: (Monoid a,r~Id,n~Id) => Hyp n -> TC a -> (Constr n r -> TC a) -> TC a
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
-hnfHyp x notFound k = do
+hnfHyp x notFound k = enter $ do
   report $ "Evaluating hyp: " <> pretty x
   h <- ask
   let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
