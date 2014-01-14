@@ -106,7 +106,7 @@ resolveConstr _name (A.V x) = do
 resolveConstr name (A.Rec x t) = 
   insert hyp x $ \x' -> do
     r <- freshIdR
-    t' <- resolveTerm (name ++ "rec") t
+    t' <- resolveTerm t
     return (r,Constr r (Rec x' t'))
 resolveConstr name (A.Lam x t) =
   insert hyp x $ \x' -> do
