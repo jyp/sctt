@@ -103,10 +103,10 @@ resolveConstr _name (A.V x) = do
   case x' of
     Nothing -> embedHyp (nameVar x) (A.V x)
     Just x'' -> return (x'',id)
-resolveConstr name (A.Rec x t) = 
+resolveConstr name (A.Rec x t) =
   insert hyp x $ \x' -> do
     r <- freshIdR
-    t' <- resolveTerm t
+    t' <- resolveTerm' (name ++ "ʳᵉᶜ") t
     return (r,Constr r (Rec x' t'))
 resolveConstr name (A.Lam x t) =
   insert hyp x $ \x' -> do
