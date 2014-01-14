@@ -83,13 +83,20 @@ add5 =
 
   )) : Bit5 -> Bit5 -> Bit5 ;
 
-stuff = refl Bit5 (bit5  'one 'zero 'zero 'zero 'zero) :
-  Eq Bit5
-      (add5 (bit5 'zero  'one  'one 'zero  'one)
-      	    (bit5 'zero 'zero  'one  'one  'one)
-      )
-            (bit5  'one 'zero 'zero 'zero 'zero)
-   ;
+
+{-
+  01101
++ 00111
+= 10100
+-}
+
+int1 =   (bit5 'zero  'one  'one 'zero  'one) : Bit5 ;
+int2 =   (bit5 'zero 'zero  'one  'one  'one) : Bit5 ;
+result = (bit5  'one 'zero  'one 'zero 'zero) : Bit5 ;
+
+stuff =
+  refl Bit5 result :
+  (Eq Bit5 (add5 int1 int2) result) ;
 
 *0
 TYPE
