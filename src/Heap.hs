@@ -40,7 +40,7 @@ getAlias h x = M.findWithDefault x x h
 addAliases :: [(Id,Id)] -> TC a -> TC a
 addAliases [] k = k
 addAliases as k = do
-  tell ["Adding aliases:" $$+ pretty as]
+  report $ ("Adding aliases:" $$+ pretty as)
   h <- addAliases' as <$> ask
   let hD' :: M.Map (Destr Id) [Hyp Id]
       applyAlias = getAlias $ heapAlias h
@@ -76,9 +76,9 @@ addDestr x (Cut c _ct) k = local (addCut' x $ Right c) k
 addDestr x d k = do
   h <- ask
   let d' = getAlias (heapAlias h) <$> d
-  tell ["Adding destr."
+  report ("Adding destr."
         $$+ pretty x <+> "="
-        $$+ pretty d  <+> "; aliased to" <+> pretty d']
+        $$+ pretty d  <+> "; aliased to" <+> pretty d')
   local (addCut' x $ Left d') $ case M.lookup d' (heapDestr h) of
      Just y -> addAlias y x k
      Nothing -> local (addDestr' d' x) k
@@ -86,7 +86,7 @@ addDestr x d k = do
 -- | return true if fizzled, otherwise call the continuation.
 addConstr :: Monoid a => Conc Id -> Constr' -> TC a -> TC a
 addConstr x c k = do
-  tell ["Adding construction" $$++ pretty x <+> "=" $$+ pretty c]
+  report ("Adding construction" $$++ pretty x <+> "=" $$+ pretty c)
   hC <- heapConstr <$> ask
   hA <- heapAlias <$> ask
   case c of
