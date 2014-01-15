@@ -25,7 +25,7 @@ dbgTest msg x y k = do
   r <- enter k
   report $ "Result = " <> pretty r
   return r
-  
+
 testConstr' c1 c2 = dbgTest "Construction " c1 c2 $ do
   testConstr c1 c2
 

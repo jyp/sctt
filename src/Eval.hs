@@ -35,7 +35,7 @@ hnf c k = do
 -- | Look for a redex, and evaluate to head normal form. (no Rec allowed in the result)
 hnfHyp :: (Monoid a,r~Id,n~Id) => Bool -> Hyp n -> TC a -> (Constr n r -> TC a) -> TC a
 -- check if there is some reduction to perform. if so replace the thunk by its value in the heap. then this must be a continuation.
-hnfHyp shouldUnfoldRec x notFound k = enter $ do
+hnfHyp shouldUnfoldRec x notFound k = do
   report $ "Evaluating hyp: " <> pretty x
   h <- ask
   let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
