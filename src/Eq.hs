@@ -20,10 +20,13 @@ testConc x_1 x_2
   | x_1 == x_2 = return True -- optimisation, so equal structures are not deeply traversed.
   | otherwise = hnf x_1 $ \c1 -> hnf x_2 $ \c2 -> testConstr' c1 c2
 
-dbgTest msg x y = report $ "Testing " <> msg <> ": " <> pretty x <> " <= " <> pretty y
-
-testConstr' c1 c2 = do
-  dbgTest "Construction " c1 c2
+dbgTest msg x y k = do
+  report $ "Testing " <> msg <> ": " <> pretty x <> " <= " <> pretty y
+  r <- enter k
+  report $ "Result = " <> pretty r
+  return r
+  
+testConstr' c1 c2 = dbgTest "Construction " c1 c2 $ do
   testConstr c1 c2
 
 x <&&> y = (&&) <$> x <*> y
@@ -41,8 +44,7 @@ testConstr (Rec r1 t1)(Rec r2 t2) = local (addAlias' r1 r2) $ testTerm t1 t2 -- 
 testConstr _ _ = return False
 
 testHyp :: Hyp Id -> Hyp Id -> TC Bool
-testHyp a1 a2 = do
-  dbgTest "Hyp " a1 a2
+testHyp a1 a2 = dbgTest "Hyp " a1 a2 $ do
   h1 <- aliasOf a1
   h2 <- aliasOf a2
   md1 <- lookDestr h1
@@ -59,6 +61,5 @@ lookDestr x = do
   hC <- heapCuts <$> ask
   return $ M.lookup x hC
 
-testDestr (Proj p1 f1) (Proj p2 f2) = (&&) <$> pure (f1 == f2) <*> testHyp p1 p2
 testDestr (App f1 a1) (App f2 a2) = (&&) <$> testHyp f1 f2 <*> testConc a1 a2
 testDestr _ _ = return False

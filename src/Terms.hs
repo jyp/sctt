@@ -38,6 +38,7 @@ instance Bitraversable Term where  bitraverse = $(genTraverse ''Term)
 
 data Term n r where
   Destr  :: Hyp n  -> Destr r -> Term n r -> Term n r
+  Split  :: Hyp n -> Hyp n -> Hyp r -> Term n r -> Term n r
   Case   :: Hyp r  -> [Branch n r] -> Term n r
   Constr :: Conc n -> Constr n r -> Term n r -> Term n r
   Concl  :: Conc r -> Term n r  -- ^ Conclude
@@ -45,7 +46,7 @@ data Term n r where
 
 data Destr r where
   App :: Hyp r -> Conc r -> Destr r
-  Proj :: Hyp r -> Proj -> Destr r
+  -- Proj :: Hyp r -> Proj -> Destr r
   Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
     deriving (Show, Eq, Ord, Functor)
 
@@ -66,6 +67,7 @@ instance (Pretty r) => Pretty (Conc r) where
 
 instance (Pretty r, Pretty n) => Pretty (Term n r) where
   pretty (Destr x v t) = pretty x <+> "=" $$+ pretty v <+> ";" $$ pretty t
+  pretty (Split x y z t) = "(" <> pretty x <> "," <> pretty y <> ") = " <> pretty z <> ";" $$ pretty t
   pretty (Constr x v t) = pretty x <+> "=" $$+ pretty v <+> ";" $$ pretty t
   pretty (Case x bs) =
       "case " <> pretty x <> " of" $$+
@@ -78,7 +80,6 @@ instance (Pretty r, Pretty n) => Pretty (Branch n r) where
 instance Pretty r => Pretty (Destr r) where
   -- pretty (Tag' v) = "'" <> text v
   pretty (App f x) = pretty f <> " " <> pretty x
-  pretty (Proj x p) = pretty x <> pretty p
   pretty (Cut x t) = pretty x <+> ":" <+> pretty t
 
 instance (Pretty r, Pretty n) => Pretty (Constr n r) where

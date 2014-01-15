@@ -52,7 +52,7 @@ resolveTerm (A.Concl x) = Concl <$> resolveConc con x
 
 resolveDestr :: A.Destr -> R (Destr Id)
 resolveDestr (A.Appl f x) = App <$> resolveVar hyp f <*> resolveConc con x
-resolveDestr (A.Proj p f) = Proj <$> resolveVar hyp p <*> pure (resolveProj f)
+-- resolveDestr (A.Proj p f) = Proj <$> resolveVar hyp p <*> pure (resolveProj f)
 resolveDestr (A.Cut x t) = Cut <$>  resolveConc con x <*> resolveConc con t
 
 resolveProj (A.First) = First

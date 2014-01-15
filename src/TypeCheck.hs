@@ -44,23 +44,6 @@ inferDestr (App f a_) k =
        retTyp <- substByDestr x (Cut a_ t_) u
        onConcl retTyp k
     _ -> terr $ pretty f <> " has not a function type"
-inferDestr (Proj p f) k =
-  inferHyp p $ \pt ->
-  case pt of
-    Sigma x t_ u -> do
-       case f of
-         Terms.First -> k t_
-         Terms.Second -> do
-           x' <- liftTC $ freshFrom " "
-           u' <- substTC x x' u
-           addCtx x' t_ $ onConcl (Destr x' (Proj p Terms.First) u') k
-           -- TODO: is the substitution needed? can one just give a
-           -- definition for x? No: there can be other instances of x.
-           -- A cleaner version would be to refresh binders every time
-           -- they are loaded from the heap (lookHeapC)
-    _ -> do
-      doc_p <- pHyp p
-      terr $ (pretty p <+> "has not a pair type.") $$+ (pretty p <+> "=" $$+ doc_p)
 
 inferHyp :: (n~Id,r~Id) => Hyp r -> (Constr n r -> TC ()) -> TC ()
 inferHyp h k = (\c -> hnfUnfoldRec c k) =<< inferHyp' h
@@ -84,6 +67,13 @@ checkBindings (Constr x c t1) k = do
 checkBindings (Destr x d t1) k = inferDestr d $ \dt -> do
   report $ "inferred " <> pretty d <> " to be of type " <> pretty dt
   addCtx x dt $ addDestr x d $ checkBindings t1 k
+checkBindings (Split x y z t1) k = inferHyp z $ \zt -> case zt of
+    Sigma xx t_ u -> do
+      u' <- substTC xx x u
+      addCtx x t_ $ onConcl u' $ \u'' -> addCtx y u'' $ addSplit x y z $ checkBindings t1 k
+    _ -> do
+      doc_z <- pHyp z
+      terr $ (pretty z <+> "has not a pair type.") $$+ (pretty z <+> "=" $$+ doc_z)
 checkBindings (Case x bs) k =
   inferHyp x $ \xt ->
   case xt of

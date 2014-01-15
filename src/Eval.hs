@@ -1,5 +1,5 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
-module Eval(hnf, onConcl, addTag,unfoldRec,hnfUnfoldRec) where
+module Eval(hnf, onConcl, addTag, addSplit, unfoldRec,hnfUnfoldRec) where
 
 import qualified Data.Map as M
 import Data.Monoid
@@ -11,7 +11,7 @@ import Ident
 import Display
 import TCM
 import Heap
-import Fresh (freshFrom)
+import Fresh (refreshId,freshFrom)
 
 unfoldRec :: Monoid b => Conc Id -> Hyp Id -> Term Id Id -> (Conc Id -> TC b) -> TC b
 unfoldRec c r t k = do
@@ -46,16 +46,11 @@ hnfHyp shouldUnfoldRec x notFound k = enter $ do
       locHnf c k
     Just (Left d) -> do
       report $ "Evaluating destr: " <> pretty d
-      hnfDestr d notFound $ \c -> local (addCut' x $ Right c) (locHnf c k)
+      hnfDestr d notFound $ \c -> addCut x (Right c) (locHnf c k)
  where locHnf = if shouldUnfoldRec then hnfUnfoldRec else hnf
 
 hnfDestr :: (Monoid a,r~Id,n~Id) => Destr r -> TC a -> (Conc r -> TC a) -> TC a
 hnfDestr d notFound k = case d of
-   (Proj p f) -> do
-          hnfHyp True p notFound $ block $ \ (Pair a_ b_) ->
-            k $ case f of
-               Terms.First -> a_
-               Second -> b_
    (App f a_) -> hnfHyp True f notFound $ block $ \ (Lam xx bb) -> do
             bb' <- substByDestr xx (Cut a_ (error "body of lambda should not be checked again.")) bb
             onConcl bb' k
@@ -72,6 +67,7 @@ onConcl :: Monoid a => Term' -> (Conc Id -> TC a) -> TC a
 onConcl (Concl c)       k = k c
 onConcl (Destr x d t1)  k = normalizeAndAddDestr x d (onConcl t1 k)
 onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)
+onConcl (Split x y z t1) k = addSplit x y z $ onConcl t1 k
 onConcl (Case x bs)     k = mconcat <$> do
     forM bs $ \(Br tag t1) ->
       addTag x tag $ onConcl t1 k
@@ -85,5 +81,21 @@ addTag x t k = do
        addTag' = do
          tName <- Conc <$> do liftTC $ freshFrom t
          addConstr tName (Tag t) $  -- todo: don't instroduce a name for an existing tag.
-           local (addCut' x $ Right tName) k
+           addCut x (Right tName) k
+
+addSplit :: (Monoid a,r~Id,n~Id) => Hyp r -> Hyp r -> Hyp n -> TC a -> TC a
+addSplit x y z k = do
+  hnfHyp True z addSplit' $ \(Pair x' y') ->
+    addCut x (Right x') $
+      addCut y (Right y') $
+        k
+  where addSplit' = do
+          xName <- Conc <$> liftTC (refreshId x)
+          yName <- Conc <$> liftTC (refreshId y)
+          zName <- Conc <$> liftTC (refreshId z)
+          addConstr xName (Hyp x) $
+             addConstr yName (Hyp y) $
+             addConstr zName (Pair xName yName) $
+               addCut z (Right zName) k
+
 

@@ -64,6 +64,11 @@ resolveTerm' name (A.Concl c) = do
 resolveTerm' name (A.Constr x c t) = do
   (c'id,c') <- resolveConstr (nameVar x) c
   insert' con x c'id $ c' <$> resolveTerm' name t
+resolveTerm' name (A.Split x y d t) = do
+  (d'id,d') <- resolveDestr (nameVar x ++ nameVar y) d
+  insert hyp x $ \x' ->
+   insert hyp y $ \y' ->
+    d' . Split x' y' d'id <$> resolveTerm' name t
 resolveTerm' name (A.Case x bs) = do
   (x'id,x') <- resolveDestr name x
   bs' <- forM bs $ \(A.Br tag@(A.T tag') t) -> do
@@ -81,11 +86,19 @@ resolveDestr name (A.Appl f x) = do
   (f'id,f') <- resolveDestr (name ++ "ᶠ") f
   (x'id,x') <- resolveConstr (name ++ "ᵃ") x
   r <- freshFromR name
+<<<<<<< HEAD
   return (r,f' . x' . Destr r (App f'id (Conc x'id)))
 resolveDestr name (A.Proj p f) = do
   (p'id,p') <- resolveDestr (name ++ "ᵖ") p
   r <- freshFromR name
   return (r,p'.Destr r (Proj p'id $ resolveProj f))
+=======
+  return (r,f' . x' . Destr r (App f'id x'id))
+-- resolveDestr name (A.Proj p f) = do
+--   (p'id,p') <- resolveDestr (name ++ "ᵖ") p
+--   r <- freshFromR name
+--   return (r,p'.Destr r (Proj p'id $ resolveProj f))
+>>>>>>> split
 resolveDestr name (A.Cut x t) = do
   (x'id,x') <- resolveConstr (nameLeft name) x
   (t'id,t') <- resolveConstr (nameRight name) t

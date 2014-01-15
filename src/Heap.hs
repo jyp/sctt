@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances, RecordWildCards  #-}
 
-module Heap where
+module Heap (emptyHeap, addCut,lookHeapC,getAlias,addConstr,enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
 
 import Control.Monad.RWS
 import Control.Applicative
@@ -18,6 +18,16 @@ emptyHeap = Heap 0 M.empty M.empty M.empty M.empty M.empty
 
 enter :: TC a -> TC a
 enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1})
+
+addCut :: (Id~n,Id~r,Ord n) => n -> DeCo r -> TC a -> TC a
+addCut src trg k =
+  case trg of
+    Right c -> do c' <- lookHeapC c
+                  case c' of
+                    Hyp trg' -> addAlias src trg' k
+                    _ -> def
+    _ -> def
+  where def = local (addCut' src trg) k
 
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
 addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
@@ -118,6 +128,10 @@ instance Prettier Term' where
   prettier (Concl c) = pConc c
   prettier (Destr h d t) = addDestr h d $ prettier t
   prettier (Constr x c t) = addConstr x c $ prettier t
+  prettier (Split x y z t) = do
+    z' <- pHyp z
+    t' <- prettier t
+    return $ ("split " <> z' <> "into " <> pretty x <> "," <> pretty y $$ t')
   prettier (Case x bs) = do
     bs' <- mapM prettier bs
     h <- pHyp x
@@ -147,9 +161,6 @@ instance Prettier Destr' where
     f' <- pHyp f
     x' <- pConc x
     return $ f' <+> x'
-  prettier (Proj x p) = do
-    x' <- pHyp x
-    return $ x' <> pretty p
   prettier (Cut x t) = do
     x' <- pConc x
     t' <- pConc t
