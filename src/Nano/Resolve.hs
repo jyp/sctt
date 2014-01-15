@@ -25,6 +25,8 @@ resolveVar l (A.Var (_,x)) = do
                  "env = " ++ show env ++ "\n" ++
                  "unknown identifier: " ++ x
 
+resolveConc :: (Lens Env (Map String Id)) -> A.Var -> R (Conc Id)
+resolveConc l x = Conc <$> resolveVar l x
 
 insert :: (Lens Env (Map String Id)) -> A.Var -> (Id -> R a) -> R a
 insert l (A.Var (_,x)) k = do
@@ -41,17 +43,17 @@ resolveModule (A.Module t1 t2) = (,) <$> resolveTerm t1 <*> resolveTerm t2
 resolveTerm :: A.Term -> R (Term Id Id)
 resolveTerm (A.Constr x c t) = do
   c' <- resolveConstr c
-  insert con x $ \x' -> Constr x' c' <$> resolveTerm t
+  insert con x $ \x' -> Constr (Conc x') c' <$> resolveTerm t
 resolveTerm (A.Destr x d t) = do
   d' <- resolveDestr d
   insert hyp x $ \x' -> Destr x' d' <$> resolveTerm t
 resolveTerm (A.Case x bs) = Case <$> resolveVar hyp x <*> (forM bs $ \(A.Br tag t) -> Br <$> resolveTag tag <*> resolveTerm t)
-resolveTerm (A.Concl x) = Concl <$> resolveVar con x
+resolveTerm (A.Concl x) = Concl <$> resolveConc con x
 
 resolveDestr :: A.Destr -> R (Destr Id)
-resolveDestr (A.Appl f x) = App <$> resolveVar hyp f <*> resolveVar con x
+resolveDestr (A.Appl f x) = App <$> resolveVar hyp f <*> resolveConc con x
 resolveDestr (A.Proj p f) = Proj <$> resolveVar hyp p <*> pure (resolveProj f)
-resolveDestr (A.Cut x t) = Cut <$> resolveVar con x <*> resolveVar con t
+resolveDestr (A.Cut x t) = Cut <$>  resolveConc con x <*> resolveConc con t
 
 resolveProj (A.First) = First
 resolveProj (A.Second) = Second
@@ -61,10 +63,10 @@ resolveConstr (A.Hyp x) = Hyp <$> resolveVar hyp x
 resolveConstr (A.Lam x t) = insert hyp x $ \x' ->
   Lam x' <$> resolveTerm t
 resolveConstr (A.Pi x c t) = insert hyp x $ \x' ->
-  Pi x' <$> resolveVar con c <*> resolveTerm t
-resolveConstr (A.Pair a b) = Pair <$> resolveVar con a <*> resolveVar con b
+  Pi x' <$> resolveConc con c <*> resolveTerm t
+resolveConstr (A.Pair a b) = Pair <$> resolveConc con a <*> resolveConc con b
 resolveConstr (A.Sigma x c t) = insert hyp x $ \x' ->
-  Sigma x' <$> resolveVar con c <*> resolveTerm t
+  Sigma x' <$> resolveConc con c <*> resolveTerm t
 resolveConstr (A.Tag t) = Tag <$> resolveTag t
 resolveConstr (A.Fin ts) = Fin <$> mapM resolveTag ts
 resolveConstr (A.Univ (A.Nat (_,n))) = Universe <$> pure (read n)

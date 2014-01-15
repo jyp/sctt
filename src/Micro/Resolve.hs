@@ -60,7 +60,7 @@ resolveTerm' name (A.Destr x c t) = do
   insert' hyp x c'id $ c' <$> resolveTerm' name t
 resolveTerm' name (A.Concl c) = do
   (c'id,c') <- resolveConstr name c
-  return $ c' $ Concl c'id
+  return $ c' $ Concl (Conc c'id)
 resolveTerm' name (A.Constr x c t) = do
   (c'id,c') <- resolveConstr (nameVar x) c
   insert' con x c'id $ c' <$> resolveTerm' name t
@@ -81,7 +81,7 @@ resolveDestr name (A.Appl f x) = do
   (f'id,f') <- resolveDestr (name ++ "ᶠ") f
   (x'id,x') <- resolveConstr (name ++ "ᵃ") x
   r <- freshFromR name
-  return (r,f' . x' . Destr r (App f'id x'id))
+  return (r,f' . x' . Destr r (App f'id (Conc x'id)))
 resolveDestr name (A.Proj p f) = do
   (p'id,p') <- resolveDestr (name ++ "ᵖ") p
   r <- freshFromR name
@@ -90,7 +90,7 @@ resolveDestr name (A.Cut x t) = do
   (x'id,x') <- resolveConstr (nameLeft name) x
   (t'id,t') <- resolveConstr (nameRight name) t
   r <- freshFromR name
-  return (r, x'.t'.Destr r (Cut x'id t'id))
+  return (r, x'.t'.Destr r (Cut (Conc x'id) (Conc t'id)))
 resolveDestr _ x = do
   error $ "Tryed to make an inline cut. (Cuts must be explicit via use of =)\n" ++ show x
 
@@ -107,51 +107,51 @@ resolveConstr name (A.Rec x t) =
   insert hyp x $ \x' -> do
     r <- freshIdR
     t' <- resolveTerm' (name ++ "ʳᵉᶜ") t
-    return (r,Constr r (Rec x' t'))
+    return (r,Constr (Conc r) (Rec x' t'))
 resolveConstr name (A.Lam x t) =
   insert hyp x $ \x' -> do
     r <- freshFromR name
     t' <- resolveTerm' name t
-    return (r,Constr r (Lam x' t'))
+    return (r,Constr (Conc r) (Lam x' t'))
 resolveConstr name (A.Pi x c t) = do
   (c'id,c') <- resolveConstr (nameLeft name) c
   r <- freshFromR name
   insert hyp x $ \x' -> do
     t' <- resolveTerm' (nameRight name) t
-    return (r,c' . Constr r (Pi x' c'id t'))
+    return (r,c' . Constr (Conc r) (Pi x' (Conc c'id) t'))
 resolveConstr name (A.Fun c t) = do
   (c'id,c') <- resolveConstr (nameLeft name) c
   r <- freshFromR name
   t' <- resolveTerm' (nameRight name) t
   x' <- freshIdR
-  return (r,c' . Constr r (Pi x' c'id t'))
+  return (r,c' . Constr (Conc r) (Pi x' (Conc c'id) t'))
 resolveConstr name (A.Sigma x c t) = do
   (c'id,c') <- resolveConstr (nameLeft name) c
   r <- freshIdR
   insert hyp x $ \x' -> do
     t' <- resolveTerm' (nameRight name) t
-    return (r,c' . Constr r (Sigma x' c'id t'))
+    return (r,c' . Constr (Conc r) (Sigma x' (Conc c'id) t'))
 resolveConstr name (A.Pair a b) = do
   (a'id,a') <- resolveConstr (name ++ ".1") a
   (b'id,b') <- resolveConstr (name ++ ".2") b
   r <- freshIdR
-  return (r,a'.b'.Constr r (Pair a'id b'id))
+  return (r,a'.b'.Constr (Conc r) (Pair (Conc a'id) (Conc b'id)))
 resolveConstr name (A.Tag t) = do
   r <- freshFromR name
-  return (r,Constr r (Tag $ resolveTag t))
+  return (r,Constr (Conc r) (Tag $ resolveTag t))
 resolveConstr name (A.Fin ts) = do
   r <- freshFromR name
-  return (r,Constr r (Fin $ map resolveTag ts))
+  return (r,Constr (Conc r) (Fin $ map resolveTag ts))
 resolveConstr name (A.Univ (A.Nat (_,n))) = do
   r <- freshFromR name
-  return (r,Constr r (Universe $ read n))
+  return (r,Constr (Conc r) (Universe $ read n))
 resolveConstr name h = embedHyp name h
 
 embedHyp :: String -> A.DC -> R (Id, Slice)
 embedHyp name h = do
   r <- freshFromR name
   (h'id,h') <- resolveDestr name h
-  return (r,h' . Constr r (Hyp h'id))
+  return (r,h' . Constr (Conc r) (Hyp h'id))
 
 
 resolveTag (A.T (A.Var (_,x))) = x

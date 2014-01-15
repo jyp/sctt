@@ -29,7 +29,7 @@ addAlias' src trg h@Heap{..} = h{heapAlias = f <$> M.insert src trg heapAlias }
 addAliases' :: Ord r => [(r,r)] -> Heap n r -> Heap n r
 addAliases' = foldr (.) id . map (uncurry addAlias')
 
-addConstr' :: Ord n => n -> Constr n r -> Heap n r -> Heap n r
+addConstr' :: Ord n => Conc n -> Constr n r -> Heap n r -> Heap n r
 addConstr' src trg h@Heap{..} = h{heapConstr = M.insert src trg heapConstr }
 
 addDestr' :: Ord r => Destr r -> n -> Heap n r -> Heap n r

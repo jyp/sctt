@@ -83,7 +83,7 @@ addTag x t k = do
     if t == t' then k else return mempty  -- conflicting tags, abort.
  where addTag' :: Monoid a => TC a
        addTag' = do
-         tName <- liftTC $ freshFrom t
+         tName <- Conc <$> do liftTC $ freshFrom t
          addConstr tName (Tag t) $  -- todo: don't instroduce a name for an existing tag.
            local (addCut' x $ Right tName) k
 

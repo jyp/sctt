@@ -10,9 +10,17 @@ import Data.Generics.Genifunctors
 import Display
 import Data.Monoid
 
-type Hyp a = a
-type Conc a = a
 type Tag = String
+
+-- | Hypotheses variables.
+type Hyp a = a
+
+-- | Conclusion variables.
+newtype Conc a = Conc { conc :: a }
+  deriving (Functor, Eq, Ord)
+
+instance Show a => Show (Conc a) where
+  show (Conc x) = "_" ++ show x
 
 data Proj = First | Second
      deriving (Eq, Ord, Show)
@@ -52,6 +60,9 @@ data Constr n r where
   Fin :: [Tag] -> Constr n r
   Universe :: Int -> Constr n r
     deriving (Show, Functor)
+
+instance (Pretty r) => Pretty (Conc r) where
+  pretty (Conc x) = text "_" <> pretty x
 
 instance (Pretty r, Pretty n) => Pretty (Term n r) where
   pretty (Destr x v t) = pretty x <+> "=" $$+ pretty v <+> ";" $$ pretty t
