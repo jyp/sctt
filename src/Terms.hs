@@ -79,17 +79,17 @@ instance Pretty r => Pretty (Destr r) where
   -- pretty (Tag' v) = "'" <> text v
   pretty (App f x) = pretty f <> " " <> pretty x
   pretty (Proj x p) = pretty x <> pretty p
-  pretty (Cut x t) = pretty x <> ":" <> pretty t
+  pretty (Cut x t) = pretty x <+> ":" <+> pretty t
 
 instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Hyp h) = pretty h
   pretty (Rec x b) = ("rec " <> pretty x <> " ->") $$+ (pretty b)
   pretty (Lam x b) = ("\\" <> pretty x <> " ->") $$+ (pretty b)
   pretty (Pi x t b) =
-      (parens (pretty x <>":"<>pretty t) <> " ->")
+      (parens (pretty x <+>":"<+>pretty t) <> " ->")
       $$+ (pretty b)
   pretty (Sigma x t b) =
-      (parens (pretty x <>":"<>pretty t) <> " ×")
+      (parens (pretty x <+>":"<+>pretty t) <> " ×")
       $$+ (pretty b)
   pretty (Pair a b) = parens $ pretty a <> "," <> pretty b
   pretty (Tag t) = "'" <> text t
