@@ -20,7 +20,8 @@ enter :: TC a -> TC a
 enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1})
 
 addCut :: (Id~n,Id~r,Ord n) => n -> DeCo r -> TC a -> TC a
-addCut src trg k =
+addCut src trg k = do
+  report $ "adding cut: " <> pretty src <> " => " <> pretty trg
   case trg of
     Right c -> do c' <- lookHeapC c
                   case c' of
@@ -82,14 +83,14 @@ lookHeapC x = do
 
 
 addDestr :: Hyp Id -> Destr Id -> TC a -> TC a
-addDestr x (Cut c _ct) k = local (addCut' x $ Right c) k
+addDestr x (Cut c _ct) k = addCut x (Right c) k
 addDestr x d k = do
   h <- ask
   let d' = getAlias (heapAlias h) <$> d
   report ("Adding destr."
         $$+ pretty x <+> "="
         $$+ pretty d  <+> "; aliased to" <+> pretty d')
-  local (addCut' x $ Left d') $ case M.lookup d' (heapDestr h) of
+  addCut x (Left d') $ case M.lookup d' (heapDestr h) of
      Just y -> addAlias y x k
      Nothing -> local (addDestr' d' x) k
 
