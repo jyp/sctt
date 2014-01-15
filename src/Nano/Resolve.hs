@@ -33,11 +33,11 @@ insert l (A.Var (_,x)) k = do
 
 
 resolve :: A.Module -> Either String (Term',Term')
-resolve t = Right $ runFreshM $ runReaderT (fromR $ resolveModule t) emptyEnv 
+resolve t = Right $ runFreshM $ runReaderT (fromR $ resolveModule t) emptyEnv
 
 resolveModule :: A.Module -> R (Term',Term')
 resolveModule (A.Module t1 t2) = (,) <$> resolveTerm t1 <*> resolveTerm t2
- 
+
 resolveTerm :: A.Term -> R (Term Id Id)
 resolveTerm (A.Constr x c t) = do
   c' <- resolveConstr c
@@ -46,7 +46,7 @@ resolveTerm (A.Destr x d t) = do
   d' <- resolveDestr d
   insert hyp x $ \x' -> Destr x' d' <$> resolveTerm t
 resolveTerm (A.Case x bs) = Case <$> resolveVar hyp x <*> (forM bs $ \(A.Br tag t) -> Br <$> resolveTag tag <*> resolveTerm t)
-resolveTerm (A.Concl x) = Conc <$> resolveVar con x
+resolveTerm (A.Concl x) = Concl <$> resolveVar con x
 
 resolveDestr :: A.Destr -> R (Destr Id)
 resolveDestr (A.Appl f x) = App <$> resolveVar hyp f <*> resolveVar con x

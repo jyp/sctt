@@ -75,7 +75,7 @@ inferHyp' h = do
 
 -- maintains the invariant that every hyp. has an entry in the context.
 checkBindings :: (n~Id,r~Id) => Term n r -> (Conc r -> TC ()) -> TC ()
-checkBindings (Conc c) k = k c
+checkBindings (Concl c) k = k c
 checkBindings (Constr x c t1) k = do
   -- report $ "constructing" <> pretty x
   addConstr x c $ do
@@ -107,7 +107,7 @@ checkConcl v t = do
 
 checkConstrAgainstConcl :: (n~Id,r~Id) => Constr n r -> Conc r -> TC ()
 checkConstrAgainstConcl (Hyp h) u = checkHyp h u
-checkConstrAgainstConcl (Rec n b) t = addCtx n t $ checkTermAgainstTerm b (Conc t)
+checkConstrAgainstConcl (Rec n b) t = addCtx n t $ checkTermAgainstTerm b (Concl t)
 checkConstrAgainstConcl val typ = do
   report $ "checking construction"
         $$+ (sep ["val" <+> pretty val, "typ" <+> pretty typ])

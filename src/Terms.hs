@@ -32,7 +32,7 @@ data Term n r where
   Destr  :: Hyp n  -> Destr r -> Term n r -> Term n r
   Case   :: Hyp r  -> [Branch n r] -> Term n r
   Constr :: Conc n -> Constr n r -> Term n r -> Term n r
-  Conc   :: Conc r -> Term n r  -- ^ Conclude
+  Concl  :: Conc r -> Term n r  -- ^ Conclude
     deriving (Show, Functor)
 
 data Destr r where
@@ -59,7 +59,7 @@ instance (Pretty r, Pretty n) => Pretty (Term n r) where
   pretty (Case x bs) =
       "case " <> pretty x <> " of" $$+
         (braces $ sep $ punctuate "." $ map pretty bs)
-  pretty (Conc x) = pretty x
+  pretty (Concl x) = pretty x
 
 instance (Pretty r, Pretty n) => Pretty (Branch n r) where
   pretty (Br tag t) = "'" <> text tag <> "->" $$+ pretty t

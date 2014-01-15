@@ -60,7 +60,7 @@ resolveTerm' name (A.Destr x c t) = do
   insert' hyp x c'id $ c' <$> resolveTerm' name t
 resolveTerm' name (A.Concl c) = do
   (c'id,c') <- resolveConstr name c
-  return $ c' $ Conc c'id
+  return $ c' $ Concl c'id
 resolveTerm' name (A.Constr x c t) = do
   (c'id,c') <- resolveConstr (nameVar x) c
   insert' con x c'id $ c' <$> resolveTerm' name t

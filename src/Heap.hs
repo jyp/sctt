@@ -115,7 +115,7 @@ pHyp x = do
     Just (Left d) -> prettier d
 
 instance Prettier Term' where
-  prettier (Conc c) = pConc c
+  prettier (Concl c) = pConc c
   prettier (Destr h d t) = addDestr h d $ prettier t
   prettier (Constr x c t) = addConstr x c $ prettier t
   prettier (Case x bs) = do

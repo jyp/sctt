@@ -48,7 +48,7 @@ hnfHyp shouldUnfoldRec x notFound k = enter $ do
       report $ "Evaluating destr: " <> pretty d
       hnfDestr d notFound $ \c -> local (addCut' x $ Right c) (locHnf c k)
  where locHnf = if shouldUnfoldRec then hnfUnfoldRec else hnf
-                  
+
 hnfDestr :: (Monoid a,r~Id,n~Id) => Destr r -> TC a -> (Conc r -> TC a) -> TC a
 hnfDestr d notFound k = case d of
    (Proj p f) -> do
@@ -69,7 +69,7 @@ normalizeAndAddDestr :: Hyp Id -> Destr Id -> TC a -> TC a
 normalizeAndAddDestr = addDestr
 
 onConcl :: Monoid a => Term' -> (Conc Id -> TC a) -> TC a
-onConcl (Conc c)        k = k c
+onConcl (Concl c)       k = k c
 onConcl (Destr x d t1)  k = normalizeAndAddDestr x d (onConcl t1 k)
 onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)
 onConcl (Case x bs)     k = mconcat <$> do
