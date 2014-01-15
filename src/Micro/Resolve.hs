@@ -86,19 +86,11 @@ resolveDestr name (A.Appl f x) = do
   (f'id,f') <- resolveDestr (name ++ "ᶠ") f
   (x'id,x') <- resolveConstr (name ++ "ᵃ") x
   r <- freshFromR name
-<<<<<<< HEAD
   return (r,f' . x' . Destr r (App f'id (Conc x'id)))
-resolveDestr name (A.Proj p f) = do
-  (p'id,p') <- resolveDestr (name ++ "ᵖ") p
-  r <- freshFromR name
-  return (r,p'.Destr r (Proj p'id $ resolveProj f))
-=======
-  return (r,f' . x' . Destr r (App f'id x'id))
 -- resolveDestr name (A.Proj p f) = do
 --   (p'id,p') <- resolveDestr (name ++ "ᵖ") p
 --   r <- freshFromR name
 --   return (r,p'.Destr r (Proj p'id $ resolveProj f))
->>>>>>> split
 resolveDestr name (A.Cut x t) = do
   (x'id,x') <- resolveConstr (nameLeft name) x
   (t'id,t') <- resolveConstr (nameRight name) t
