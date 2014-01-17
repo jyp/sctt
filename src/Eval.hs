@@ -31,10 +31,8 @@ lookHeapUF unfold c k = do
     _ -> k c'
 
 hnf' :: (Monoid a,r~Id,n~Id) => Bool -> Conc n -> (Constr n r -> TC a) -> TC a
-hnf' unfold c k = do
-  c' <- lookHeapC c
-  case c' of
-    Hyp x -> hnfHyp False x k
+hnf' unfold c k = lookHeapUF unfold c $ \c' -> case c' of
+    Hyp x -> hnfHyp unfold x k
     _ -> k c'
 
 
@@ -49,7 +47,7 @@ hnfHyp unfold x k = do
     Nothing -> k (Hyp x)
     Just (Right c) -> do
       report $ "Is evaluated to concl: " <> pretty c
-      k =<< lookHeapC c
+      lookHeapUF unfold c k
     Just (Left d) -> do
       report $ "Evaluating destr: " <> pretty d
       enter $ hnfDestr unfold x d $ \c -> addDef x c (k c)
@@ -65,7 +63,7 @@ hnfDestr unfold h d k = case d of
               hnf' unfold c1 k
        Hyp f' -> do
          h' <- liftTC $ refreshId h
-         addDestr h' (App f' a_) $ k (Hyp h)
+         addDestr h' (App f' a_) $ k (Hyp h')
        _ -> error $ "type-error in app-evaluation"
    _ -> error $ "cannot be found as target in cut maps: " ++ show d
 
