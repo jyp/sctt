@@ -6,7 +6,7 @@ nat = (rec n -> (t : Tag) * (case t of {'zer -> Top. 'suc -> n}))
 zero = ('zer, 'nil) : nat;
 succ = (\n -> ('suc, n)) : nat -> nat;
 natElim = (rec el -> \P -> \z -> \s -> \m ->
-                     split (m1,m2) = m;
+                     (m1,m2) = split m;
             case m1 of
              {'zer -> case m2 of {'nil -> z.}.
               'suc -> s m2 (el P z s m2).})
