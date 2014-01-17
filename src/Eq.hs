@@ -29,7 +29,9 @@ dbgTest msg x y k = do
 testConstr' c1 c2 = dbgTest "Construction " c1 c2 $ do
   testConstr c1 c2
 
-x <&&> y = (&&) <$> x <*> y
+x <&&> y = do
+  rx <- x
+  if rx then y else return False
 
 testConstr :: (r~Id,n~Id) => Constr n r -> Constr n r -> TC Bool
 testConstr (Hyp a1) (Hyp a2) = testHyp a1 a2
@@ -61,5 +63,5 @@ lookDestr x = do
   hC <- heapCuts <$> ask
   return $ M.lookup x hC
 
-testDestr (App f1 a1) (App f2 a2) = (&&) <$> testHyp f1 f2 <*> testConc a1 a2
+testDestr (App f1 a1) (App f2 a2) = testHyp f1 f2 <&&> testConc a1 a2
 testDestr _ _ = return False
