@@ -18,7 +18,7 @@ testTerm t1 t2 = onConcl t1 $ \c1 -> onConcl t2 $ \c2 -> testConc c1 c2
 testConc :: (r~Id,n~Id) => Conc r -> Conc r -> TC Bool
 testConc x_1 x_2
   | x_1 == x_2 = return True -- optimisation, so equal structures are not deeply traversed.
-  | otherwise = hnf x_1 $ \c1 -> hnf x_2 $ \c2 -> testConstr' c1 c2
+  | otherwise = dbgTest "Conc" x_1 x_2 $ hnf x_1 $ \c1 -> hnf x_2 $ \c2 -> testConstr' c1 c2
 
 dbgTest msg x y k = do
   report $ "Testing " <> msg <> ": " <> pretty x <> " <= " <> pretty y
@@ -53,7 +53,7 @@ testHyp a1 a2 = dbgTest "Hyp " a1 a2 $ do
   md2 <- lookDestr h2
   if h1 == h2 then return True
               else case (md1,md2) of
-     (Just (Left d1), Just (Left d2)) -> testDestr d1 d2
+     (Just (Left d1), Just (Left d2)) -> dbgTest "App" d1 d2 $ testDestr d1 d2
        -- we don't have to care about the 'right' case here: if the
        -- hyp were evaluated, then the hnf reduction would have taken
        -- care of further evaluation before reaching this point.

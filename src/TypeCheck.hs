@@ -72,8 +72,8 @@ checkBindings (Split x y z t1) k = inferHyp z $ \zt -> case zt of
       u' <- substTC xx x u
       addCtx x t_ $ onConcl u' $ \u'' -> addCtx y u'' $ addSplit x y z $ checkBindings t1 k
     _ -> do
-      doc_z <- pHyp z
-      terr $ (pretty z <+> "has not a pair type.") $$+ (pretty z <+> "=" $$+ doc_z)
+      doc_z <- pHyp z -- fixme: print the type
+      terr $ (pretty z <+> "has not a pair type.") $$+ (pretty zt <+> "=" $$+ doc_z)
 checkBindings (Case x bs) k =
   inferHyp x $ \xt ->
   case xt of

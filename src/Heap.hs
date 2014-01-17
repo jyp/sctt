@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances, RecordWildCards  #-}
 
-module Heap (emptyHeap, addDef,addCut,lookHeapC,getAlias,addConstr,enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
+module Heap (emptyHeap, addDef,addCut,addElimDef,lookHeapC,getAlias,addConstr,enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
 
 import Control.Monad.RWS
 import Control.Applicative
@@ -24,7 +24,12 @@ addDef :: (Monoid a,Id~n,Id~r,Ord n) => Hyp n -> Constr n r -> TC a -> TC a
 addDef h c k = do
   c' <- Conc <$> liftTC (refreshId h)
   addConstr c' c $ addCut h (Right c') k
-  
+
+addElimDef :: (Monoid a,Id~n,Id~r,Ord n) => Hyp n -> Destr n -> TC a -> TC a
+addElimDef h d = local (addCut' h $ Left d)
+
+-- TODO: aliasHypConc 
+
 addCut :: (Id~n,Id~r,Ord n) => Hyp n -> DeCo r -> TC a -> TC a
 addCut src trg k = do
   report $ "adding cut: " <> pretty src <> " => " <> pretty trg
