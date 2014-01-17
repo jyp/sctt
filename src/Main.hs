@@ -1,13 +1,13 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE OverloadedStrings, ExistentialQuantification, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings, ExistentialQuantification, RecordWildCards, TupleSections #-}
 module Main where
 
 import Data.Either
+{-# LANGUAGE TupleSections #-}
 import Options
-
-import Micro.Frontend
 import TypeCheck
 import Control.Monad.Error
+import Control.Applicative
 import Display
 import TCM
 import FeInterface
@@ -36,7 +36,7 @@ runFile f = do
 type Checker a = ErrorT Doc IO a
 
 run :: FrontEnd -> String -> FilePath -> Checker ()
-run fe@FE{..} s fname = let ts = myLLexer s in case pModule ts of
+run FE{..} s fname = let ts = myLLexer s in case pModule ts of
    Left err -> do
      putStrV 1 $ "Tokens:" <+> pretty ts
      throwError $ text $ fname ++ ": parse failed: " ++ err
@@ -52,7 +52,9 @@ run fe@FE{..} s fname = let ts = myLLexer s in case pModule ts of
 
 main :: IO ()
 main = do
-  results <- forM (files options) $ \f -> runErrorT $ runFile f
-  let (errs,oks) = partitionEithers results
-  mapM_ (putStrLn . render) errs
+  results <- forM (files options) $ \f -> (f,) <$> (runErrorT $ runFile f)
+  let oks = [f | (f, Right ()) <- results]
+      errs = [(f,e) | (f, Left e) <- results]
+  mapM_ (putStrLn . render . snd) errs
   putStrLn $ show (length oks) ++ "/" ++ show (length results) ++ " files typecheck."
+  putStrLn $ "failing: " ++ show (map fst errs)
