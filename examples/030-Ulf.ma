@@ -11,9 +11,10 @@ TERM
                 'true  -> f.
                 'false -> g.})
                : (b : Bool) -> BlaFun;
-             y = f x;
+             x0 := x;
+             y = f x0;
              case y of {
-               'true  -> z = (refl Bool y) : Eq Bool (h y x) y;
+               'true  -> z = (refl Bool y) : Eq Bool (h y x0) y;
                          'true.
                'false -> 'false.}
            ))

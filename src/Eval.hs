@@ -57,13 +57,19 @@ hnfDestr unfold h d k = case d of
    (App f a_) -> hnfHyp True f $ \c -> case c of
        (Lam xx bb) -> do
             bb' <- substByDestr xx (Cut a_ (error "body of lambda should not be checked again.")) bb
-            report $ "Application " <> pretty f <> " " <> pretty a_
             onConcl bb' $ \c1 -> do
-              report $ "Reduces to " <> pretty c1
+              report $ "Application " <> pretty f <> " " <> pretty a_ <> " reduces to " <> pretty c1
               hnf' unfold c1 k
        Hyp f' -> do
-         h' <- liftTC $ refreshId h
-         addDestr h' (App f' a_) $ k (Hyp h')
+         heap <- ask
+         let lk = M.lookup (App f' a_) . heapDestr $ heap
+         case lk of
+              Just h' | getAlias (heapAlias heap) h' /= h -> do -- the condition avoids looping
+                report $ "Application " <> pretty f' <> " " <> pretty a_ <> " reduces to hyp " <> pretty h'
+                hnfHyp unfold h' k
+              _ -> do
+                report $ "Application " <> pretty f' <> " " <> pretty a_ <> " does not reduce"
+                k (Hyp h)
        _ -> error $ "type-error in app-evaluation"
    _ -> error $ "cannot be found as target in cut maps: " ++ show d
 
