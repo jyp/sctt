@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances, RecordWildCards  #-}
 
-module Heap (emptyHeap, addCut,lookHeapC,getAlias,addConstr,enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
+module Heap (emptyHeap, addDef,addCut,lookHeapC,getAlias,addConstr,enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
 
 import Control.Monad.RWS
 import Control.Applicative
@@ -12,6 +12,7 @@ import Terms
 import Ident
 import Display
 import TCM
+import Fresh
 
 emptyHeap :: Heap n r
 emptyHeap = Heap 0 M.empty M.empty M.empty M.empty M.empty
@@ -19,7 +20,12 @@ emptyHeap = Heap 0 M.empty M.empty M.empty M.empty M.empty
 enter :: TC a -> TC a
 enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1})
 
-addCut :: (Id~n,Id~r,Ord n) => n -> DeCo r -> TC a -> TC a
+addDef :: (Monoid a,Id~n,Id~r,Ord n) => Hyp n -> Constr n r -> TC a -> TC a
+addDef h c k = do
+  c' <- Conc <$> liftTC (refreshId h)
+  addConstr c' c $ addCut h (Right c') k
+  
+addCut :: (Id~n,Id~r,Ord n) => Hyp n -> DeCo r -> TC a -> TC a
 addCut src trg k = do
   report $ "adding cut: " <> pretty src <> " => " <> pretty trg
   case trg of
