@@ -5,16 +5,16 @@
   x     Hypothesis variable
   _x    Conclusion variable
 
-  't    Tag
+  'l    Label
 
   p     Projection
     ::= 1 | 2
 
   br     Branch
-    ::= 't → n
+    ::= 'l → n
 
   n     Normal form
-    ::= 
+    ::=
       | _x                | conclude      |
       | let x = d in n    | destruction   |
       | case x of b*      | case analysis |
@@ -26,11 +26,11 @@
      | _x : _y | cut (not in normal forms!) |
 
   c     Constructions
-    ::= 
+    ::=
       | x        |               | use of hyp. |
       | λ x. n   | Π (x : _y). n | functions   |
       | (_x, _y) | Σ (x : _y). n | pairs       |
-      | 't       | {'ts}         | tags        |
+      | 'l       | {'ls}         | labels        |
       | ★        |               | universe    |
 
 * Environments
@@ -56,9 +56,9 @@
    γ + (_x = c) = γ, _x = _y  if _y = c ∈ γ  (modulo equality of variables)
                   γ, _x = c   otherwise
 
-   γ + ('t = x) = γ           if 't = x ∈ γ  (modulo equality of variables)
+   γ + ('l = x) = γ           if 'l = x ∈ γ  (modulo equality of variables)
                 = ⊥           if 'u = x ∈ γ for t ≠ u               ( -"- )
-                = γ, 't = x   otherwise
+                = γ, 'l = x   otherwise
 
 
    For the eager evaluation of cuts one can proceed as follows:
@@ -80,8 +80,8 @@
    γ ⊢ let b in n = n'           -->  γ + b ⊢ n = n'
    γ ⊢ n = let b in n'           -->  γ + b ⊢ n = n'
 
-   γ ⊢ case x of {'ti → ni} = n  --> ∀i. γ + ti = x ⊢ ni = n
-   γ ⊢ n = case x of {'ti → ni}  --> ∀i. γ + ti = x ⊢ n = ni
+   γ ⊢ case x of {'li → ni} = n  --> ∀i. γ + ti = x ⊢ ni = n
+   γ ⊢ n = case x of {'li → ni}  --> ∀i. γ + ti = x ⊢ n = ni
 
    γ ⊢ _x = _y                   --> check equality of variables
 
@@ -89,7 +89,7 @@
    γ ⊢ c = _y                    --> γ ⊢ c = γ(_y)
 
    γ ⊢ x = y                     --> check equality of variables
-                                     (may include eq. via tag)
+                                     (may include eq. via label)
 
    γ ⊢ λ x. n = λ x'. n'         --> γ, x, x'=x ⊢  n = n'
    γ ⊢ λ x. n = y                --> γ, x, _x = x, z = y _x ⊢ n = z
@@ -97,7 +97,7 @@
    γ ⊢ (_x1, _x2) = (_y1, _y2)   --> γ ⊢ _x1 = _y1 && γ ⊢ _x2 = _y2
    γ ⊢ (_x1, _x2) = y            --> γ + z=y.1 ⊢ _x1 = z && γ + z=y.2 ⊢ _x2 = z
 
-   γ ⊢ 't = 't                   --> true
+   γ ⊢ 'l = 'l                   --> true
 
 
 
