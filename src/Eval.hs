@@ -60,16 +60,14 @@ hnfDestr unfold h d k = case d of
             onConcl bb' $ \c1 -> do
               report $ "Application " <> pretty f <> " " <> pretty a_ <> " reduces to " <> pretty c1
               hnf' unfold c1 k
-       Hyp f' -> do
-         heap <- ask
-         let lk = M.lookup (App f' a_) . heapDestr $ heap
-         case lk of
-              Just h' | getAlias (heapAlias heap) h' /= h -> do -- the condition avoids looping
-                report $ "Application " <> pretty f' <> " " <> pretty a_ <> " reduces to hyp " <> pretty h'
-                hnfHyp unfold h' k
-              _ -> do
-                report $ "Application " <> pretty f' <> " " <> pretty a_ <> " does not reduce"
-                k (Hyp h)
+       Hyp _ -> do
+         -- This is necessary because after evaluation of 'f', the
+         -- hyp. may have been aliased to another hyp which now has a
+         -- definition.
+         h' <- aliasOf h
+         if h' /= h -- condition to avoid looping
+            then hnfHyp unfold h' k
+            else k (Hyp h)
        _ -> error $ "type-error in app-evaluation"
    _ -> error $ "cannot be found as target in cut maps: " ++ show d
 
