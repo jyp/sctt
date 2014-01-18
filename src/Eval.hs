@@ -95,8 +95,8 @@ addTag x t k = do
 addSplit :: (Monoid a,r~Id,n~Id) => Hyp r -> Hyp r -> Hyp n -> TC a -> TC a
 addSplit x y z k = do
   hnfHyp True z $ \c -> case c of
-    Pair x' y' -> addCut x (Right x') $
-                   addCut y (Right y') $
+    Pair x' y' -> addCut x x' $
+                   addCut y y' $
                     k
     Hyp z' -> do
           xName <- Conc <$> liftTC (refreshId x)
@@ -105,6 +105,6 @@ addSplit x y z k = do
           addConstr xName (Hyp x) $
              addConstr yName (Hyp y) $
              addConstr zName (Pair xName yName) $
-               addCut z' (Right zName) k
+               addCut z' zName k
 
 

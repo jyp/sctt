@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances, RecordWildCards  #-}
 
-module Heap (emptyHeap, addDef,addCut,addElimDef,lookHeapC,getAlias,addConstr,enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
+module Heap (emptyHeap, addDef,addCut,lookHeapC,getAlias,addConstr,enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
 
 import Control.Monad.RWS
 import Control.Applicative
@@ -31,18 +31,13 @@ addDef h c k = do
 addElimDef :: (Monoid a,Id~n,Id~r,Ord n) => Hyp n -> Destr n -> TC a -> TC a
 addElimDef h d = local (addCut' h $ Left d)
 
--- TODO: aliasHypConc 
-
-addCut :: (Id~n,Id~r,Ord n) => Hyp n -> DeCo r -> TC a -> TC a
-addCut src trg k = do
-  report $ "adding cut: " <> pretty src <> " => " <> pretty trg
-  case trg of
-    Right c -> do c' <- lookHeapC c
-                  case c' of
-                    Hyp trg' -> addAlias src trg' k
-                    _ -> def
-    _ -> def
-  where def = local (addCut' src trg) k
+addCut :: (Id~n,Id~r,Ord n) => Hyp n -> Conc r -> TC a -> TC a
+addCut src c k = do
+  report $ "adding cut: " <> pretty src <> " => " <> pretty c
+  c' <- lookHeapC c
+  case c' of
+    Hyp h' -> addAlias src h' k
+    _ -> local (addCut' src $ Right c) k
 
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
 addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
@@ -97,14 +92,14 @@ lookHeapC x = do
 
 
 addDestr :: Hyp Id -> Destr Id -> TC a -> TC a
-addDestr x (Cut c _ct) k = addCut x (Right c) k
+addDestr x (Cut c _ct) k = addCut x c k
 addDestr x d k = do
   h <- ask
   let d' = getAlias (heapAlias h) <$> d
   report ("Adding destr."
         $$+ pretty x <+> "="
         $$+ pretty d  <+> "; aliased to" <+> pretty d')
-  addCut x (Left d') $ case M.lookup d' (heapDestr h) of
+  local (addCut' x (Left d')) $ case M.lookup d' (heapDestr h) of
      Just y -> addAlias y x k
      Nothing -> local (addDestr' d' x) k
 
