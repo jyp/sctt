@@ -22,8 +22,11 @@ enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1})
 
 addDef :: (Monoid a,Id~n,Id~r,Ord n) => Hyp n -> Constr n r -> TC a -> TC a
 addDef h c k = do
-  c' <- Conc <$> liftTC (refreshId h)
-  addConstr c' c $ addCut h (Right c') k
+  case c of
+    Hyp h' -> addAlias h h' k
+    _ -> do
+      c' <- Conc <$> liftTC (refreshId h)
+      addConstr c' c $ local (addCut' h (Right c')) k
 
 addElimDef :: (Monoid a,Id~n,Id~r,Ord n) => Hyp n -> Destr n -> TC a -> TC a
 addElimDef h d = local (addCut' h $ Left d)

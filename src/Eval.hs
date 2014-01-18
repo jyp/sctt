@@ -90,10 +90,7 @@ addTag x t k = do
   report $ "Adding tag " <> pretty x <> " = '" <> text t
   hnfHyp True x $ \c -> case c of
     (Tag t') -> if t == t' then k else return mempty  -- conflicting tags, abort.
-    (Hyp x') -> do
-         tName <- Conc <$> do liftTC $ freshFrom t
-         addConstr tName (Tag t) $  -- todo: don't instroduce a name for an existing tag.
-           addCut x' (Right tName) k
+    (Hyp x') -> addDef x' (Tag t) k
 
 addSplit :: (Monoid a,r~Id,n~Id) => Hyp r -> Hyp r -> Hyp n -> TC a -> TC a
 addSplit x y z k = do
