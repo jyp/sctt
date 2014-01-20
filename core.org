@@ -30,7 +30,7 @@
       | x        |               | use of hyp. |
       | λ x. n   | Π (x : _y). n | functions   |
       | (_x, _y) | Σ (x : _y). n | pairs       |
-      | 'l       | {'ls}         | labels        |
+      | 'l       | {'ls}         | labels      |
       | ★        |               | universe    |
 
 * Environments
