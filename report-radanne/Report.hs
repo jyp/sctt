@@ -1,14 +1,18 @@
-{-# OPTIONS_GHC -XTypeSynonymInstances -XOverloadedStrings -XRecursiveDo -pgmF marxup3 -F #-}
+{-# OPTIONS_GHC -i../src/ -XTypeSynonymInstances -XOverloadedStrings -XRecursiveDo -pgmF marxup3 -F #-}
 
 import MarXup
 import MarXup.Latex
 import MarXup.Latex.Math
 import MarXup.Tex
-import MarXup.DerivationTrees
+
+import qualified Terms as T
+import qualified TexnAgda as TA
+import qualified Ident
+
 import Control.Monad
 import Control.Applicative
 import Data.Monoid
-import Data.List (sort)
+import Data.List (sort,intersperse)
 
 classUsed ::  ClassFile
 classUsed = LNCS
@@ -37,6 +41,9 @@ authors = [AuthorInfo "Gabriel Radanne" "gabriel.radanne@zoho.com" "Under the su
 
 todo s = emph $ color "red" $ "TODO : " <> s
 
+texttt = text . (cmd "texttt")
+
+na = «nano-Agda»
 
 -- Math commands :
 γ = Con $ cmd "Gamma" nil
@@ -45,6 +52,7 @@ todo s = emph $ color "red" $ "TODO : " <> s
 γd = Con $ cmd "Gamma_d" nil
 γd' = Con $ cmd "Gamma_d'" nil
 
+λ = Con $ cmd "lambda" nil
 
 (|->) = binop 1 (cmd0 "mapsto")
 concl = UnOp 1 (cmd "overline") 1
@@ -52,8 +60,21 @@ concl = UnOp 1 (cmd "overline") 1
 x,y,c,d :: Math
 x = text "x"
 y = text "y"
+b = text "b"
 c = text "c"
 d = text "d"
+
+l = text "'l"
+t = text "t"
+
+star = cmd0 "star"
+
+llet x a t = «@texttt«let » @x = @a @texttt« in » @t»
+cpi x y t = «@(cmd "Pi" nil) ( @x : @y ) @t»
+csig x y t = «@(cmd "Sigma" nil) ( @x : @y ) @t»
+cfin l = «{ @l s }»
+
+(/::=) = binop 1 "::="
 
 abstract = env "abstract" « »
 
@@ -126,7 +147,34 @@ This means that we can only produce constructions of destructions, hence there i
 
  Obviously we don't want to write programs already in normal form, so we need a way to construct hypothesis from conclusion. That is what the cut construction in for. The cut construction is quite simple, it allows to declare a new hypothesis, given a conclusion and its type. The type is needed for type checking purposes.
 
-@todo«Add the grammar»
+@figure«Grammar for @na»«
+@align(
+  (\(x:xs) -> [ «@t ::=@space», x ] : map (\y -> [ « |@space»  , y ]) xs)
+  [ «@(concl x)»,
+    «@(llet x d t)» ,
+    «@texttt«case » @x @texttt« of » @b @text«*»» ,
+    «@(llet (concl x) c t)»
+  ]
+  ++ [ «» ] :
+  (\(x:xs) -> [ «@d ::=@space», x ] : map (\y -> [ « |@space»  , y ]) xs)
+  [ «@x @space @(concl y)» ,
+    «@x @texttt«.1» @space | @space @x @texttt«.2»» ,
+    «@(color "red" «@(concl x) : @(concl y)»)»
+  ]
+)
+@todo«make it two columns»
+@align(
+  (\(x:xs) -> [ «@d ::=@space», x ] : map (\y -> [ «|@space»  , y ]) xs) $
+  map (mconcat . intersperse «@space|@space»)
+  [ [ «@x» ],
+    [ «@λ @x . @t»,             «@(cpi x (concl y) t)» ],
+    [ «(@(concl x),@(concl y))»,«@(csig x (concl y) t)» ],
+    [ «@l»,                     «@(cfin l)» ],
+    [ «@star» ]
+  ]
+)
+»
+
 
 @section«The Heap»
 

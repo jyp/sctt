@@ -11,7 +11,7 @@ mainTest: Report.pdf
 	pdflatex $<
 
 %.mp %.tex: %.hs
-	ghc --make $<
+	ghc -i../src/ --make $<
 	./$*
 
 %.hspp: %.hs
