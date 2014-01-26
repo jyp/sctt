@@ -57,7 +57,7 @@
                   γ, _x = c   otherwise
 
    γ + ('l = x) = γ           if 'l = x ∈ γ  (modulo equality of variables)
-                = ⊥           if 'u = x ∈ γ for t ≠ u               ( -"- )
+                = ⊥           if 'u = x ∈ γ for l ≠ u               ( -"- )
                 = γ, 'l = x   otherwise
 
 
@@ -177,12 +177,12 @@ for each i:   Γ; h + ti = x ⊢ ai ⇇ C
 
 h(z) = x   Γ;h ⊢ x ⇉ A    Γ;h ⊢ A ⇇ C
 -------------------------------------------
-Γ;h ⊢ z ⇇ c
+Γ;h ⊢ z ⇇ C
 
 
 h(z) = c   Γ;h ⊢ c ⇉ C
 -------------------------
-Γ;h ⊢ z ⇇ c
+Γ;h ⊢ z ⇇ C
 
 *** Γ;h ⊢ c ⇇ C
 
