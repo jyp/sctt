@@ -1,9 +1,14 @@
 .cake
-.cake.log
 Nano/
 Micro/
 *_flymake.hs
 *~
 dist/
-/core.pdf
-/core.tex
+*.o
+*.hi
+*.tex
+*.mp
+*.mpx
+*.pdf
+*.aux
+*.log

@@ -66,6 +66,8 @@ mbracket = outop "{" "}"
 
 (\=) = binop 1 "="
 (</>) = binop 1 space
+(<->) = binop 1 nil
+(<.>) = binop 1 "."
 (≠) = binop 1 (cmd0 "neq")
 a \== b = mparen $ a \= b
 (∈) = binop 1 (cmd0 "in")
@@ -93,6 +95,7 @@ z = text "z"
 b = text "b"
 c = text "c"
 d = text "d"
+ci = text "Ci"
 
 i = text "i"
 
@@ -104,6 +107,8 @@ ti = Con $ «@t @(i)»
 
 star = cmd0 "star"
 
+pair_ x y = mparen $ binop 1 "," x y
+lambda_ x t = λ <-> x <.> t
 let_ x a t = texttt«let» </> x \= a </> texttt«in» </> t
 case_ x l =
     let l' = text $ mconcat $ intersperse ", " l in
@@ -279,6 +284,7 @@ During a case, we keep track of constraints on the variable decomposed by the ca
 
 @typerule<-subsection«Typing rules»
 
+@(γ ⊢ d) : check a destruction.
 @mathpar[[
   «@(rule «» [
       «@(γ ⊢ y @> (pi_ z (text«A») (text«B»)))»,
@@ -297,10 +303,11 @@ During a case, we keep track of constraints on the variable decomposed by the ca
       «@(γ ⊢ concl x <@ concl (text«A»))»
      ]
      «@(γ ⊢ x \= concl x \: concl (text«A»))») »,
-  «@(rule «» [ « » ]
+  «@(rule «@todo«Why is this in destruction category ?»» [ « » ]
      «@(γ ⊢ concl x \= c)») »
 ]]
 
+@(γ ⊢ x @> text«A») : infer the type of an hypothesis
 @mathpar[[
   «@(rule «» [
       «@γty (@x) = A»
@@ -327,6 +334,7 @@ During a case, we keep track of constraints on the variable decomposed by the ca
      «@(γ ⊢ x @> concl (text«A»))») »
 ]]
 
+@(γ ⊢ t <@ text«C») : check a term or a normal form.
 @mathpar[[
   «@(rule «@todo«How do I do indices ?»» [
       «@(fa </> i) @(cmd0 "quad") @(γ + (li \== x) ⊢ ti <@ text«C»)»,
@@ -351,6 +359,34 @@ During a case, we keep track of constraints on the variable decomposed by the ca
      «@(γ ⊢ x <@ (text«C»))») »
 ]]
 @todo«Isn't the (trivial) rule to verify stuff in the form "let x = c in t" missing here ?»
+
+@(γ ⊢ c <@ text«C») : check a construction
+@mathpar[[
+  «@(rule «» [
+      «@(γ + (x \== d) ⊢ c <@ (text«C») )»
+     ]
+     «@(γ ⊢ c <@ (let_ x d (text«C»)) )») »,
+  «@(rule «@todo«How do I do indices ?»» [
+      «@(fa </> i) @(cmd0 "quad") @(γ + (li \== x) ⊢ c <@ ci)»,
+      «@γty (x) = @(fin_ li)»
+     ]
+     «@(γ ⊢ c <@ case_ x [«@(li |-> ci)»] )») »,
+  «@(rule «» [
+      «@γc (@x) = @(text«C»)»,
+      «@(γ ⊢ c <@ (text«C»))»
+     ]
+     «@(γ ⊢ c <@ concl x)») »,
+  «@(rule «» [
+      «@(γ ⊢ concl y <@ concl (text«A»))»,
+      «@(γ +  x \== (concl y \: concl (text«A»)) ⊢ concl z <@ (text«B»))»
+     ]
+     «@(γ ⊢ pair_ (concl y) (concl z) <@ sigma_ x (concl (text«A»)) (text«B»))») »,
+  «@(rule «@todo«Isn't that suposed not to work ?»» [
+      «@(γ + mparen (x \: concl (text«A»)) ⊢ t <@ let_ x y (text«B»))»
+     ]
+     «@(γ ⊢ (lambda_ y t) <@ pi_ x (concl (text«A»)) (text«B»))») »
+]]
+
 
 @sec_typecheck<-section«Typechecking and evaluation strategy»
 
