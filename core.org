@@ -180,9 +180,9 @@ h(z) = x   Γ;h ⊢ x ⇉ A    Γ;h ⊢ A ⇇ C
 Γ;h ⊢ z ⇇ C
 
 
-h(z) = c   Γ;h ⊢ c ⇉ C
+h(_z) = c   Γ;h ⊢ c ⇉ C
 -------------------------
-Γ;h ⊢ z ⇇ C
+Γ;h ⊢ _z ⇇ C
 
 *** Γ;h ⊢ c ⇇ C
 
@@ -206,9 +206,9 @@ for each i:  Γ;h + ti = x ⊢  c ⇇ Ci
 Γ;h ⊢ (_a,_b) ⇇ (x:_A) × B
 
 
-Γ,x:_A;h ⊢ _z ⇇ let x = w in B
+Γ,w:_A;h ⊢ t ⇇ let x = w in B
 ------------------------------------
-Γ;h ⊢ λw. _z ⇇ (x:_A) -> B
+Γ;h ⊢ λw. t ⇇ (x:_A) -> B
 
 
 For the lazy evaluation of cuts, one adds the following rules:
