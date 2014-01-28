@@ -26,6 +26,7 @@ preamble inMetaPost = do
       else documentClass (classFile classUsed) [] -- ["authoryear","preprint"]
   stdPreamble
   mathpreamble classUsed
+  -- cmd "input" (tex "../PaperTools/latex/unicodedefs")
   unless inMetaPost $ do
     usepackage "natbib" ["sectionbib"]
     usepackage "tikz" []
@@ -33,9 +34,13 @@ preamble inMetaPost = do
     cmd "usetikzlibrary" $ tex "shapes,arrows"
     usepackage "tabularx" []
 
-    -- title "Explaining Classical Linear Logic's Concurrency by Going to Continuations and Coming Back"
     title "A sequent-calculus presentation of type-theory"
     authorinfo classUsed authors
+
+bibliographyAll :: TeX
+bibliographyAll = do
+  cmd "bibliographystyle" $ textual "abbrvnat"
+  cmd "bibliography" $ textual "../PaperTools/bibtex/jp"
 
 authors ::  [AuthorInfo]
 authors = [AuthorInfo "Gabriel Radanne" "gabriel.radanne@zoho.com" "Under the supervision of Jean-Philippe Bernardy"]
@@ -80,6 +85,8 @@ proj p = UnOp 1 (\s -> s <> mathsf ("." <> p) ) 1
 proj1 = proj "1"
 proj2 = proj "2"
 
+indice = UnOp 1 (\ x -> tex "_" <> braces x) 1
+
 (⊢) = binop 1 (cmd0 "vdash")
 (\:) = binop 1 ":"
 (\::=) = binop 1 "::="
@@ -95,17 +102,17 @@ z = text "z"
 b = text "b"
 c = text "c"
 d = text "d"
-ci = text "Ci"
+ci = Con $ «C @(indice i)»
 
 i = text "i"
 
 l = text "`l"
 l2 = text "`m"
-li = Con $ «@l @(i)»
+li = Con $ «@l @(indice i)»
 t = text "t"
-ti = Con $ «@t @(i)»
+ti = Con $ «@t @(indice i)»
 
-star = cmd0 "star"
+star = Con $ cmd0 "star"
 
 pair_ x y = mparen $ binop 1 "," x y
 lambda_ x t = λ <-> x <.> t
@@ -116,6 +123,10 @@ case_ x l =
 pi_ x y t = mparen ( x \: y ) → t
 sigma_ x y t = mparen ( x \: y ) × t
 fin_ l = mbracket l
+
+minipage :: String -> TeX -> Tex a -> Tex a
+minipage align length =
+    env'' "minipage" [align] [«@length @(cmd0 "linewidth") »]
 
 -- | Mathpartir
 
@@ -187,16 +198,26 @@ We aim to construct a type-theory which can be used as a backend for dependently
 
 @sec_lang<-section«Description of the language»
 
-The language contains three constructions : functions, pairs and finite enumeration. Each of those have constructors, destructors and types.
-Variables are separated in two categories : conclusion and hypothesis.
-Hypothesis are what is available in the beginning of the program or the result of an abstraction. It's not possible to construct an hypothesis.
-A conclusion is either an hypothesis or the result of a construction of conclusions. We mark conclusions by a bar on the top, like @(concl x).
-This means that we can only produce constructions of destructions, hence there is no reduction possible and the program is in normal form.
+As explained @intro, every variable is binded. We can separate element of the langages, presentend figure @grammar_na, into various categories :
 
- Obviously we don't want to write programs already in normal form, so we need a way to construct hypothesis from conclusion. That is what the cut construction, in red in @grammar_na, in for. The cut construction is quite simple, it allows to declare a new hypothesis, given a conclusion and its type. The type is needed for type checking purposes.
+@paragraph«Variables» are separated in two categories : conclusion and hypothesis.
+
+@paragraph«Hypothesis» are what is available in the beginning of the program or the result of an abstraction. It's not possible to construct an hypothesis.
+
+@paragraph«Conclusions» are either an hypothesis or the result of a construction of conclusions. We mark conclusions by a bar on the top, like @(concl x) .
+
+@paragraph«Destructions», marked by the letter @d, can be either a @texttt«case» or of the form @d, an application, a projection or a cut. We don't need to bind the results of a @texttt«case», as opposed to other destructions.
+
+@paragraph«Dependant functions and products» are both of the same form : @(pi_ x (concl y) t) and @(sigma_ x (concl y) t) . The type on the left hand side can be a conclusion, since it doesn't depend on the type witness @x (@todo«right term ?»), hence it's possible to bind it before. On the other hand, the right hand side must be a term, since it will depend on @x .
+
+@paragraph«Enumerations» are a set of scopeless and non-unique labels. Labels are plain strings starting with a `. We will note them @l, @l2.
+
+@paragraph«Universes» are arangered in a tower of universes, starting at 0. We will use the usual notation @star = @star @indice(0) .
+
+@paragraph«Constructions», marked by the letter @c, are either a conclusion, a universe, a type or a construction of pair, enum or function. As with destruction, the result must be bound to a conclusion.
 
 @grammar_na<-figure«Grammar for @na»«
-@align(
+@minipage"t"«0.4»«@align(
   (\(x:xs) -> [ «@t ::=@space», x ] : map (\y -> [ « |@space»  , y ]) xs)
   [ «@(concl x)»,
     «@(let_ x d t)» ,
@@ -209,19 +230,22 @@ This means that we can only produce constructions of destructions, hence there i
     «@(proj1 x) @space | @space @(proj2 x) » ,
     «@(color "red" «@(concl x \: concl y)»)»
   ]
-)
-@todo«make it two columns»
-@align(
-  (\(x:xs) -> [ «@d ::=@space», x ] : map (\y -> [ «|@space»  , y ]) xs) $
+)»
+@minipage"t"«0.4»«@align(
+  (\(x:xs) -> [ «@c ::=@space», x ] : map (\y -> [ «|@space»  , y ]) xs) $
   map (mconcat . intersperse «@space|@space»)
   [ [ «@x» ],
     [ «@λ @x . @t»,             «@(pi_ x (concl y) t)» ],
     [ «(@(concl x),@(concl y))»,«@(sigma_ x (concl y) t)» ],
     [ «@l»,                     «@(fin_ l)» ],
-    [ «@star» ]
+    [ «@star @(indice i)» ]
   ]
-)
+)»
 »
+
+Conclusions are the result of constructions of conclusion or an hypothesis. An hypothesis is the result of a destruction of hypothesis or an abstraction. This means that we can only produce constructions of destructions, hence there is no reduction possible and the program is in normal form.
+
+ Obviously we don't want to write programs already in normal form, so we need a way to construct hypotheses from conclusions. That is what the cut construction, in red in @grammar_na, is for. It allows to declare a new hypothesis, given a conclusion and its type. The type is needed for type checking purposes.
 
 
 @sec_heap<-section«The Heap»
@@ -236,7 +260,7 @@ Since the language is based on variables and bindings, we need a notion of envir
   @item @γd' @(d |-> x) : The reverse map from destruction to hypotheses.
 »
 
-We have @γ = (@γty , @γc , @γa, @γd, @γd').
+We have @γ = (@γty, @γc, @γa, @γd, @γd').
 
 The details of how to update the heap will be explained @sec_typecheck.
 
@@ -258,7 +282,7 @@ The type rules for @na are quite usual, most of the cleverness is contained in t
 
 @subsection«Environment extensions»
 
-We will use the same kind of notation as in @sec_heap : @x for hypotheses, @(concl x) for conclusions, @c for constructions and @d for destructions.
+We will use the same notation as in @sec_heap : @x for hypotheses, @(concl x) for conclusions, @c for constructions and @d for destructions.
 @align[
   [ «@(γ + x)», «= @γ, @x», «@text«new hypothesis»» ]
 ]
@@ -290,19 +314,19 @@ During a case, we keep track of constraints on the variable decomposed by the ca
       «@(γ ⊢ y @> (pi_ z (text«A») (text«B»)))»,
       «@(γ ⊢ concl z <@ text«A»)»
      ]
-     «@(γ ⊢ x \= y </> concl z)») »,
+     «@(γ ⊢ y </> concl z)») »,
   «@(rule «» [
       «@(γ ⊢ y @> (sigma_ z (text«A») (text«B»)))»
      ]
-    «@(γ ⊢ x \= proj1 y)») »,
+    «@(γ ⊢ proj1 y)») »,
   «@(rule «» [
       «@(γ ⊢ y @> (sigma_ z (text«A») (text«B»)))»
      ]
-    «@(γ ⊢ x \= proj2 y)») »,
+    «@(γ ⊢ proj2 y)») »,
   «@(rule «» [
       «@(γ ⊢ concl x <@ concl (text«A»))»
      ]
-     «@(γ ⊢ x \= concl x \: concl (text«A»))») »,
+     «@(γ ⊢ concl x \: concl (text«A»))») »,
   «@(rule «@todo«Why is this in destruction category ?»» [ « » ]
      «@(γ ⊢ concl x \= c)») »
 ]]
@@ -310,7 +334,7 @@ During a case, we keep track of constraints on the variable decomposed by the ca
 @(γ ⊢ x @> text«A») : infer the type of an hypothesis
 @mathpar[[
   «@(rule «» [
-      «@γty (@x) = A»
+      «@γty (@x) = @text«A»»
      ]
      «@(γ ⊢ x @> (text«A»))») »,
   «@(rule «» [
@@ -329,9 +353,9 @@ During a case, we keep track of constraints on the variable decomposed by the ca
      ]
      «@(γ ⊢ x @> let_ z (proj1 y) (text«B»))») »,
   «@(rule «» [
-      «@γd (@x) = @(mparen (concl x \: concl (text«A»)))»
+      «@γd (@(concl x)) = @(mparen (concl x \: concl (text«A»)))»
      ]
-     «@(γ ⊢ x @> concl (text«A»))») »
+     «@(γ ⊢ concl x @> concl (text«A»))») »
 ]]
 
 @(γ ⊢ t <@ text«C») : check a term or a normal form.
@@ -382,7 +406,7 @@ During a case, we keep track of constraints on the variable decomposed by the ca
      ]
      «@(γ ⊢ pair_ (concl y) (concl z) <@ sigma_ x (concl (text«A»)) (text«B»))») »,
   «@(rule «@todo«Isn't that suposed not to work ?»» [
-      «@(γ + mparen (x \: concl (text«A»)) ⊢ t <@ let_ x y (text«B»))»
+      «@(γ + mparen (y \: concl (text«A»)) ⊢ t <@ let_ x y (text«B»))»
      ]
      «@(γ ⊢ (lambda_ y t) <@ pi_ x (concl (text«A»)) (text«B»))») »
 ]]
@@ -399,5 +423,6 @@ During a case, we keep track of constraints on the variable decomposed by the ca
 
 
 @section«Results»
+
 
 »
