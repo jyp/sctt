@@ -26,7 +26,7 @@ preamble inMetaPost = do
       else documentClass (classFile classUsed) [] -- ["authoryear","preprint"]
   stdPreamble
   mathpreamble classUsed
-  -- cmd "input" (tex "../PaperTools/latex/unicodedefs")
+  cmd "input" (tex "../PaperTools/latex/unicodedefs")
   unless inMetaPost $ do
     usepackage "natbib" ["sectionbib"]
     usepackage "tikz" []
@@ -87,6 +87,8 @@ proj2 = proj "2"
 
 indice = UnOp 1 (\ x -> tex "_" <> braces x) 1
 
+(@-) = BinOp 1 (\ x y -> x <> tex "_" <> braces y) 1 1
+
 (⊢) = binop 1 (cmd0 "vdash")
 (\:) = binop 1 ":"
 (\::=) = binop 1 "::="
@@ -99,18 +101,20 @@ x,y,z,c,d,l,l2,t :: Math
 x = text "x"
 y = text "y"
 z = text "z"
-b = text "b"
+
 c = text "c"
 d = text "d"
-ci = Con $ «C @(indice i)»
+
+xty = text "X"
+yty = text "Y"
+zty = text "Z"
 
 i = text "i"
 
 l = text "`l"
 l2 = text "`m"
-li = Con $ «@l @(indice i)»
 t = text "t"
-ti = Con $ «@t @(indice i)»
+tty = text "T"
 
 star = Con $ cmd0 "star"
 
@@ -132,6 +136,8 @@ minipage align length =
 
 rule name pre conc =
     cmdm "inferrule" [name] [mkrows pre, conc]
+
+ruleref = cmd "textsc"
 
 -- | Document
 
@@ -214,7 +220,7 @@ As explained @intro, every variable is binded. We can separate element of the la
 
 @paragraph«Universes» are arangered in a tower of universes, starting at 0. We will use the usual notation @star = @star @indice(0) .
 
-@paragraph«Constructions», marked by the letter @c, are either a conclusion, a universe, a type or a construction of pair, enum or function. As with destruction, the result must be bound to a conclusion.
+@paragraph«Constructions», marked by the letter @c, are either a conclusion, a universe, a type or a construction of pair, enum or function. The result must be bound to a conclusion.
 
 @grammar_na<-figure«Grammar for @na»«
 @minipage"t"«0.4»«@align(
@@ -280,9 +286,9 @@ Of course, it's impossible to write reasonable programs with this syntax, it's f
 
 The type rules for @na are quite usual, most of the cleverness is contained in the way the heap is updated. Hence we will start by presenting environment extensions.
 
-@subsection«Environment extensions»
+We will use the same notation as in @sec_heap : @x for hypotheses, @(concl x) for conclusions, @c for constructions and @d for destructions. For clarity, Elements used as types will be capitalized.
 
-We will use the same notation as in @sec_heap : @x for hypotheses, @(concl x) for conclusions, @c for constructions and @d for destructions.
+@subsection«Environment extensions»
 @align[
   [ «@(γ + x)», «= @γ, @x», «@text«new hypothesis»» ]
 ]
@@ -306,111 +312,120 @@ During a case, we keep track of constraints on the variable decomposed by the ca
   [ «»               , «= @γ, @(l \== x)», «@text«otherwise»»                             ]
 ]
 
+@eqrule<-subsection«Equality rules»
+
 @typerule<-subsection«Typing rules»
 
-@(γ ⊢ d) : check a destruction.
+The typing rules can be divided in for relations. The first two relations are typechecking relations for respectively terms and constructions. The second one is just a checking relation for destruction. The last relation is the inference for hypotheses.
+
+We will note typechecking for terms and normal forms as @(γ ⊢ t <@ tty) . The type here is always a complete term. The type must have been checked before hand, obviously.
+
+The @ruleref«Constr» rules might seems surprising but any construction added this way will be typechecked in the end using either the @ruleref«Concl» rule or the @ruleref«Cut» rule.
 @mathpar[[
-  «@(rule «» [
-      «@(γ ⊢ y @> (pi_ z (text«A») (text«B»)))»,
-      «@(γ ⊢ concl z <@ text«A»)»
+  «@(rule «Case» [
+      «@(fa </> i) @(cmd0 "quad") @(γ + ((l @- i) \== x) ⊢ (t @- i) <@ tty)»,
+      «@γty (x) = @(fin_ $ (l @- i))»
+     ]
+     «@(γ ⊢ case_ x [«@((l @- i) |-> (t @- i))»] <@ tty)») »,
+  «@(rule «Destr» [
+      «@(γ + (x \== d) ⊢ t <@ tty)»,
+      «@(γ ⊢ d)»
+     ]
+     «@(γ ⊢ let_ x d t <@ tty)») »,
+  «@(rule «Constr» [
+      «@(γ + (x \== c) ⊢ t <@ tty)»
+     ]
+     «@(γ ⊢ let_ x c t <@ tty)») »,
+  «@(rule «@(todo«seems fishy»)» [
+      «@γa (@z) = @x»,
+      «@(γ ⊢ x @> xty)»,
+      «@(γ ⊢ xty <@ tty)»
+     ]
+     «@(γ ⊢ z <@ tty)») »,
+  «@(rule «Concl» [
+      «@γc (@concl(x)) = @c»,
+      «@(γ ⊢ c <@ tty)»
+     ]
+     «@(γ ⊢ concl x <@ tty)») »
+]]
+
+For destructions, only the fact that it is well formed need to be checked, hence we don't need a type parameter. The rules are quite straitforward. This typing relation is noted @(γ ⊢ d) .
+@mathpar[[
+  «@(rule «App» [
+      «@(γ ⊢ y @> (pi_ z xty tty))»,
+      «@(γ ⊢ concl z <@ xty)»
      ]
      «@(γ ⊢ y </> concl z)») »,
-  «@(rule «» [
-      «@(γ ⊢ y @> (sigma_ z (text«A») (text«B»)))»
+  «@(rule «Proj@(indice 1)» [
+      «@(γ ⊢ y @> (sigma_ z xty tty))»
      ]
     «@(γ ⊢ proj1 y)») »,
-  «@(rule «» [
-      «@(γ ⊢ y @> (sigma_ z (text«A») (text«B»)))»
+  «@(rule «Proj@(indice 2)» [
+      «@(γ ⊢ y @> (sigma_ z xty tty))»
      ]
     «@(γ ⊢ proj2 y)») »,
-  «@(rule «» [
-      «@(γ ⊢ concl x <@ concl (text«A»))»
+  «@(rule «Cut» [
+      «@(γ ⊢ concl x <@ concl xty)»
      ]
-     «@(γ ⊢ concl x \: concl (text«A»))») »,
+     «@(γ ⊢ concl x \: concl xty)») »,
   «@(rule «@todo«Why is this in destruction category ?»» [ « » ]
      «@(γ ⊢ concl x \= c)») »
 ]]
 
-@(γ ⊢ x @> text«A») : infer the type of an hypothesis
+A construction is checked again a term, it's noted @(γ ⊢ c <@ tty) .
 @mathpar[[
   «@(rule «» [
-      «@γty (@x) = @text«A»»
+      «@(γ + (x \== d) ⊢ c <@ tty )»
      ]
-     «@(γ ⊢ x @> (text«A»))») »,
-  «@(rule «» [
-      «@γd (@x) = @(y </> concl z)»,
-      «@(γ ⊢ y @> (pi_ z (text«A») (text«B»)))»
-     ]
-     «@(γ ⊢ x @> let_ z (concl z) (text«B»))») »,
-  «@(rule «» [
-      «@γd (@x) = @(proj1 y)»,
-      «@(γ ⊢ y @> (sigma_ z (text«A») (text«B»)))»
-     ]
-     «@(γ ⊢ x @> concl (text«A»))») »,
-  «@(rule «» [
-      «@γd (@x) = @(proj2 y)»,
-      «@(γ ⊢ y @> (pi_ z (text«A») (text«B»)))»
-     ]
-     «@(γ ⊢ x @> let_ z (proj1 y) (text«B»))») »,
-  «@(rule «» [
-      «@γd (@(concl x)) = @(mparen (concl x \: concl (text«A»)))»
-     ]
-     «@(γ ⊢ concl x @> concl (text«A»))») »
-]]
-
-@(γ ⊢ t <@ text«C») : check a term or a normal form.
-@mathpar[[
+     «@(γ ⊢ c <@ (let_ x d tty) )») »,
   «@(rule «@todo«How do I do indices ?»» [
-      «@(fa </> i) @(cmd0 "quad") @(γ + (li \== x) ⊢ ti <@ text«C»)»,
-      «@γty (x) = @(fin_ li)»
+      «@(fa </> i) @(cmd0 "quad") @(γ + ((l @- i) \== x) ⊢ c <@ (tty @- i))»,
+      «@γty (x) = @(fin_ $ (l @- i))»
      ]
-     «@(γ ⊢ case_ x [«@(li |-> ti)»] <@ (text«C»))») »,
+     «@(γ ⊢ c <@ case_ x [«@((l @- i) |-> (tty @- i))»] )») »,
   «@(rule «» [
-      «@(γ + (x \== d) ⊢ t <@ (text«C»))»,
-      «@(γ ⊢ d)»
-     ]
-     «@(γ ⊢ let_ x d t <@ (text«C»))») »,
-  «@(rule «@(todo«seems fishy»)» [
-      «@γa (@z) = @x»,
-      «@(γ ⊢ x @> (text«A»))»,
-      «@(γ ⊢ (text«A») <@ (text«C»))»
-     ]
-     «@(γ ⊢ z <@ (text«C»))») »,
-  «@(rule «» [
-      «@γc (@x) = @c»,
-      «@(γ ⊢ c @> (text«C»))»
-     ]
-     «@(γ ⊢ x <@ (text«C»))») »
-]]
-@todo«Isn't the (trivial) rule to verify stuff in the form "let x = c in t" missing here ?»
-
-@(γ ⊢ c <@ text«C») : check a construction
-@mathpar[[
-  «@(rule «» [
-      «@(γ + (x \== d) ⊢ c <@ (text«C») )»
-     ]
-     «@(γ ⊢ c <@ (let_ x d (text«C»)) )») »,
-  «@(rule «@todo«How do I do indices ?»» [
-      «@(fa </> i) @(cmd0 "quad") @(γ + (li \== x) ⊢ c <@ ci)»,
-      «@γty (x) = @(fin_ li)»
-     ]
-     «@(γ ⊢ c <@ case_ x [«@(li |-> ci)»] )») »,
-  «@(rule «» [
-      «@γc (@x) = @(text«C»)»,
-      «@(γ ⊢ c <@ (text«C»))»
+      «@γc (@x) = @tty»,
+      «@(γ ⊢ c <@ tty)»
      ]
      «@(γ ⊢ c <@ concl x)») »,
   «@(rule «» [
-      «@(γ ⊢ concl y <@ concl (text«A»))»,
-      «@(γ +  x \== (concl y \: concl (text«A»)) ⊢ concl z <@ (text«B»))»
+      «@(γ ⊢ concl y <@ concl xty)»,
+      «@(γ +  x \== (concl y \: concl xty) ⊢ concl z <@ tty)»
      ]
-     «@(γ ⊢ pair_ (concl y) (concl z) <@ sigma_ x (concl (text«A»)) (text«B»))») »,
+     «@(γ ⊢ pair_ (concl y) (concl z) <@ sigma_ x (concl xty) tty)») »,
   «@(rule «@todo«Isn't that suposed not to work ?»» [
-      «@(γ + mparen (y \: concl (text«A»)) ⊢ t <@ let_ x y (text«B»))»
+      «@(γ + mparen (y \: concl xty) ⊢ t <@ let_ x y tty)»
      ]
-     «@(γ ⊢ (lambda_ y t) <@ pi_ x (concl (text«A»)) (text«B»))») »
+     «@(γ ⊢ (lambda_ y t) <@ pi_ x (concl xty) tty)») »
 ]]
 
+
+@(γ ⊢ x @> xty) : infer the type of an hypothesis
+@mathpar[[
+  «@(rule «» [
+      «@γty (@x) = @xty»
+     ]
+     «@(γ ⊢ x @> xty)») »,
+  «@(rule «» [
+      «@γd (@x) = @(y </> concl z)»,
+      «@(γ ⊢ y @> (pi_ z xty tty))»
+     ]
+     «@(γ ⊢ x @> let_ z (concl z) tty)») »,
+  «@(rule «» [
+      «@γd (@x) = @(proj1 y)»,
+      «@(γ ⊢ y @> (sigma_ z xty tty))»
+     ]
+     «@(γ ⊢ x @> concl xty)») »,
+  «@(rule «» [
+      «@γd (@x) = @(proj2 y)»,
+      «@(γ ⊢ y @> (pi_ z xty tty))»
+     ]
+     «@(γ ⊢ x @> let_ z (proj1 y) tty)») »,
+  «@(rule «» [
+      «@γd (@(concl x)) = @(mparen (concl x \: concl xty))»
+     ]
+     «@(γ ⊢ concl x @> concl xty)») »
+]]
 
 @sec_typecheck<-section«Typechecking and evaluation strategy»
 
@@ -424,5 +439,6 @@ During a case, we keep track of constraints on the variable decomposed by the ca
 
 @section«Results»
 
+@bibliographyAll
 
 »
