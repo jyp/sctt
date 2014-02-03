@@ -3,6 +3,7 @@
 import MarXup
 import MarXup.Latex
 import MarXup.Latex.Math
+import MarXup.Latex.Bib
 import MarXup.Tex
 
 import qualified Terms as T
@@ -31,6 +32,9 @@ preamble inMetaPost = do
     usepackage "natbib" ["sectionbib"]
     usepackage "tikz" []
     usepackage "mathpartir" []
+    usepackage "listings" []
+    cmd "input" (tex "lst")
+    usepackage "hyperref" ["colorlinks","citecolor=blue"]
     cmd "usetikzlibrary" $ tex "shapes,arrows"
     usepackage "tabularx" []
 
@@ -39,8 +43,8 @@ preamble inMetaPost = do
 
 bibliographyAll :: TeX
 bibliographyAll = do
-  cmd "bibliographystyle" $ textual "abbrvnat"
-  cmd "bibliography" $ textual "../PaperTools/bibtex/jp"
+  bibliographystyle "abbrvnat"
+  bibliography "../PaperTools/bibtex/jp"
 
 authors ::  [AuthorInfo]
 authors = [AuthorInfo "Gabriel Radanne" "gabriel.radanne@zoho.com" "Under the supervision of Jean-Philippe Bernardy"]
@@ -69,10 +73,17 @@ fa = Con $ cmd "forall" nil
 mparen = outop "(" ")"
 mbracket = outop "{" "}"
 
+quad = cmd0 "quad"
+
+app f x = f <-> mparen x
 (\=) = binop 1 "="
+(≡) = binop 1 (cmd0 "equiv")
+(≅) = binop 1 (cmd0 "cong")
 (</>) = binop 1 space
 (<->) = binop 1 nil
 (<.>) = binop 1 "."
+(∨) = binop 1 (cmd0 "or")
+(∧) = binop 1 (cmd0 "and")
 (≠) = binop 1 (cmd0 "neq")
 a \== b = mparen $ a \= b
 (∈) = binop 1 (cmd0 "in")
@@ -100,6 +111,8 @@ indice = UnOp 1 (\ x -> tex "_" <> braces x) 1
 x,y,z,c,d,l,l2,t :: Math
 x = text "x"
 y = text "y"
+x' = text "x'"
+y' = text "y'"
 z = text "z"
 
 c = text "c"
@@ -114,8 +127,10 @@ i = text "i"
 l = text "`l"
 l2 = text "`m"
 t = text "t"
+t' = text "t'"
 tty = text "T"
 
+lra = cmd0 "longrightarrow"
 star = Con $ cmd0 "star"
 
 pair_ x y = mparen $ binop 1 "," x y
@@ -139,6 +154,10 @@ rule name pre conc =
 
 ruleref = cmd "textsc"
 
+-- | Lstlistings
+
+agda = env' "lstlisting" ["language=agda"]
+
 -- | Document
 
 abstract = env "abstract" « »
@@ -159,9 +178,38 @@ main = renderToDisk' SVG "Report" $ latexDocument preamble $ «
 
 In a regular programming language, terms and types live in two different worlds : you can't talk about terms in types and you can't manipulate type as you can manipulate terms. In a dependently typed programming language, types can depends on terms. This addition sounds quite small at first, but it makes the language significantly more powerful ... and significantly harder to typecheck.
 
-Let's look at a simple example of dependent types using Agda. The syntax should be familiar enough if you know any typed functional language (like OCaml or Haskell).
+@subsection«An example in Agda»
 
-@todo«Add an example : dependently typed vectors ? a bit simple and well known»
+Numerous examples have been presented to motivate the use of dependent types in mainstream programming @citep"oury_power_2008". We will try here to give a short and simple example to outline the specifity of dependent type languages from the user point of view but also from the typechecking point of view.
+
+For this example, we will use Agda. The syntax should be familiar enough if you know any statically-typed functional language (like OCaml or Haskell).
+
+Let's first define the @agda«Nat» datatype. This definition is very simillar to a GADT one for Ocaml or Haskell. @agda«Set» show that
+
+@agda«
+data Nat : Set where
+  Zero : Nat
+  Succ : Nat -> Nat
+»
+
+Let's now move on to a more interesting datatype : vectors with fixed length.
+@agda«
+data Vec (A : Set) : Nat -> Set where
+  Nil : Vec A 0
+  Cons : {n : Nat} -> A -> Vec A n -> Vec A (Succ n)
+»
+You can see in the signature of the type that @agda«Vec» take a type @agda«A», type types of the elements, and a natural number. Dependent types allow us to encode the length of the vector in the type. The declaration of @agda«Cons» exhibit a very usefull feature of Agda : the argument @agda«{n : Nat}» is implicit : the compiler will try to infer this argument whenever possible. In this case, We will not have to provide the length of the vector we are consing to.
+
+We can use those type information to implement a type-safe @agda«head» function :
+@agda«
+head : {A : Set} { n : Nat } -> Vec A (Succ n) -> A
+head (Cons x xs) = x
+»
+
+The compiler knows that the @agda«Nil» case can't happen since the length of the provided vector is at least one.
+
+
+
 
 A language like Agda can be seen as a concrete form of the curry-howard isomorphism : you express a property as a type and give a term that will prove this property. This discipline is a bit different than the one used in Coq where proofs and programs are clearly separated.
 @todo«A small example of proof, addition commutativity ?»
@@ -177,7 +225,7 @@ The Agda type checkers contains some well known issues that the dependent type t
 
 @todo«Some various attempts.»
 
-A particular language, PiSigma @todo«Ref» is especially interesting since it tackle those problems by putting some constructions of the language in sequent calculus style, as explained in the next section. Unfortunately, even if this solve some issues, it creates some new ones, in particular the lack of subject reduction. We believe that those issues are present because part of the language is still in natural deduction style.
+A particular language, PiSigma @citep"AltenkirchDLO10" is especially interesting since it tackle those problems by putting some constructions of the language in sequent calculus style, as explained in the next section. Unfortunately, even if this solve some issues, it creates some new ones, in particular the lack of subject reduction. We believe that those issues are present because part of the language is still in natural deduction style.
 
 
 @subsection«Sequent calculus Presentation»
@@ -312,18 +360,39 @@ During a case, we keep track of constraints on the variable decomposed by the ca
   [ «»               , «= @γ, @(l \== x)», «@text«otherwise»»                             ]
 ]
 
-@eqrule<-subsection«Equality rules»
+@eqrules<-subsection«Equality rules»
+
+Rules to test equality between two expressions are given @fig_eqrules.
+
+@fig_eqrules<-figure«Equality rules»«
+@align[
+  [ «@(bot ⊢ text "rhs")», «@lra true»],
+  [ «@(γ ⊢ let_ x d t \= t')», «@lra @(γ + x \== d ⊢ t \= t')»],
+  [ «@(γ ⊢ case_ x [«@((l @- i) |-> (t @- i))»] \= t)»,
+    «@lra @fa @i @quad @(γ + x \== (l @- i) ⊢ (t @- i) \= t)»],
+  [ «@(γ ⊢ concl x \= concl y)», «@lra @(x ≡ y)»],
+  [ «@(γ ⊢ concl x \= c)», «@lra @(γ ⊢ app γ (concl x) \= c)»],
+  [ «@(γ ⊢ x \= y)», «@lra @(x ≅ y)»],
+  [ «@(γ ⊢ lambda_ x t \= lambda_ y t')», «@lra @(γ + x + (x \== y) ⊢ t \= t')»],
+  [ «@(γ ⊢ lambda_ x t \= y)»,
+    «@lra @(γ + x + (concl x \== x) + (z \== (y </> concl x)) ⊢ t \= z)»],
+  [ «@(γ ⊢ pair_ (concl x) (concl x') \= pair_ (concl y) (concl y'))»,
+    «@lra @(γ ⊢ concl x \= concl y ∧ γ ⊢ concl x' \= concl y') »],
+  [ «@(γ ⊢ pair_ (concl x) (concl x') \= y)»,
+    «@lra @(γ + (z \== proj1 y) ⊢ concl x \= z ∧ γ + (z \== proj2 y) ⊢ concl x' \= z) »],
+  [ «@(γ ⊢ l \= l)», «@lra true»]
+]»
 
 @typerule<-subsection«Typing rules»
 
-The typing rules can be divided in for relations. The first two relations are typechecking relations for respectively terms and constructions. The second one is just a checking relation for destruction. The last relation is the inference for hypotheses.
+The typing rules can be divided in four relations. The first two relations are typechecking relations for respectively terms and constructions. The second one is just a checking relation for destruction. The last relation is the inference for hypotheses.
 
 We will note typechecking for terms and normal forms as @(γ ⊢ t <@ tty) . The type here is always a complete term. The type must have been checked before hand, obviously.
 
 The @ruleref«Constr» rules might seems surprising but any construction added this way will be typechecked in the end using either the @ruleref«Concl» rule or the @ruleref«Cut» rule.
 @mathpar[[
   «@(rule «Case» [
-      «@(fa </> i) @(cmd0 "quad") @(γ + ((l @- i) \== x) ⊢ (t @- i) <@ tty)»,
+      «@(fa </> i) @quad @(γ + ((l @- i) \== x) ⊢ (t @- i) <@ tty)»,
       «@γty (x) = @(fin_ $ (l @- i))»
      ]
      «@(γ ⊢ case_ x [«@((l @- i) |-> (t @- i))»] <@ tty)») »,
@@ -349,7 +418,7 @@ The @ruleref«Constr» rules might seems surprising but any construction added t
      «@(γ ⊢ concl x <@ tty)») »
 ]]
 
-For destructions, only the fact that it is well formed need to be checked, hence we don't need a type parameter. The rules are quite straitforward. This typing relation is noted @(γ ⊢ d) .
+For destructions, only the fact that it is well formed need to be checked, hence we don't need a type parameter. The rules are quite straitforward. This typing relation is noted @(γ ⊢ d).
 @mathpar[[
   «@(rule «App» [
       «@(γ ⊢ y @> (pi_ z xty tty))»,
@@ -372,14 +441,14 @@ For destructions, only the fact that it is well formed need to be checked, hence
      «@(γ ⊢ concl x \= c)») »
 ]]
 
-A construction is checked again a term, it's noted @(γ ⊢ c <@ tty) .
+A construction is checked again a term, it's noted @(γ ⊢ c <@ tty).
 @mathpar[[
   «@(rule «» [
       «@(γ + (x \== d) ⊢ c <@ tty )»
      ]
      «@(γ ⊢ c <@ (let_ x d tty) )») »,
-  «@(rule «@todo«How do I do indices ?»» [
-      «@(fa </> i) @(cmd0 "quad") @(γ + ((l @- i) \== x) ⊢ c <@ (tty @- i))»,
+  «@(rule «» [
+      «@(fa </> i) @quad @(γ + ((l @- i) \== x) ⊢ c <@ (tty @- i))»,
       «@γty (x) = @(fin_ $ (l @- i))»
      ]
      «@(γ ⊢ c <@ case_ x [«@((l @- i) |-> (tty @- i))»] )») »,
@@ -393,7 +462,7 @@ A construction is checked again a term, it's noted @(γ ⊢ c <@ tty) .
       «@(γ +  x \== (concl y \: concl xty) ⊢ concl z <@ tty)»
      ]
      «@(γ ⊢ pair_ (concl y) (concl z) <@ sigma_ x (concl xty) tty)») »,
-  «@(rule «@todo«Isn't that suposed not to work ?»» [
+  «@(rule «» [
       «@(γ + mparen (y \: concl xty) ⊢ t <@ let_ x y tty)»
      ]
      «@(γ ⊢ (lambda_ y t) <@ pi_ x (concl xty) tty)») »

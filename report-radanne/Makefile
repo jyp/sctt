@@ -8,6 +8,8 @@ mainTest: Report.pdf
 
 %.pdf: %.tex %-delayed.mp
 	pdflatex $<
+	bibtex $(basename $<).aux
+	pdflatex $<
 	pdflatex $<
 
 %.mp %.tex: %.hs
