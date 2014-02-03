@@ -80,8 +80,8 @@
    γ ⊢ let b in n = n'           -->  γ + b ⊢ n = n'
    γ ⊢ n = let b in n'           -->  γ + b ⊢ n = n'
 
-   γ ⊢ case x of {'li → ni} = n  --> ∀i. γ + ti = x ⊢ ni = n
-   γ ⊢ n = case x of {'li → ni}  --> ∀i. γ + ti = x ⊢ n = ni
+   γ ⊢ case x of {'li → ni} = n  --> ∀i. γ + 'li = x ⊢ ni = n
+   γ ⊢ n = case x of {'li → ni}  --> ∀i. γ + 'li = x ⊢ n = ni
 
    γ ⊢ _x = _y                   --> check equality of variables
 
