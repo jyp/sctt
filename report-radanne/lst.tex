@@ -9,13 +9,14 @@
   frame=none,
   xleftmargin=\parindent,
   basicstyle=\scriptsize\ttfamily,
-  keywordstyle=\bfseries\color{green!40!black},
+  keywordstyle=\bfseries\color{green!30!black},
   keywordstyle=[2]\bfseries\color{red!50!white},
   commentstyle=\itshape\color{purple!40!black},
-  identifierstyle=\color{blue!80!black},
+  identifierstyle=\color{blue!30!black},
   stringstyle=\color{orange},
 }
 
 \lstdefinelanguage{Agda}{
-  morekeywords={data,where}
+  morekeywords={data,where},
+  literate={->}{{$\to$}}1 {xx}{{$\times$}}1,
 }
