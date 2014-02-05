@@ -361,10 +361,10 @@ A particular language, PiSigma @citep"AltenkirchDLO10" is especially interesting
 
 There are various definitions of Sequent calculus. In this report, we mean that every intermediate results or sub-terms is bind to a variable.
 Sequent calculus is a well known presentation for classical logic but as not so far been evaluated as a presentation of a type theory.
-According to @todo«REF», the translation from natural deduction to sequent calculus is mechanical, but it does seems interesting to actually look at the result, since it present interesting properties:
+The translation from natural deduction to sequent calculus is mechanical @citep"Puech_proof-upside_2013" but it does seems interesting to actually look at the result, since it present interesting properties:
 @itemize«
   @item It's low-level, which makes it suitable as back-end for dependently-typed languages.
-  @item Sharing is expressible (J. Launchbury - A Natural Semantics for Lazy Evaluation) @todo«REF». This would help solve some efficiency issues encountered in Agda, for example.
+  @item Sharing is expressible @citep"Launchbury_sharing_1993". This would help solve some efficiency issues encountered in Agda, for example.
 »
 
 @todo«More details ?»
@@ -388,9 +388,9 @@ Before describing the language itself, we define some common notion in type theo
 A language is often separated into destructor (also called elimination) and constructors. For example in the lambda calculus, lambda expressions are constructors and applications are destructors. A destruction of construction can be reduced through β-reduction. In a more complicated language, like @na, we have pairs and projections. The projection of a pair can be similarly β-reduced.
 
 @paragraph«Universes@newline»
-In regular programming languages, you have types and the set of types. You can not manipulate this set itself but since you can not merge terms and types, this is not an issue. However, in a dependently typed programming language, terms and types live together, and you can theoretically manipulate the set of types. Is this set of types a type itself ? For technical reasons @todo«REF» and in order to preserve the consistency of the type system, the answer must be no.
+In regular programming languages, you have types and the set of types. You can not manipulate this set itself but since you can not merge terms and types, this is not an issue. However, in a dependently typed programming language, terms and types live together, and you can theoretically manipulate the set of types. Is this set of types a type itself ? For technical reasons @citep"benke_universes_2003" and in order to preserve the consistency of the type system, the answer must be no.
 
-We classify types in universes (also called ``sorts'' or ``kinds'') indexed by natural numbers.
+Types are classified in universes (also called ``sorts'' or ``kinds'') indexed by natural numbers.
 We note those univers @(star @- i) with @i ∈ @nat.
 Base types, like @agda«Int», are in @(star @- 0). @(star @- i) is in @(star @- (i + 1)).
 Types composed of other types live in the highest univers of their components. For example @agda«(Char, Int)» live in @(star @- 0) but @agda«(Int, @(star @- 0))» is in @(star @- 1).  Finally, for ease of manipulation, any element in @(star @- i) is in @(star @- j) when @i ≤ @j.
@@ -448,7 +448,7 @@ Conclusions are the result of constructions of conclusion or hypotheses. An hypo
 
 @subsection«A bit of sugar»
 
-Of course, it's impossible to write reasonable programs with this syntax, it's far too verbose and tedious for humans. We introduced another simpler syntax that you can see below. It's possible to translate this new syntax to the low-level one. The translation can be done even on type-incorrect terms and hence do not need preliminary typechecking. It's similar to CPS transformation in LISP. @todo«REF ?»
+Of course, it's impossible to write reasonable programs with this syntax, it's far too verbose and tedious for humans. We introduced another simpler syntax that you can see below. It's possible to translate this new syntax to the low-level one. The translation can be done even on type-incorrect terms and hence do not need preliminary typechecking. It's similar to CPS transformation in LISP @citep"plotkin_call-by-name_1975".
 
 @fig_syntaxes<-figure«Regular and low-level syntax.»«
   @todo«Two columns comparison of the two syntax.»
@@ -500,7 +500,7 @@ When checking or evaluating a case, we keep track of constraints on the variable
 @align[
   [ «@γ + @(l \== x)», «= @γ»            , «@(iff $ l \== x ∈ γc)»                         ],
   [ «»               , «= @bot»          , «@(iff $ l2 \== x ∈ γc) @text" for " @(l ≠ l2)» ],
-  [ «»               , «= @γ, @text« with » @(γc ← (l \== x))», «@text«otherwise»»                             ]
+  [ «»               , «= @γ @text« with » @(γc ← (l \== x))», «@text«otherwise»»                             ]
 ]
 @todo«not sure if it's @γc, it seems so in the code.»
 
