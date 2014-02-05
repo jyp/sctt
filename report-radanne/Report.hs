@@ -349,7 +349,7 @@ This make the typechecking more complicated and is the source of some limitation
 The Agda typechecker contains some well known issues that the dependent type theory community has been trying to solve :
 @itemize«
   @item The ``case decomposition'' issue @todo«Show the incriminated piece of code».
-  @item Since the Agda type checker is using a natural deduction style, the evaluation make terms grow in size very fast which implies important efficiency issues.
+  @item Since the Agda type checker is using a natural deduction style, The typechecker suffer efficiency isssues. The inference copies part of terms and those parts cannot be shared in the Agda core representation of terms. Since the terms are not shared anymore, the typechecking must be done multiple time, causing the efficiency issues.
 »
 
 @todo«Some various attempts.»
@@ -476,7 +476,7 @@ Since the language is based on variables and bindings, we need a notion of envir
 
 We have @γ = (@γty, @γc, @γa, @γd, @γd').
 
-@subsection«Environment extensions»
+@envext<-subsection«Environment extensions»
 
 Here are details of how to update the heap when registering new information. We use the @(math $ cmd0 "gets")operator to symbolize an update.
 
@@ -491,9 +491,9 @@ When adding a destruction definition, we check if a similar destruction definiti
   [ «»                , «= @γ @text« with » @(γd ← (x \== d))», «@text«otherwise»»       ]
 ]
 
-The rule for conclusions is straightforward, since we do not handle automatic sharing for conclusions as we do for destructions. @todo«Explain why»
+The rule for conclusions is straightforward, since we do not handle automatic sharing for conclusions as we do for destructions. Rediscovering sharing automatically for constructions is more costly than for destructions, since there is at most two components in a destruction where it can be far more in constructions. This additionnal cost should be evaluated but we choose not to do it here.
 @align[
-  [«@γ + @(concl x \== c)», «= @γ @text« with » @(γc ← (concl x \== c)) @todo«not sure if it's @γc, it seems so in the code.»»]
+  [«@γ + @(concl x \== c)», «= @γ @text« with » @(γc ← (concl x \== c))»]
 ]
 
 When checking or evaluating a case, we keep track of constraints on the variable decomposed by the case, Allowing us to know inside the body of a case which branch we took. Of course, if two incompatible branches are taken, we stop the typechecking immediately, since the context is inconsistent.
@@ -502,37 +502,47 @@ When checking or evaluating a case, we keep track of constraints on the variable
   [ «»               , «= @bot»          , «@(iff $ l2 \== x ∈ γc) @text" for " @(l ≠ l2)» ],
   [ «»               , «= @γ, @text« with » @(γc ← (l \== x))», «@text«otherwise»»                             ]
 ]
+@todo«not sure if it's @γc, it seems so in the code.»
 
 @eqrules<-subsection«Equality rules»
 
-Rules to test equality between two normal forms are given @fig_eqrules.
+Equality rules, presented in @fig_eqrules, can only be applied to normalized term. The equality relation, noted @(γ ⊢ t \= t') is commutative for @t and @t', hence the rules are given only in one way. We define two operators that are used in equality rules :
 
-@todo«stuff»
+@itemize«
+@item @(x ≡ y) is the physical equality between variables. It means @x and @y are the same symbol.
+@item @(x ≅ y) is the symbol equality with respect to aliases. It is defined as @(x ≡ y ∧ app γa x ≅ y ∧ x ≅ app γa y). Since the alias environment is only for hypotheses, this operator is not usable for conclusions.
+»
+Those two operators are used to test equality between conclusions and hypotheses respectively.
+
+The first rule, which can be sumarized as ``If the context is inconsistent, whatever you want to prove is true'', is necessary to handle uninteresting branches for @texttt«case». It fulfill the same purpose as the rule for environment extensions on labels presented @envext.
+
+The last two rules are interesting in that they are assymetric: a construction on the left and a variable on the right. To test the equality in this case, we need to introduce new variables and apply destructions on the left-hand side of the equality. This allows to have η-equality in the type theory, for example we can proove that @(lambda_ x (mparen (text«f» </> x)) .=. text«f»).
 
 @fig_eqrules<-figure«Equality rules»«
 @align[
   [ «@(bot ⊢ text "rhs")», «@lra true»],
+  [ «@(γ ⊢ (l \= l))», «@lra true»],
   [ «@(γ ⊢ let_ x d t \= t')», «@lra @(γ + x \== d ⊢ t \= t')»],
   [ «@(γ ⊢ case_ x [«@((l @- i) |-> (t @- i))»] \= t)»,
     «@lra @fa @i @quad @(γ + x \== (l @- i) ⊢ (t @- i) \= t)»],
-  [ «@(γ ⊢ concl x \= concl y)», «@lra @(x ≡ y)»],
+  [ «@(γ ⊢ concl x \= concl y)», «@lra @(concl x ≡ concl y)»],
   [ «@(γ ⊢ concl x \= c)», «@lra @(γ ⊢ app γc (concl x) \= c)»],
   [ «@(γ ⊢ x \= y)», «@lra @(x ≅ y)»],
   [ «@(γ ⊢ lambda_ x t \= lambda_ y t')», «@lra @(γ + (x \== y) ⊢ t \= t')»],
-  [ «@(γ ⊢ lambda_ x t \= y)»,
-    «@lra @(γ + (concl x \== x) + (z \== (y </> concl x)) ⊢ t \= z)»],
   [ «@(γ ⊢ pair_ (concl x) (concl x') \= pair_ (concl y) (concl y'))»,
     «@lra @(γ ⊢ concl x \= concl y ∧ γ ⊢ concl x' \= concl y') »],
+  [ «@(γ ⊢ lambda_ x t \= y)»,
+    «@lra @(γ + (concl x \== x) + (z \== (y </> concl x)) ⊢ t \= z)»],
   [ «@(γ ⊢ pair_ (concl x) (concl x') \= y)»,
-    «@lra @(γ + (z \== proj1 y) ⊢ concl x \= z ∧ γ + (z \== proj2 y) ⊢ concl x' \= z) »],
-  [ «@(γ ⊢ l \= l)», «@lra true»]
-]»
+    «@lra @(γ + (z \== proj1 y) ⊢ concl x \= z ∧ γ + (z \== proj2 y) ⊢ concl x' \= z) »]
+]
+@todo«not everything is in there, do I need to add what's missing or is it enough ?»»
 
 @typerule<-subsection«Typing rules»
 
 The typing rules can be divided in four relations. The first two relations are typechecking relations for respectively terms and constructions. The second one is just a checking relation for destruction. The last relation is the inference for hypotheses.
 
-We note typechecking for terms as @(γ ⊢ t <@ tty), the rules are presentend @tr_term. The type here is always a complete term. The type must have been checked before hand.
+We note typechecking for terms as @(γ ⊢ t <@ tty), the rules are presentend @tr_term. The type here is always a complete term. The type must have been checked beforehand.
 
 In the @ruleref«Constr» rules, we don't need to typecheck the construction in detail since any construction added this way is typechecked either by the @ruleref«Concl» rule or by the @ruleref«Cut» rule.
 
