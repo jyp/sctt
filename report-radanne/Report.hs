@@ -479,7 +479,7 @@ We have @γ = (@γty, @γc, @γa, @γd, @γd').
 
 @subsection«Environment extensions»
 
-Here are some details of how to update the heap when registering new information. We will use the @(math $ cmd0 "gets") operator to symbolize an update.
+Here are details of how to update the heap when registering new information. We will use the @(math $ cmd0 "gets")operator to symbolize an update.
 
 When typechecking abstractions, like lambda or dependent functions and products, we need to introduce new hypotheses in the context without any value.
 @align[
@@ -517,11 +517,11 @@ Rules to test equality between two expressions are given @fig_eqrules.
   [ «@(γ ⊢ case_ x [«@((l @- i) |-> (t @- i))»] \= t)»,
     «@lra @fa @i @quad @(γ + x \== (l @- i) ⊢ (t @- i) \= t)»],
   [ «@(γ ⊢ concl x \= concl y)», «@lra @(x ≡ y)»],
-  [ «@(γ ⊢ concl x \= c)», «@lra @(γ ⊢ app γ (concl x) \= c)»],
+  [ «@(γ ⊢ concl x \= c)», «@lra @(γ ⊢ app γc (concl x) \= c)»],
   [ «@(γ ⊢ x \= y)», «@lra @(x ≅ y)»],
-  [ «@(γ ⊢ lambda_ x t \= lambda_ y t')», «@lra @(γ + x + (x \== y) ⊢ t \= t')»],
+  [ «@(γ ⊢ lambda_ x t \= lambda_ y t')», «@lra @(γ + (x \== y) ⊢ t \= t')»],
   [ «@(γ ⊢ lambda_ x t \= y)»,
-    «@lra @(γ + x + (concl x \== x) + (z \== (y </> concl x)) ⊢ t \= z)»],
+    «@lra @(γ + (concl x \== x) + (z \== (y </> concl x)) ⊢ t \= z)»],
   [ «@(γ ⊢ pair_ (concl x) (concl x') \= pair_ (concl y) (concl y'))»,
     «@lra @(γ ⊢ concl x \= concl y ∧ γ ⊢ concl x' \= concl y') »],
   [ «@(γ ⊢ pair_ (concl x) (concl x') \= y)»,
@@ -599,7 +599,7 @@ A construction is checked again a term, it's noted @(γ ⊢ c <@ tty).
      ]
      «@(γ ⊢ c <@ case_ x [«@((l @- i) |-> (tty @- i))»] )») »,
   «@(rule «» [
-      «@γc (@x) = @tty»,
+      «@γc (@(concl x)) = @tty»,
       «@(γ ⊢ c <@ tty)»
      ]
      «@(γ ⊢ c <@ concl x)») »,
@@ -628,9 +628,9 @@ A construction is checked again a term, it's noted @(γ ⊢ c <@ tty).
 @tr_hyp<-figure«Inference for the type of an hypothesis : @(γ ⊢ x @> xty)»«
 @mathpar[[
   «@(rule «» [
-      «@γty (@x) = @xty»
+      «@γty (@x) = @(concl xty)»
      ]
-     «@(γ ⊢ x @> xty)») »,
+     «@(γ ⊢ x @> concl xty)») »,
   «@(rule «» [
       «@γd (@x) = @(y </> concl z)»,
       «@(γ ⊢ y @> (pi_ z xty tty))»
@@ -647,9 +647,9 @@ A construction is checked again a term, it's noted @(γ ⊢ c <@ tty).
      ]
      «@(γ ⊢ x @> let_ z (proj1 y) tty)») »,
   «@(rule «» [
-      «@γd (@(concl x)) = @(mparen (concl x <:> concl xty))»
+      «@γd (@(x)) = @(mparen (concl y <:> concl xty))»
      ]
-     «@(γ ⊢ concl x @> concl xty)») »
+     «@(γ ⊢ x @> concl xty)») »
 ]]»
 
 @sec_typecheck<-section«Typechecking and evaluation strategy»
