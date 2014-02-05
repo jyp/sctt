@@ -223,7 +223,7 @@ In most programming languages, terms and types live in two different worlds : yo
 
 Numerous examples have been presented to motivate the use of dependent types in mainstream programming @citep"oury_power_2008" @todo«add more». We give here a short and simple example to outline the specificity of dependent type languages from the user point of view but also from the typechecking point of view.
 
-For this example, we will use Agda. The syntax should be familiar enough if you know any statically-typed functional language (like OCaml or Haskell).
+For this example, we use Agda. The syntax should be familiar enough if you know any statically-typed functional language (like OCaml or Haskell).
 
 Let's first define the @agda«Nat» datatype.
 @agdacode«
@@ -239,14 +239,14 @@ data Vec (A : Set) : Nat -> Set where
   Nil : Vec A 0
   Cons : {n : Nat} -> A -> Vec A n -> Vec A (Succ n)
 »
-You can see in the signature of the type that @agda«Vec» takes a type @agda«A», the type of the elements, and a natural number which is the length of the vector. The declaration of @agda«Cons» exhibit a very useful feature of Agda : the argument @agda«{n : Nat}» is implicit : the compiler infers this argument whenever possible. In this case, we will not have to provide the length of the vector we are consing to, which would have been quite cumbersome.
+You can see in the signature of the type that @agda«Vec» takes a type @agda«A», the type of the elements, and a natural number which is the length of the vector. The declaration of @agda«Cons» exhibit a very useful feature of Agda : the argument @agda«{n : Nat}» is implicit : the compiler infers this argument whenever possible. In this case, we do not need to provide the length of the vector we are consing to, which would have been quite cumbersome.
 
 We can use this type information to implement a type-safe @agda«head» function:
 @agdacode«
 head : {A : Set} { n : Nat } -> Vec A (Succ n) -> A
 head (Cons x xs) = x
 »
-The compiler knows that the @agda«Nil» case can not happen since the length of the provided vector is at least one. Any call to @agda«head» with a empty vector argument will not typecheck.
+The compiler knows that the @agda«Nil» case can not happen since the length of the provided vector is at least one. Any call to @agda«head» with a empty vector argument do not typecheck.
 
 We can also implement the append function, which requires us to manipulate the natural numbers embedded in the type:
 @agdacode«
@@ -256,9 +256,9 @@ append (Cons x xs) ys = Cons x (append xs ys)
 »
 In the type, we assert that the length of the results is the sum of the lengths of the operands. We use the @agda«forall» quantifier to declare the implicit arguments without specifying their types, Agda can infer them.
 
-For now, we have seen that dependent types can be useful to assert properties on some datatype. Those simple examples could be encoded with GADTs even if it would need additional burden and be far less easy to manipulate. We could go on and declare some other functions on vectors, however, we will rather look at something difficult or impossible to do using GADTs.
+For now, we have seen that dependent types can be useful to assert properties on some datatype. Those simple examples could be encoded with GADTs even if it would need additional burden and be far less easy to manipulate. We could go on and declare some other functions on vectors, however, we look at something difficult or impossible to do using GADTs.
 
-We will present an embedding of relational algebra that was first discussed by @citet"oury_power_2008". A typed embedded DSL for relational databases present interesting difficulties: relation algebra operators are hard to type, especially join and cartesian product, and type safety usually rely on the static declaration of a schema. We will use dependent types to overcome those two issues.
+We present an embedding of relational algebra that was first discussed by @citet"oury_power_2008". A typed embedded DSL for relational databases present interesting difficulties: relation algebra operators are hard to type, especially join and cartesian product, and type safety usually rely on the static declaration of a schema. We use dependent types to overcome those two issues.
 
 Let's first considerate the definition of a table schema:
 @agdacode«
@@ -302,7 +302,7 @@ data RA : Schema -> Set where
   Select : forall { s } -> Expr s BOOL -> RA s -> RA s
   ...
 »
-The first two constructors are quite straightforward, @agda«Read» will read a given table and @agda«Union» will merge two tables following the same schema. The @agda«Product» constructor, however, is much more interesting. To be able to compute the cartesian product of two table, they must have disjoint columns. We can quite easily provide a function checking that two schema are disjoint, of the type:
+The first two constructors are quite straightforward, @agda«Read» read a given table and @agda«Union» merge two tables following the same schema. The @agda«Product» constructor, however, is much more interesting. To be able to compute the cartesian product of two table, they must have disjoint columns. We can quite easily provide a function checking that two schema are disjoint, of the type:
 @agdacode«
 disjoint : Schema -> Schema -> Bool
 »
@@ -332,7 +332,7 @@ We want the @agda«_!_» constructor to return an expression of the type of the 
 @agdacode«
 lookup : (col : String) -> (s : Schema) -> U
 »
-However, Agda only accept terminating function to be executed at the type level. The @agda«lookup» function, as defined here, is not garantee to terminate. Hopefully, we know that, in the context of selects, this lookup will always terminate thanks to the proof object @agda«{p :So (occurs column s)}». Hence we define the lookup function with this type instead:
+However, Agda only accept terminating function to be executed at the type level. The @agda«lookup» function, as defined here, is not garantee to terminate. Hopefully, we know that, in the context of selects, this lookup always terminate thanks to the proof object @agda«{p :So (occurs column s)}». Hence we define the lookup function with this type instead:
 @agdacode«
 lookup : (col : String) -> (s : Schema) -> So (occurs col s) -> U
 »
@@ -380,12 +380,12 @@ We aim to construct a type-theory which can be used as a back-end for dependentl
 
 @sec_lang<-section«Description of the language»
 
-Before describing the language itself, we will define some common notion in type theory that we will manipulate in the rest of this article.
+Before describing the language itself, we define some common notion in type theory that we manipulate in the rest of this report.
 
 @subsection«Preliminary vocabulary»
 
 @paragraph«Constructor and destructors@newline»
-A language is often separated into destructor (also called elimination) and constructors. For example in the lambda calculus, lambda expressions are constructors and applications are destructors. A destruction of construction can be reduced through β-reduction. In a more complicated language, like @na, we will have pairs and projections. The projection of a pair can be similarly β-reduced.
+A language is often separated into destructor (also called elimination) and constructors. For example in the lambda calculus, lambda expressions are constructors and applications are destructors. A destruction of construction can be reduced through β-reduction. In a more complicated language, like @na, we have pairs and projections. The projection of a pair can be similarly β-reduced.
 
 @paragraph«Universes@newline»
 In regular programming languages, you have types and the set of types. You can not manipulate this set itself but since you can not merge terms and types, this is not an issue. However, in a dependently typed programming language, terms and types live together, and you can theoretically manipulate the set of types. Is this set of types a type itself ? For technical reasons @todo«REF» and in order to preserve the consistency of the type system, the answer must be no.
@@ -409,9 +409,9 @@ As explained @intro, every variable is bound. We can separate element of the lan
 »
 @item'«Destructions», marked by the letter @d in @grammar_na, can be either a @texttt«case» (a pattern match) or of the form @d as shown in @grammar_na (@todo«can not do ref to internal labels»): an application, a projection or a cut. We do not need to bind the result of a @texttt«case», as opposed to other destructions.
 
-@item'«Dependent functions and products» are both of the same form : @(pi_ x (concl y) t) and @(sigma_ x (concl y) t) . The type on the left hand side can be a conclusion, since it does not depend on the type witness @x (@todo«right term ?»), hence it's possible to bind it before. However, the right hand side must be a term, since it will depend on @x. @x is an hypothesis since it is abstract here.
+@item'«Dependent functions and products» are both of the same form : @(pi_ x (concl y) t) and @(sigma_ x (concl y) t) . The type on the left hand side can be a conclusion, since it does not depend on the type witness @x (@todo«right term ?»), hence it's possible to bind it before. However, the right hand side must be a term, since it depends on @x. @x is an hypothesis since it is abstract here.
 
-@item'«Enumerations» are a set of scopeless and non-unique labels. Labels are plain strings starting with an apostrophe. We will note them @l, @l2.
+@item'«Enumerations» are a set of scopeless and non-unique labels. Labels are plain strings starting with an apostrophe. We note them @l, @l2.
 
 @item'«Universes» are arangered in a tower, starting at 0. We use the notation @star = @star @indice(0).
 
@@ -458,9 +458,9 @@ Of course, it's impossible to write reasonable programs with this syntax, it's f
 
 @sec_type<-section«Type system»
 
-The type rules for @na are quite usual, most of the cleverness is contained in the way the heap is updated. Hence we will start by presenting environment and environment extensions.
+The type rules for @na are quite usual, most of the cleverness is contained in the way the heap is updated. Hence we start by presenting environment and environment extensions.
 
-We will use the same notation as in @sec_heap : @x for hypotheses, @(concl x) for conclusions, @c for constructions and @d for destructions. For clarity, elements used as types will be capitalized.
+We use the same notation as in @sec_heap : @x for hypotheses, @(concl x) for conclusions, @c for constructions and @d for destructions. For clarity, elements used as types are capitalized.
 
 @sec_heap<-subsection«The Heap»
 
@@ -478,7 +478,7 @@ We have @γ = (@γty, @γc, @γa, @γd, @γd').
 
 @subsection«Environment extensions»
 
-Here are details of how to update the heap when registering new information. We will use the @(math $ cmd0 "gets")operator to symbolize an update.
+Here are details of how to update the heap when registering new information. We use the @(math $ cmd0 "gets")operator to symbolize an update.
 
 When typechecking abstractions, like lambda or dependent functions and products, we need to introduce new hypotheses in the context without any value.
 @align[
@@ -532,9 +532,9 @@ Rules to test equality between two normal forms are given @fig_eqrules.
 
 The typing rules can be divided in four relations. The first two relations are typechecking relations for respectively terms and constructions. The second one is just a checking relation for destruction. The last relation is the inference for hypotheses.
 
-We will note typechecking for terms as @(γ ⊢ t <@ tty), the rules are presentend @tr_term. The type here is always a complete term. The type must have been checked before hand.
+We note typechecking for terms as @(γ ⊢ t <@ tty), the rules are presentend @tr_term. The type here is always a complete term. The type must have been checked before hand.
 
-In the @ruleref«Constr» rules, we don't need to typecheck the construction in detail since any construction added this way will be typechecked in the end using either the @ruleref«Concl» rule or the @ruleref«Cut» rule.
+In the @ruleref«Constr» rules, we don't need to typecheck the construction in detail since any construction added this way is typechecked either by the @ruleref«Concl» rule or by the @ruleref«Cut» rule.
 
 @tr_term<-figure«Typechecking a term : @(γ ⊢ t <@ tty)»«
 @mathpar[[
