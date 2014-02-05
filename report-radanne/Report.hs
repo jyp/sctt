@@ -25,8 +25,8 @@ classFile LNCS = "llncs"
 preamble :: Bool -> Tex ()
 preamble inMetaPost = do
   if inMetaPost
-      then documentClass "article" ["13pt"]
-      else documentClass (classFile classUsed) [] -- ["authoryear","preprint"]
+  then documentClass "article" ["13pt"]
+  else documentClass (classFile classUsed) [] -- ["authoryear","preprint"]
   stdPreamble
   mathpreamble classUsed
   cmd "input" (tex "../PaperTools/latex/unicodedefs")
@@ -35,6 +35,7 @@ preamble inMetaPost = do
     usepackage "tikz" []
     usepackage "fullpage" []
     usepackage "mathpartir" []
+    usepackage "subcaption" []
     usepackage "listings" []
     cmd "input" (tex "lst")
     usepackage "hyperref" ["colorlinks","citecolor=blue"]
@@ -74,6 +75,7 @@ bot = Con $ cmd "bot" nil
 λ = Con $ cmd "lambda" nil
 π = Con $ cmd "Pi" nil
 σ = Con $ cmd "Sigma" nil
+nat = Con "ℕ"
 
 fa = Con $ cmd "forall" nil
 
@@ -89,12 +91,14 @@ app f x = f <-> mparen x
 (</>) = binop 1 space
 (<->) = binop 1 nil
 (<.>) = binop 1 "."
+(<:>) = binop 1 ":"
 (∨) = binop 1 "∨"
 (∧) = binop 1 "∧"
 (≠) = binop 1 (cmd0 "neq")
 a \== b = mparen $ a \= b
 (∈) = binop 1 (cmd0 "in")
 (→) = binop 1 (cmd0 "to")
+(←) = binop 1 (cmd0 "gets")
 (×)= binop 1 (cmd0 "times")
 (|->) = binop 1 (cmd0 "mapsto")
 concl = UnOp 1 (cmd "overline") 1
@@ -108,7 +112,6 @@ indice = UnOp 1 (\ x -> tex "_" <> braces x) 1
 (@-) = BinOp 1 (\ x y -> x <> tex "_" <> braces y) 1 1
 
 (⊢) = binop 1 (cmd0 "vdash")
-(\:) = binop 1 ":"
 (\::=) = binop 1 "::="
 
 (<@) = binop 1 (cmd0 "leftleftarrows")
@@ -130,6 +133,7 @@ yty = text "Y"
 zty = text "Z"
 
 i = text "i"
+j = text "j"
 
 l = text "`l"
 l2 = text "`m"
@@ -146,13 +150,20 @@ let_ x a t = texttt«let» </> x \= a </> texttt«in» </> t
 case_ x l =
     let l' = text $ mconcat $ intersperse ", " l in
     texttt«case» </> x </> texttt«of» </> mbracket l'
-pi_ x y t = mparen ( x \: y ) → t
-sigma_ x y t = mparen ( x \: y ) × t
+pi_ x y t = mparen ( x <:> y ) → t
+sigma_ x y t = mparen ( x <:> y ) × t
 fin_ l = mbracket l
 
 minipage :: String -> TeX -> Tex a -> Tex a
 minipage align length =
     env'' "minipage" [align] [length <> cmd0 "linewidth"]
+
+subfigure :: String -> TeX -> TeX -> TeX -> Tex SortedLabel
+subfigure align length caption body =
+    env'' "subfigure" [align] [length <> cmd0 "linewidth"] $ do
+      body
+      cmd "caption" caption
+      label "Fig."
 
 -- | Mathpartir
 
@@ -196,7 +207,7 @@ header = do
     [ ]
 
 
-main = renderToDisk' SVG "Report" $ latexDocument preamble $ «
+main = renderToDisk' EPS "Report" $ latexDocument preamble $ «
 
 @header
 
@@ -205,6 +216,8 @@ main = renderToDisk' SVG "Report" $ latexDocument preamble $ «
 @deptype<-subsection«Dependent types»
 
 In a regular programming language, terms and types live in two different worlds : you can't talk about terms in types and you can't manipulate types as you can manipulate terms. In a dependently typed programming language, types can depends on terms. This addition sounds quite small at first, but it makes the language significantly more powerful ... and significantly harder to typecheck.
+
+
 
 @subsection«An example in Agda»
 
@@ -218,7 +231,7 @@ data Nat : Set where
   Zero : Nat
   Succ : Nat -> Nat
 »
-This definition is very similar to a GADT one for OCaml or Haskell. @agda«Set» show that @agda«Nat» is a base type, as @agda«Int» or @agda«Char» would be in OCaml or Haskell. It's comparable to
+This definition is very similar to a GADT one for OCaml or Haskell. @agda«Set» show that @agda«Nat» is a base type, as @agda«Int» or @agda«Char» would be in OCaml or Haskell.
 
 Let's now move on to a more interesting datatype : vectors with fixed length.
 @agdacode«
@@ -258,7 +271,7 @@ data U : Set where
 Schema : Set
 Schema = List (String xx U)
 »
-Here, @agda«×» is simply the type or pairs. The @agda«U» type is the universe type for the value inside our database. Databases are restricted in what type of value they can handle, so this is a perfectly valid restriction. A Schema here is simply a list of columns with a name and a type.
+Here, @agda«×» is simply the type of pairs. The @agda«U» type is the universe type for the value inside our database. Databases are restricted in what type of value they can handle, so this is a perfectly valid restriction. A Schema here is simply a list of columns with a name and a type.
 
 We need to link the constructors of @agda«U» to the representation of each types in Agda:
 @agdacode«
@@ -336,7 +349,7 @@ This make the typechecking more complicated and is the source of some limitation
 The Agda typechecker contains some well known issues that the dependent type theory community has been trying to solve :
 @itemize«
   @item The ``case decomposition'' issue @todo«Show the incriminated piece of code».
-  @item Since the Agda type checker is using a natural deduction style, the evaluation make terms grow in size very fast which implies import efficiency issues.
+  @item Since the Agda type checker is using a natural deduction style, the evaluation make terms grow in size very fast which implies important efficiency issues.
 »
 
 @todo«Some various attempts.»
@@ -367,9 +380,25 @@ We aim to construct a type-theory which can be used as a back-end for dependentl
 
 @sec_lang<-section«Description of the language»
 
+Before describing the language itself, we will define some common notion in type theory that we will manipulate in the rest of this article.
+
+@subsection«Preliminary vocabulary»
+
+@paragraph«Constructor and destructors@newline»
+A language is often separated into destructor and constructors. For example in the lambda calculus, lambda expressions are constructors and applications are destructors. A destruction of construction can be reduced through β-reduction. In a more complicated language, like @na, we will have pairs and projections. The projection of a pair can be similarly β-reduced.
+
+@paragraph«Universes@newline»
+In regular programming languages, you have types and the set of types. You can't manipulate this set itself but since you can't merge terms and types, this is not an issue. However, in a dependently typed programming language, terms and types live together, and you can theoretically manipulate the set of types. Is this set of types a type itself ? For technical reasons @todo«REF» and in order to preserve the consistency of the type system, the answer must be no.
+
+We classify types in universes (also called ``sorts'' or ``kinds'') indexed by natural numbers.
+We note those univers @(star @- i) with @i ∈ @nat.
+Base types, like @agda«Int», are in @(star @- 0). @(star @- i) is in @(star @- (i + 1)).
+Types composed of other types live in the highest univers of their components. For example @agda«(Char, Int)» live in @(star @- 0) but @agda«(Int, @(star @- 0))» is in @(star @- 1).  Finally, for ease of manipulation, any element in @(star @- i) is in @(star @- j) when @i ≤ @j.
+
+@subsection«@na»
+
 As explained @intro, every variable is binded. We can separate element of the langages, presented figure @grammar_na, into various categories :
 @todo«Say something about polarisation ? not sure if it's necessary.»
-
 
 @description«
 
@@ -379,32 +408,31 @@ As explained @intro, every variable is binded. We can separate element of the la
 
 @item'«Conclusions» are either an hypothesis or the result of a construction of conclusions. We mark conclusions by a bar on the top: @(concl x) .
 
-@item'«Destructions», marked by the letter @d, can be either a @texttt«case» or of the form @d as shown in @grammar_na: an application, a projection or a cut. We don't need to bind the result of a @texttt«case», as opposed to other destructions.
+@item'«Destructions», marked by the letter @d in @grammar_na, can be either a @texttt«case» (a pattern match) or of the form @d as shown in @grammar_na (@todo«Can't do ref to internal labels»): an application, a projection or a cut. We don't need to bind the result of a @texttt«case», as opposed to other destructions.
 
 @item'«Dependant functions and products» are both of the same form : @(pi_ x (concl y) t) and @(sigma_ x (concl y) t) . The type on the left hand side can be a conclusion, since it doesn't depend on the type witness @x (@todo«right term ?»), hence it's possible to bind it before. However, the right hand side must be a term, since it will depend on @x. @x is an hypothesis since it is abstract here.
 
 @item'«Enumerations» are a set of scopeless and non-unique labels. Labels are plain strings starting with an apostrophe. We will note them @l, @l2.
 
-@item'«Universes» are arangered in a tower of universes, starting at 0. We will use the usual notation @star = @star @indice(0) .
+@item'«Universes» are arangered in a tower of universes, starting at 0. We will use the usual notation @star = @star @indice(0).
 
-@item'«Constructions», marked by the letter @c, are either a conclusion, a universe, a type or a construction of pair, enum or function. The result must be bound to a conclusion.
+@item'«Constructions», marked by the letter @c and detailed @grammar_na (@todo«Can't do ref to internal labels»), are either a conclusion, a universe, a type or a construction of pair, enum or function. The result must be bound to a conclusion.
 »
 @grammar_na<-figure«Grammar for @na»«
-@minipage"t"«0.4»«@align(
+  @grammar_term<-subfigure"b"«0.3»«Terms»«@align(
   (\(x:xs) -> [ «@t ::=@space», x ] : map (\y -> [ « |@space»  , y ]) xs)
   [ «@(concl x)»,
     «@(let_ x d t)» ,
     «@(case_ x [ «@(mparen $ l → t) @text«*»» ])» ,
     «@(let_ (concl x) c t)»
-  ]
-  ++ [ «» ] :
+  ])»
+  @grammar_destr<-subfigure"b"«0.3»«Destructions»«@align(
   (\(x:xs) -> [ «@d ::=@space», x ] : map (\y -> [ « |@space»  , y ]) xs)
   [ «@x @space @(concl y)» ,
     «@(proj1 x) @space | @space @(proj2 x) » ,
-    «@(color "red" «@(concl x \: concl y)»)»
-  ]
-)»
-@minipage"t"«0.4»«@align(
+    «@(color "red" «@(concl x <:> concl y)»)»
+  ])»
+  @grammar_Constr<-subfigure"b"«0.3»«Constructions»«@align(
   (\(x:xs) -> [ «@c ::=@space», x ] : map (\y -> [ «|@space»  , y ]) xs) $
   map (mconcat . intersperse «@space|@space»)
   [ [ «@x» ],
@@ -412,11 +440,10 @@ As explained @intro, every variable is binded. We can separate element of the la
     [ «(@(concl x),@(concl y))»,«@(sigma_ x (concl y) t)» ],
     [ «@l»,                     «@(fin_ l)» ],
     [ «@star @(indice i)» ]
-  ]
-)»
+  ])»
 »
 
-Conclusions are the result of constructions of conclusion or hypothesss. An hypothesis is the result of destructions of hypotheses or abstractions. This means that we can only produce constructions of destructions, hence there is no reduction possible and the program is in normal form.
+Conclusions are the result of constructions of conclusion or hypotheses. An hypothesis is the result of destructions of hypotheses. This means that we can only produce constructions of destructions, hence there is no reduction possible and the program is in normal form.
 
  Obviously we don't want to write programs already in normal form, so we need a way to construct hypotheses from conclusions. That is what the cut construction, in red in @grammar_na, is for. It allows to declare a new hypothesis, given a conclusion and its type. The type is needed for type checking purposes.
 
@@ -430,8 +457,13 @@ Of course, it's impossible to write reasonable programs with this syntax, it's f
 
 @fig_syntaxes is an example of a program in regular syntax and the translation to the low-level syntax. As you can see, the low-level version is very verbose, which shows the need for the regular one.
 
+@sec_type<-section«Type system»
 
-@sec_heap<-section«The Heap»
+The type rules for @na are quite usual, most of the cleverness is contained in the way the heap is updated. Hence we will start by presenting environment and environment extensions.
+
+We will use the same notation as in @sec_heap : @x for hypotheses, @(concl x) for conclusions, @c for constructions and @d for destructions. For clarity, elements used as types will be capitalized.
+
+@sec_heap<-subsection«The Heap»
 
 Since the language is based on variables and bindings, we need a notion of environment. This notion is captured in a heap composed of several mapping :
 
@@ -440,44 +472,36 @@ Since the language is based on variables and bindings, we need a notion of envir
   @item @γc  @(concl x |-> c)  : The heap for constructions.
   @item @γa  @(x |-> y) : The heap for aliases.
   @item @γd  @(x |-> d) : The heap for cuts and destructions.
-  @item @γd' @(d |-> x) : The reverse map from destruction to hypotheses.
+  @item @γd' @(d |-> x) : The reverse map from destruction to hypotheses. @todo«do we really talk about this one ?»
 »
 
 We have @γ = (@γty, @γc, @γa, @γd, @γd').
 
-The details of how to update the heap will be explained @sec_typecheck.
-
-@subsection«Examples»
-
-@sec_type<-section«Type system»
-
-The type rules for @na are quite usual, most of the cleverness is contained in the way the heap is updated. Hence we will start by presenting environment extensions.
-
-We will use the same notation as in @sec_heap : @x for hypotheses, @(concl x) for conclusions, @c for constructions and @d for destructions. For clarity, elements used as types will be capitalized.
-
 @subsection«Environment extensions»
 
-We don't need to provide the type for hypotheses in the environment, we just register the fact that they are defined.
+Here are some details of how to update the heap when registering new information. We will use the @(math $ cmd0 "gets") operator to symbolize an update.
+
+When typechecking abstractions, like lambda or dependent functions and products, we need to introduce new hypotheses in the context without any value.
 @align[
-  [ «@(γ + x)», «= @γ, @x», «@text«new hypothesis»» ]
+  [ «@(γ + mparen (x <:> concl yty))», «= @γ @text« with » @(γty ← mparen (x <:> concl yty))» ]
 ]
 
 When adding a destruction definition, we check if a similar destruction definition exist using @γd. This allows sharing for multiple application of a function on the same argument.
 @align[
-  [ «@(γ + (x \== d))», «= @γ , @(x \== y)», «@(iff $ (y \== d) ∈ γd)» ],
-  [ «»                , «= @γ , @(x \== d)», «@text«otherwise»»       ]
+  [ «@(γ + (x \== d))», «= @γ @text« with » @(γa ← (x \== y))», «@(iff $ (y \== d) ∈ γd)» ],
+  [ «»                , «= @γ @text« with » @(γd ← (x \== d))», «@text«otherwise»»       ]
 ]
 
 The rule for conclusions is straightforward, since we don't handle sharing for conclusions as we do for destructions. @todo«Explain why»
 @align[
-[«@γ + @(concl x \== c)», «= @γ, @(concl x \== c)», «@text«otherwise»»]
+  [«@γ + @(concl x \== c)», «= @γ @text« with » @(γc ← (concl x \== c)) @todo«not sure if it's @γc, it seems so in the code.»»]
 ]
 
 During a case, we keep track of constraints on the variable decomposed by the case, Allowing us to know inside the body of a case which branch we took. Of course, if two incompatible branches are taken, we stop the typechecking immediately, since the context is inconsistent.
 @align[
-  [ «@γ + @(l \== x)», «= @γ»            , «@(iff $ l \== x ∈ γ)»                         ],
-  [ «»               , «= @bot»          , «@(iff $ l2 \== x ∈ γ) @text" for " @(l ≠ l2)» ],
-  [ «»               , «= @γ, @(l \== x)», «@text«otherwise»»                             ]
+  [ «@γ + @(l \== x)», «= @γ»            , «@(iff $ l \== x ∈ γc)»                         ],
+  [ «»               , «= @bot»          , «@(iff $ l2 \== x ∈ γc) @text" for " @(l ≠ l2)» ],
+  [ «»               , «= @γ, @text« with » @(γc ← (l \== x))», «@text«otherwise»»                             ]
 ]
 
 @eqrules<-subsection«Equality rules»
@@ -556,7 +580,7 @@ For destructions, only the fact that it is well formed need to be checked, hence
   «@(rule «Cut» [
       «@(γ ⊢ concl x <@ concl xty)»
      ]
-     «@(γ ⊢ concl x \: concl xty)») »
+     «@(γ ⊢ concl x <:> concl xty)») »
 ]]»
 
 A construction is checked again a term, it's noted @(γ ⊢ c <@ tty).
@@ -581,11 +605,11 @@ A construction is checked again a term, it's noted @(γ ⊢ c <@ tty).
      «@(γ ⊢ c <@ concl x)») »,
   «@(rule «» [
       «@(γ ⊢ concl y <@ concl xty)»,
-      «@(γ +  x \== (concl y \: concl xty) ⊢ concl z <@ tty)»
+      «@(γ +  x \== (concl y <:> concl xty) ⊢ concl z <@ tty)»
      ]
      «@(γ ⊢ pair_ (concl y) (concl z) <@ sigma_ x (concl xty) tty)») »,
   «@(rule «» [
-      «@(γ + mparen (y \: concl xty) ⊢ t <@ let_ x y tty)»
+      «@(γ + mparen (y <:> concl xty) ⊢ t <@ let_ x y tty)»
      ]
      «@(γ ⊢ (lambda_ y t) <@ pi_ x (concl xty) tty)») »,
   «@(rule «» [
@@ -601,7 +625,7 @@ A construction is checked again a term, it's noted @(γ ⊢ c <@ tty).
 
 @todo«stuff»
 
-@tr_hyp<-figure«Inference for the type of an hypothesis : @(γ ⊢ c <@ tty)»«
+@tr_hyp<-figure«Inference for the type of an hypothesis : @(γ ⊢ x @> xty)»«
 @mathpar[[
   «@(rule «» [
       «@γty (@x) = @xty»
@@ -623,7 +647,7 @@ A construction is checked again a term, it's noted @(γ ⊢ c <@ tty).
      ]
      «@(γ ⊢ x @> let_ z (proj1 y) tty)») »,
   «@(rule «» [
-      «@γd (@(concl x)) = @(mparen (concl x \: concl xty))»
+      «@γd (@(concl x)) = @(mparen (concl x <:> concl xty))»
      ]
      «@(γ ⊢ concl x @> concl xty)») »
 ]]»
