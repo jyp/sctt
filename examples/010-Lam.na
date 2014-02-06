@@ -1,5 +1,12 @@
-s0 = *0;
-s0tos0 = (x : s0) -> s0;
-f = \x -> (r=x; r);
-f_ = f : s0tos0;
-s0
+TERM
+f = \a -> (
+      f' = \x -> (r=x; r);
+      f' ) ;
+f
+TYPE
+s1 = *1 ;
+f_ty = (a : s1) -> (
+       	 a' = a ;
+         a2a = (x : a') -> a';
+         a2a ) ;
+f_ty
