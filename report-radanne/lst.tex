@@ -17,6 +17,12 @@
 }
 
 \lstdefinelanguage{Agda}{
-  morekeywords={data,where},
+  morekeywords={data,where,case},
   literate={->}{{$\to$}}1 {xx}{{$\times$}}1,
+}
+
+\lstdefinelanguage{nanoAgda}{
+  morekeywords={case,of,split,rec},
+  literate={->}{{$\to$}}1 {\\}{{$\lambda$}}1 {'}{`}1
+    {*}{{$\times$}}1 {*0}{{$\star_0$}}2 {*1}{{$\star_1$}}2 {*2}{{$\star_2$}}2,
 }
