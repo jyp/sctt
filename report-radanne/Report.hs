@@ -81,6 +81,7 @@ fa = Con $ cmd "forall" nil
 
 mparen = outop "(" ")"
 mbracket = outop "{" "}"
+mbrac = outop "[" "]"
 
 quad = cmd0 "quad"
 
@@ -92,6 +93,7 @@ app f x = f <-> mparen x
 (<->) = binop 1 nil
 (<.>) = binop 1 "."
 (<:>) = binop 1 ":"
+(//) = binop 1 "/"
 (∨) = binop 1 "∨"
 (∧) = binop 1 "∧"
 (≠) = binop 1 (cmd0 "neq")
@@ -124,8 +126,10 @@ y = text "y"
 x' = text "x'"
 y' = text "y'"
 z = text "z"
+w = text "w"
 
 c = text "c"
+cty = text "C"
 d = text "d"
 
 xty = text "X"
@@ -153,6 +157,8 @@ case_ x l =
 pi_ x y t = mparen ( x <:> y ) → t
 sigma_ x y t = mparen ( x <:> y ) × t
 fin_ l = mbracket l
+
+centering = cmd0 "centering"
 
 minipage :: String -> TeX -> Tex a -> Tex a
 minipage align length =
@@ -191,9 +197,18 @@ instance MonadFix Listing where
         f x
 
 agda = texttt
+
+listing :: [String] -> Listing () -> TeX
+listing opt (Listing s _) =
+    env' "lstlisting" opt (tex s)
+
 agdacode :: Listing () -> TeX
-agdacode (Listing s _) =
-    env' "lstlisting" ["language=Agda"] (tex s)
+agdacode code =
+    listing ["language=Agda"] code
+
+nacode :: String -> TeX
+nacode file =
+    cmd' "lstinputlisting" ["language=nanoAgda"] $ tex file
 
 -- | Document
 
@@ -225,7 +240,7 @@ Numerous examples have been presented to motivate the use of dependent types in 
 
 For this example, we use Agda. The syntax should be familiar enough if you know any statically-typed functional language (like OCaml or Haskell).
 
-Let's first define the @agda«Nat» datatype.
+Let us first define the @agda«Nat» datatype.
 @agdacode«
 data Nat : Set where
   Zero : Nat
@@ -233,7 +248,7 @@ data Nat : Set where
 »
 This definition is very similar to a GADT one for OCaml or Haskell. @agda«Set» show that @agda«Nat» is a base type, as @agda«Int» or @agda«Char» would be in OCaml or Haskell.
 
-Let's now move on to a more interesting datatype : vectors with fixed length.
+Let us now move on to a more interesting datatype : vectors with fixed length.
 @agdacode«
 data Vec (A : Set) : Nat -> Set where
   Nil : Vec A 0
@@ -260,7 +275,7 @@ For now, we have seen that dependent types can be useful to assert properties on
 
 We present an embedding of relational algebra that was first discussed by @citet"oury_power_2008". A typed embedded DSL for relational databases present interesting difficulties: relation algebra operators are hard to type, especially join and cartesian product, and type safety usually rely on the static declaration of a schema. We use dependent types to overcome those two issues.
 
-Let's first considerate the definition of a table schema:
+Let us first considerate the definition of a table schema:
 @agdacode«
 data U : Set where
   BOOL : U
@@ -271,7 +286,7 @@ data U : Set where
 Schema : Set
 Schema = List (String xx U)
 »
-Here, @agda«×» is simply the type of pairs. The @agda«U» type is the universe type for the values inside our database. Databases are restricted in what type of value they can handle, so this is a perfectly valid restriction. A Schema here is simply a list of columns with a name and a type.
+Here, @agda«×» is simply the type of pairs. The @agda«U» type is the universe type for the values inside our database. Databases are restricted in what type of value they can handle so this restriction is perfectly valid. A Schema here is simply a list of columns with a name and a type.
 
 We need to link the constructors of @agda«U» to their representation as types in Agda:
 @agdacode«
@@ -342,7 +357,7 @@ First, types and terms evolve in the same word and there is little to no distinc
 Secondly, terms inhabiting a type are proofs of the proposition expressed by this type. It is a very literal translation of the curry-howard isomorphism. This is quite different than in a theorem proover, like Coq, where the proof part and the programming part are usually separated.
 
 Finally, the typechecker must evaluate terms in order to typecheck.
-This make the typechecking more complicated and is the source of some limitation in curent typecheckers. It's also part of the focus of this work.
+This make the typechecking more complicated and is the source of some limitation in curent typecheckers. It is also part of the focus of this work.
 
 @subsection«Limitations of current implementations»
 
@@ -363,7 +378,7 @@ There are various definitions of Sequent calculus. In this report, we mean that 
 Sequent calculus is a well known presentation for classical logic but as not so far been evaluated as a presentation of a type theory.
 The translation from natural deduction to sequent calculus is mechanical @citep"Puech_proof-upside_2013" but it does seems interesting to actually look at the result, since it present interesting properties:
 @itemize«
-  @item It's low-level, which makes it suitable as back-end for dependently-typed languages.
+  @item It is low-level, which makes it suitable as back-end for dependently-typed languages.
   @item Sharing is expressible @citep"Launchbury_sharing_1993". This would help solve some efficiency issues encountered in Agda, for example.
 »
 
@@ -448,13 +463,39 @@ Conclusions are the result of constructions of conclusion or hypotheses. An hypo
 
 @subsection«A bit of sugar»
 
-Of course, it's impossible to write reasonable programs with this syntax, it's far too verbose and tedious for humans. We introduced another simpler syntax that you can see below. It's possible to translate this new syntax to the low-level one. The translation can be done even on type-incorrect terms and hence do not need preliminary typechecking. It's similar to CPS transformation in LISP @citep"plotkin_call-by-name_1975".
+Of course, it's impossible to write reasonable programs with this syntax, it's far too verbose and tedious for humans. We introduced another simpler syntax that you can see below. It is possible to translate this new syntax to the low-level one. The translation can be done even on type-incorrect terms and hence do not need preliminary typechecking. It is similar to CPS transformation in LISP @citep"plotkin_call-by-name_1975".
 
-@fig_syntaxes<-figure«Regular and low-level syntax.»«
-  @todo«Two columns comparison of the two syntax.»
+Every program in the high level syntax is composed of two parts : a term and a type. The typechecker will check the term against the type.
+@fig_syntaxes is an example of a program in high-level syntax and the translation to the low-level syntax.
+As you can see, the low-level version is very verbose, which shows the need for the high-level one.
+
+@fig_syntaxes<-figure«The polymorphic identity, in high-level and low-level syntax.»«
+  @minipage"c"«0.3»«@nacode"../examples/010-Lam.ma"»
+  @minipage"c"«0.3»«@nacode"../examples/010-Lam.na" @todo«not the right code, placeholder for now»»
+  @centering
 »
 
-@fig_syntaxes is an example of a program in regular syntax and the translation to the low-level syntax. As you can see, the low-level version is very verbose, which shows the need for the regular one.
+@subsection«An interesting example»
+
+Before giving the details of the type system and the evaluation strategy, let us consider a small example: we want to create a non-dependent datatype, as used in Agda, Haskell or OCaml, in @na. However, we only have enumerations, dependent products and dependent functions. It happens that it is enough to encode datatypes. @fig_iex shows a very simple Agda datatype and the equivalent code in @na.
+
+The trick in this encoding is to separate the tag part (@agda«Foo» and @agda«Bar») from the type part. The tag part can be easily encoded in a enumeration. For the type part, we will take advantage of the dependent product to pattern match the tag and return the appropriate type. In this case, we have a datatype with a parameter, which is translated into a simple function.
+
+@fig_iex<-figure«A datatype in Agda and @na.»«
+@minipage"c"«0.4»«
+@agdacode«
+data MyDatatype (s : Set) : Set where
+  Foo : s -> MyDatatype s
+  Bar : MyDatatype s
+»»
+@minipage"c"«0.4»«@nacode"../examples/datatype.ma"»
+@centering
+
+@todo«Not completly sure about the fact that in @na, the branches return @(star @- 0).»»
+
+This example shows the fact that, in a dependently typed programming language, enumerations are enough to simulate datatypes, which is clearly not possible in a non dependently typed programming language. Here, a more powerful type system allows to use a simpler core language.
+
+
 
 @sec_type<-section«Type system»
 
@@ -467,7 +508,7 @@ We use the same notation as in @sec_heap : @x for hypotheses, @(concl x) for con
 Since the language is based on variables and bindings, we need a notion of environment. This notion is captured in a heap composed of several mapping :
 
 @itemize«
-  @item @γty   @(x |-> concl y ) : The context heap, containing the type of hypotheses.
+  @item @γty @(x |-> concl y ) : The context heap, containing the type of hypotheses.
   @item @γc  @(concl x |-> c)  : The heap for constructions.
   @item @γa  @(x |-> y) : The heap for aliases.
   @item @γd  @(x |-> d) : The heap for cuts and destructions.
@@ -543,10 +584,9 @@ The last two rules are interesting in that they are assymetric: a construction o
 The typing rules can be divided in four relations. The first two relations are typechecking relations for respectively terms and constructions. The second one is just a checking relation for destruction. The last relation is the inference for hypotheses.
 
 We note typechecking for terms as @(γ ⊢ t <@ tty), the rules are presentend @tr_term. The type here is always a complete term. The type must have been checked beforehand.
-
 In the @ruleref«Constr» rules, we don't need to typecheck the construction in detail since any construction added this way is typechecked either by the @ruleref«Concl» rule or by the @ruleref«Cut» rule.
 
-@tr_term<-figure«Typechecking a term : @(γ ⊢ t <@ tty)»«
+@tr_term<-figure«Typechecking a term: @(γ ⊢ t <@ tty)»«
 @mathpar[[
   «@(rule «Case» [
       «@(fa </> i) @quad @(γ + ((l @- i) \== x) ⊢ (t @- i) <@ tty)»,
@@ -569,9 +609,9 @@ In the @ruleref«Constr» rules, we don't need to typecheck the construction in 
      «@(γ ⊢ concl x <@ tty)») »
 ]]»
 
-For destructions, only the fact that it is well formed need to be checked, hence we do not need a type parameter. The rules, presented @tr_destr, are quite straightforward. This typing relation is noted @(γ ⊢ d).
+For destructions, only the fact that it is well formed need to be checked, hence we do not need a type parameter. This typing relation, presented @tr_destr, is noted @(γ ⊢ d). Most rules rely on the fact that it's possible to infer the type of a hypothesis. Once we know the type of the hypothesis part of the destruction, we only check that the destruction is consistent. The @ruleref«Cut» destructions, on the other hand, is verified by typechecking a trivial term composed only of a conclusion.
 
-@tr_destr<-figure«Typechecking a destruction : @(γ ⊢ d)»«
+@tr_destr<-figure«Typechecking a destruction: @(γ ⊢ d).»«
 @mathpar[[
   «@(rule «App» [
       «@(γ ⊢ y @> (pi_ z xty tty))»,
@@ -592,36 +632,29 @@ For destructions, only the fact that it is well formed need to be checked, hence
      «@(γ ⊢ concl x <:> concl xty)») »
 ]]»
 
-A construction is checked against a term, it's noted @(γ ⊢ c <@ tty).
+A construction is checked against a term or a construction, it's noted respectively @(γ ⊢ c <@ tty) and @(γ ⊢ c <@ tty). Typechecking a construction against a term is simple a matter of traversing the type to access the final conclusion, as shown by rules @tr_constr_term. When we reach the conclusion of the term, we can lookup the definition of this conclusion, which is a construction, and continue typechecking. The @ruleref«Infer» is a bit different in that it uses the inference for hypothesis and typecheck by unifying the two types.
 
-@todo«stuff»
-
-@tr_constr<-figure«Typechecking a construction : @(γ ⊢ c <@ tty)»«
+@tr_constr_term<-figure«Typechecking a construction against a term: @(γ ⊢ c <@ tty).»«
 @mathpar[[
-  «@(rule «» [
+  «@(rule «TyConstr» [
       «@(γ + (x \== d) ⊢ c <@ tty )»
      ]
      «@(γ ⊢ c <@ (let_ x d tty) )») »,
-  «@(rule «» [
+  «@(rule «TyDestr» [
+      «@(γ + (x \== c) ⊢ c <@ tty )»
+     ]
+     «@(γ ⊢ c <@ (let_ x c tty) )») »,
+  «@(rule «TyCase» [
       «@(fa </> i) @quad @(γ + ((l @- i) \== x) ⊢ c <@ (tty @- i))»,
       «@γty (x) = @(fin_ $ (l @- i))»
      ]
      «@(γ ⊢ c <@ case_ x [«@((l @- i) |-> (tty @- i))»] )») »,
-  «@(rule «» [
-      «@γc (@(concl x)) = @tty»,
-      «@(γ ⊢ c <@ tty)»
+  «@(rule «TyConcl» [
+      «@γc (@(concl x)) = @cty»,
+      «@(γ ⊢ c <@ cty)»
      ]
      «@(γ ⊢ c <@ concl x)») »,
-  «@(rule «» [
-      «@(γ ⊢ concl y <@ concl xty)»,
-      «@(γ +  x \== (concl y <:> concl xty) ⊢ concl z <@ tty)»
-     ]
-     «@(γ ⊢ pair_ (concl y) (concl z) <@ sigma_ x (concl xty) tty)») »,
-  «@(rule «» [
-      «@(γ + mparen (y <:> concl xty) ⊢ t <@ let_ x y tty)»
-     ]
-     «@(γ ⊢ (lambda_ y t) <@ pi_ x (concl xty) tty)») »,
-  «@(rule «» [
+  «@(rule «Infer» [
       «@γa (@z) = @x»,
       «@(γ ⊢ x @> xty)»,
       «@(γ ⊢ xty \= tty)»
@@ -629,33 +662,56 @@ A construction is checked against a term, it's noted @(γ ⊢ c <@ tty).
      «@(γ ⊢ z <@ tty)») »
 ]]»
 
+The typechecking rules for constructions is very similar to the typechecking for a language in natural deduction style, except that instead of subterms, you have conclusions. The definition of those conclusions play the role of subterms. The rule @ruleref«LazyEvalApp» can only happen if the language is lazily evaluated. If the evaluation is strict, the redex would have been already reduced. @eval will give more details about the evaluation strategy.
 
-@(γ ⊢ x @> tty) : infer the type of an hypothesis
-
-@todo«stuff»
-
-@tr_hyp<-figure«Inference for the type of an hypothesis : @(γ ⊢ x @> tty)»«
+@tr_constr_concl<-figure«Typechecking a construction against a construction: @(γ ⊢ c <@ cty).»«
 @mathpar[[
-  «@(rule «» [
+  «@(rule «Pair» [
+      «@(γ ⊢ concl y <@ concl xty)»,
+      «@(γ +  x \== (concl y <:> concl xty) ⊢ concl z <@ tty)»
+     ]
+     «@(γ ⊢ pair_ (concl y) (concl z) <@ sigma_ x (concl xty) tty)») »,
+  «@(rule «Lambda» [
+      «@(γ + mparen (y <:> concl xty) ⊢ t <@ let_ x y tty)»
+     ]
+     «@(γ ⊢ (lambda_ y t) <@ pi_ x (concl xty) tty)») »,
+  «@(rule «Label» [
+      «@l ∈ @(fin_ (l @- i))»
+     ]
+     «@(γ ⊢ l <@ fin_ (l @- i))») »,
+  «@(rule «LazyEvalApp» [
+      «@γd (@x) = @(y </> concl z)»,
+      «@γd (@y) = @(lambda_ w t)»,
+      «@(γ ⊢ c <@ t <-> mbrac ( z // w ))»
+     ]
+     «@(γ ⊢ c <@ x)») »,
+  «@todo«add the missing rules»»
+]]»
+
+While typechecking destructions and constructions, we used the fact that it is possible to infer the type of an hypothesis. The inference relation, noted @(γ ⊢ x @> tty), is presentend @tr_hyp. To infer the type, we lookup the destruction defining a variable and build a term piece by piece by looking up each subvariable of this destruction.
+
+@tr_hyp<-figure«Inference for the type of an hypothesis : @(γ ⊢ x @> tty).»«
+@mathpar[[
+  «@(rule «InferContext» [
       «@γty (@x) = @(concl xty)»
      ]
      «@(γ ⊢ x @> concl xty)») »,
-  «@(rule «» [
+  «@(rule «InferApp» [
       «@γd (@x) = @(y </> concl z)»,
       «@(γ ⊢ y @> (pi_ z xty tty))»
      ]
      «@(γ ⊢ x @> let_ z (concl z) tty)») »,
-  «@(rule «» [
+  «@(rule «InferProj@(indice 1)» [
       «@γd (@x) = @(proj1 y)»,
       «@(γ ⊢ y @> (sigma_ z xty tty))»
      ]
      «@(γ ⊢ x @> concl xty)») »,
-  «@(rule «» [
+  «@(rule «InferProj@(indice 2)» [
       «@γd (@x) = @(proj2 y)»,
       «@(γ ⊢ y @> (pi_ z xty tty))»
      ]
      «@(γ ⊢ x @> let_ z (proj1 y) tty)») »,
-  «@(rule «» [
+  «@(rule «InferCut» [
       «@γd (@(x)) = @(mparen (concl y <:> concl xty))»
      ]
      «@(γ ⊢ x @> concl xty)») »
@@ -665,22 +721,44 @@ A construction is checked against a term, it's noted @(γ ⊢ c <@ tty).
 
 @subsection«A generic approach»
 
-@todo«Talk about the continuation passing style thingy.»
+@todo«Talk about the continuation passing style thingy. Actually, should I ? On second though, it looks like implementation details...»
 
+@subsection«Reduction rules»
 
-@subsection«Evaluation : lazy or strict ?»
+@eval<-subsection«Evaluation : lazy or strict ?»
 
 @todo«talk a bit about the two approaches»
-
-@section«Results»
-
-@subsection«Examples»
-
-@todo«show examples that works with @na.»
 
 @subsection«Subject reduction and strong normalisation»
 
 @todo«Express the theorems»
+
+@section«Results and Examples»
+
+@figure«Encoding equality at the type level»«
+@listing["language=nanoAgda"]«
+  Eq = (\A -> \x -> \y -> (P : A -> *0) -> P x -> P y)
+     : (A : *0) -> A -> A -> *1;
+  refl = (\A -> \x -> \P -> \p -> p)
+       : (A : *0) -> (x:A) -> Eq A x x;
+»
+@todo«It's not specific to @na, but we need it for the next examples ...»
+»
+
+@figure«Recovering sharing»«
+  @nacode"../examples/032-Nisse.ma"
+@todo«This example is quite easy to explain, so we can start by this one».
+»
+
+@figure«Triple boolean functions»«
+  @nacode"../examples/031-TripleF.ma"
+@todo«Show the agda version (which will not typecheck) and explain it a bit»
+@todo«Is there a ref ?»
+@todo«Actually, it doesn't typecheck, I though it did.»
+»
+
+@todo«Do I include Ulf's case example? It's quite complicated, so I'm not sure I should include it.»
+
 
 @section«Conclusion»
 
