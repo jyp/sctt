@@ -465,7 +465,7 @@ Conclusions are the result of constructions of conclusion or hypotheses. An hypo
 
 Of course, it's impossible to write reasonable programs with this syntax, it's far too verbose and tedious for humans. We introduced another simpler syntax that you can see below. It is possible to translate this new syntax to the low-level one. The translation can be done even on type-incorrect terms and hence do not need preliminary typechecking. It is similar to CPS transformation in LISP @citep"plotkin_call-by-name_1975".
 
-Every program in the high level syntax is composed of two parts : a term and a type. The typechecker will check the term against the type.
+Every program in the high level syntax is composed of two parts : a term and a type. The typechecker check the term against the type.
 @fig_syntaxes is an example of a program in high-level syntax and the translation to the low-level syntax.
 As you can see, the low-level version is very verbose, which shows the need for the high-level one.
 
@@ -479,7 +479,7 @@ As you can see, the low-level version is very verbose, which shows the need for 
 
 Before giving the details of the type system and the evaluation strategy, let us consider a small example: we want to create a non-dependent datatype, as used in Agda, Haskell or OCaml, in @na. However, we only have enumerations, dependent products and dependent functions. It happens that it is enough to encode datatypes. @fig_iex shows a very simple Agda datatype and the equivalent code in @na.
 
-The trick in this encoding is to separate the tag part (@agda«Foo» and @agda«Bar») from the type part. The tag part can be easily encoded in a enumeration. For the type part, we will take advantage of the dependent product to pattern match the tag and return the appropriate type. In this case, we have a datatype with a parameter, which is translated into a simple function.
+The trick in this encoding is to separate the tag part (@agda«Foo» and @agda«Bar») from the type part. The tag part can be easily encoded in a enumeration. For the type part, we take advantage of the dependent product to pattern match the tag and return the appropriate type. In this case, we have a datatype with a parameter, which is translated into a simple function.
 
 @fig_iex<-figure«A datatype in Agda and @na.»«
 @minipage"c"«0.4»«
@@ -662,7 +662,7 @@ A construction is checked against a term or a construction, it's noted respectiv
      «@(γ ⊢ z <@ tty)») »
 ]]»
 
-The typechecking rules for constructions is very similar to the typechecking for a language in natural deduction style, except that instead of subterms, you have conclusions. The definition of those conclusions play the role of subterms. The rule @ruleref«LazyEvalApp» can only happen if the language is lazily evaluated. If the evaluation is strict, the redex would have been already reduced. @eval will give more details about the evaluation strategy.
+The typechecking rules for constructions is very similar to the typechecking for a language in natural deduction style, except that instead of subterms, you have conclusions. The definition of those conclusions play the role of subterms. The rule @ruleref«LazyEvalApp» can only happen if the language is lazily evaluated. If the evaluation is strict, the redex would have been already reduced. @eval give more details about the evaluation strategy.
 
 @tr_constr_concl<-figure«Typechecking a construction against a construction: @(γ ⊢ c <@ cty).»«
 @mathpar[[
@@ -752,8 +752,8 @@ While typechecking destructions and constructions, we used the fact that it is p
 
 @figure«Triple boolean functions»«
   @nacode"../examples/031-TripleF.ma"
-@todo«Show the agda version (which will not typecheck) and explain it a bit»
-@todo«Is there a ref ?»
+@todo«Show the agda version (which will not typecheck) and explain it a bit. Is there a ref ?»
+
 @todo«Actually, it doesn't typecheck, I though it did.»
 »
 
