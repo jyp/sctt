@@ -133,6 +133,7 @@ cty = text "C"
 d = text "d"
 
 xty = text "X"
+xty' = text "X'"
 yty = text "Y"
 zty = text "Z"
 
@@ -144,9 +145,11 @@ l2 = text "`m"
 t = text "t"
 t' = text "t'"
 tty = text "T"
+tty' = text "T'"
 
 lra = cmd0 "longrightarrow"
 star = Con $ cmd0 "star"
+kind = ( star @- )
 
 pair_ x y = mparen $ binop 1 "," x y
 lambda_ x t = λ <-> x <.> t
@@ -236,7 +239,7 @@ This report presuppose some familiarity with a statically typed functionnal lang
 
 In most programming languages, terms and types live in two different worlds : one can not refer to terms in types and types can not be manipulatep like terms. In a dependently typed programming language, types can depends on terms. This addition may sound quite small at first, but it makes the language significantly more powerful... and significantly harder to typecheck. Dependent types was previously mostly used for theorem proving (in Coq, for example). However it has since gain some popularity as a base for programming languages with Agda @citep"norell_practical_2007", Idris @citep"brady_idris_2013" or ATS @citep"chen_ats_2005". It is also related to the addition of new features in more mainstream programming languages, like the addition of GADTs in OCaml or Haskell.
 
-GADTs, or Generalized Algebraic Datatypes, @citep"xi_guarded_2003" allows to encode some properties in a non dependent type systems that would usually need dependent types. For example it's possible to use GADTs to encode vectors shown @example. In the presence of GADTs, terms and types still live in two different words. However, GADTs are not as powerfull as dependent types, as shown in the example @example.
+GADTs, or Generalized Algebraic Datatypes, @citep"xi_guarded_2003" allows to encode some properties in a non dependent type systems that would usually need dependent types. For example it is possible to use GADTs to encode vectors shown @example. In the presence of GADTs, terms and types still live in two different words. However, GADTs are not as powerfull as dependent types, as shown in the example @example.
 
 @example<-subsection«An example in Agda»
 
@@ -410,9 +413,9 @@ A language is often separated into destructor (also called elimination) and cons
 In regular programming languages, one has types and the set of types. You can not manipulate this set itself but since you can not merge terms and types, this is not an issue. However, in a dependently typed programming language, terms and types live together, and you can theoretically manipulate the set of types. Is this set of types a type itself ? For technical reasons @citep"benke_universes_2003" and in order to preserve the consistency of the type system, the answer must be no.
 
 Types are classified in universes (also called ``sorts'' or ``kinds'') indexed by natural numbers.
-We note those univers @(star @- i) with @i ∈ @nat.
-Base types, like @agda«Int», are in @(star @- 0). @(star @- i) is in @(star @- (i + 1)).
-Types composed of other types live in the highest univers of their components. For example @agda«(Char, Int)» live in @(star @- 0) but @agda«(Int, @(star @- 0))» is in @(star @- 1).  Finally, for ease of manipulation, any element in @(star @- i) is in @(star @- j) whenever @i ≤ @j.
+We note those univers @(kind i) with @i ∈ @nat.
+Base types, like @agda«Int», are in @(kind 0). @(kind i) is in @(kind (i + 1)).
+Types composed of other types live in the highest univers of their components. For example @agda«(Char, Int)» live in @(kind 0) but @agda«(Int, @(kind 0))» is in @(kind 1).  Finally, for ease of manipulation, any element in @(kind i) is in @(kind j) whenever @i ≤ @j. In the case of @na, typing rules for universes are given @tr_constr_concl.
 
 @subsection«@na»
 
@@ -428,7 +431,7 @@ As explained @intro, every variable is bound. We can separate element of the lan
 »
 @item'«Destructions», marked by the letter @d in @grammar_na, can be either a @texttt«case» (a pattern match) or of the form @d as shown in @grammar_na (@todo«can not do ref to internal labels»): an application, a projection or a cut. We do not need to bind the result of a @texttt«case», as opposed to other destructions.
 
-@item'«Dependent functions and products» are both of the same form : @(pi_ x (concl y) t) and @(sigma_ x (concl y) t) . The type on the left hand side can be a conclusion, since it does not depend on the type witness @x (@todo«right term ?»), hence it's possible to bind it before. However, the right hand side must be a term, since it depends on @x. @x is an hypothesis since it is abstract here.
+@item'«Dependent functions and products» are both of the same form : @(pi_ x (concl y) t) and @(sigma_ x (concl y) t) . The type on the left hand side can be a conclusion, since it does not depend on the type witness @x (@todo«right term ?»), hence it is possible to bind it before. However, the right hand side must be a term, since it depends on @x. @x is an hypothesis since it is abstract here.
 
 @item'«Enumerations» are a set of scopeless and non-unique labels. Labels are plain strings starting with an apostrophe. We note them @l, @l2.
 
@@ -461,13 +464,13 @@ As explained @intro, every variable is bound. We can separate element of the lan
   ])»
 »
 
-Conclusions are the result of constructions of conclusion or hypotheses. An hypothesis is the result of destructions of hypotheses. This means that we can only produce constructions of destructions, hence there is no reduction possible and the program is in normal form. @todo«do I say it's called polarisation ?»
+Conclusions are the result of constructions of conclusion or hypotheses. An hypothesis is the result of destructions of hypotheses. This means that we can only produce constructions of destructions, hence there is no reduction possible and the program is in normal form. @todo«do I say it is called polarisation ?»
 
  Obviously we do not want to write programs already in normal form, so we need a way to construct hypotheses from conclusions. That is what the cut construction, in red in @grammar_na, is for. It allows to declare a new hypothesis, given a conclusion and its type. The type is needed for type checking purposes.
 
 @subsection«A bit of sugar»
 
-Of course, it's impossible to write reasonable programs with this syntax, it's far too verbose and tedious for humans. We introduced another simpler syntax that can be seen below. It is possible to translate this new syntax to the low-level one. The translation can be done even on type-incorrect terms and hence do not need preliminary typechecking. It is similar to CPS transformation in LISP @citep"plotkin_call-by-name_1975".
+Of course, it is impossible to write reasonable programs with this syntax, it is far too verbose and tedious for humans. We introduced another simpler syntax that can be seen below. It is possible to translate this new syntax to the low-level one. The translation can be done even on type-incorrect terms and hence do not need preliminary typechecking. It is similar to CPS transformation in LISP @citep"plotkin_call-by-name_1975".
 
 Every program in the high level syntax is composed of two parts : a term and a type. The typechecker check the term against the type.
 @fig_syntaxes is an example of a program in high-level syntax and the translation to the low-level syntax. The low-level version is very verbose, which argues for the need of a high-level one.
@@ -494,7 +497,7 @@ data MyDatatype (s : Set) : Set where
 @minipage"c"«0.4»«@nacode"../examples/datatype.ma"»
 @centering
 
-@todo«Not completly sure about the fact that in @na, the branches return @(star @- 0).»»
+@todo«Not completly sure about the fact that in @na, the branches return @(kind 0).»»
 
 This example shows the fact that, in a dependently typed programming language, enumerations are enough to simulate datatypes, which is clearly not possible in a non dependently typed programming language. Here, a more powerful type system allows to use a simpler core language.
 
@@ -546,7 +549,7 @@ When checking or evaluating a case, we keep track of constraints on the variable
   [ «»               , «= @bot»          , «@(iff $ l2 \== x ∈ γc) @text" for " @(l ≠ l2)» ],
   [ «»               , «= @γ @text« with » @(γc ← (l \== x))», «@text«otherwise»»                             ]
 ]
-@todo«not sure if it's @γc, it seems so in the code.»
+@todo«not sure if it is @γc, it seems so in the code.»
 
 @eqrules<-subsection«Equality rules»
 
@@ -564,30 +567,39 @@ The last two rules are interesting in that they are asymmetric: a construction o
 
 @fig_eqrules<-figure«Equality rules»«
 @align[
-  [ «@(bot ⊢ text "rhs")», «@lra true»],
-  [ «@(γ ⊢ (l \= l))», «@lra true»],
+  [ «@(bot ⊢ text "_")», «@lra true»],
+  [],
   [ «@(γ ⊢ let_ x d t \= t')», «@lra @(γ + x \== d ⊢ t \= t')»],
+  [ «@(γ ⊢ let_ (concl x) c t \= t')», «@lra @(γ + (concl x) \== c ⊢ t \= t')»],
   [ «@(γ ⊢ case_ x [«@((l @- i) |-> (t @- i))»] \= t)»,
     «@lra @fa @i @quad @(γ + x \== (l @- i) ⊢ (t @- i) \= t)»],
-  [ «@(γ ⊢ concl x \= concl y)», «@lra @(concl x ≡ concl y)»],
-  [ «@(γ ⊢ concl x \= c)», «@lra @(γ ⊢ app γc (concl x) \= c)»],
+  [ «@(γ ⊢ concl x \= concl y)»,
+    «@lra @(concl x ≡ concl y ∧ γ ⊢ app γc (concl x) \= app γc (concl y))»],
+  [],
+  [],
+  [ «@(γ ⊢ (l \= l))», «@lra true»],
+  [ «@(γ ⊢ (kind i \= kind j))», «@lra @(i \= j) @todo«Do I add subtyping here ?»»],
   [ «@(γ ⊢ x \= y)», «@lra @(x ≅ y)»],
   [ «@(γ ⊢ lambda_ x t \= lambda_ y t')», «@lra @(γ + (x \== y) ⊢ t \= t')»],
   [ «@(γ ⊢ pair_ (concl x) (concl x') \= pair_ (concl y) (concl y'))»,
     «@lra @(γ ⊢ concl x \= concl y ∧ γ ⊢ concl x' \= concl y') »],
+  [ «@(γ ⊢ pi_ x (concl y) t \= pi_ x' (concl y') t')»,
+    «@lra @(γ ⊢ concl y \= concl y' ∧ γ + (x \== x') ⊢ t \= t') »],
+  [ «@(γ ⊢ sigma_ x (concl y) t \= sigma_ x' (concl y') t')»,
+    «@lra @(γ ⊢ concl y \= concl y' ∧ γ + (x \== x') ⊢ t \= t') »],
+  [ «@(γ ⊢ (fin_ (l @- i) \= fin_ (l2 @- i)))»,
+    «@lra @fa @i @quad @((l @- i) \= (l2 @- i))»],
   [ «@(γ ⊢ lambda_ x t \= y)»,
     «@lra @(γ + (concl x \== x) + (z \== (y </> concl x)) ⊢ t \= z)»],
   [ «@(γ ⊢ pair_ (concl x) (concl x') \= y)»,
-    «@lra @(γ + (z \== proj1 y) ⊢ concl x \= z ∧ γ + (z \== proj2 y) ⊢ concl x' \= z) »]
-]
-@todo«not everything is in there, do I need to add what's missing or is it enough ?»»
+    «@lra @(γ + (z \== proj1 y) ⊢ concl x \= z ∧ γ + (z \== proj2 y) ⊢ concl x' \= z) »]]»
 
 @typerule<-subsection«Typing rules»
 
 The typing rules can be divided in four relations. The first two relations are typechecking relations for respectively terms and constructions. The second one is just a checking relation for destruction. The last relation is the inference for hypotheses.
 
-We note typechecking for terms as @(γ ⊢ t <@ tty), the rules are presentend @tr_term. The type here is always a complete term. The type must have been checked beforehand.
-In the @ruleref«Constr» rules, we don't need to typecheck the construction in detail since any construction added this way is typechecked by either the @ruleref«Concl» rule or the @ruleref«Cut» rule.
+We note typechecking for terms @(γ ⊢ t <@ tty), the rules are presentend @tr_term. The type here is always a complete term and must have been checked beforehand.
+In the @ruleref«Constr» rules, we do not need to typecheck the construction in detail since any construction added this way is typechecked by either the @ruleref«Concl» rule or the @ruleref«Cut» rule.
 
 @tr_term<-figure«Typechecking a term: @(γ ⊢ t <@ tty)»«
 @mathpar[[
@@ -612,7 +624,7 @@ In the @ruleref«Constr» rules, we don't need to typecheck the construction in 
      «@(γ ⊢ concl x <@ tty)») »
 ]]»
 
-For destructions, only the fact that it is well formed need to be checked, hence we do not need a type parameter. This typing relation, presented @tr_destr, is noted @(γ ⊢ d). Most rules rely on the fact that it's possible to infer the type of a hypothesis. Once we know the type of the hypothesis part of the destruction, we only check that the destruction is consistent. The @ruleref«Cut» destructions, on the other hand, is verified by typechecking a trivial term composed only of a conclusion.
+For destructions, only the fact that it is well formed need to be checked, hence we do not need a type parameter. This typing relation, presented @tr_destr, is noted @(γ ⊢ d). Most rules rely on the fact that it is possible to infer the type of a hypothesis. Once we know the type of the hypothesis part of the destruction, we only check that the destruction is consistent. The @ruleref«Cut» destructions, on the other hand, is verified by typechecking a trivial term composed only of a conclusion.
 
 @tr_destr<-figure«Typechecking a destruction: @(γ ⊢ d).»«
 @mathpar[[
@@ -635,7 +647,7 @@ For destructions, only the fact that it is well formed need to be checked, hence
      «@(γ ⊢ concl x <:> concl xty)») »
 ]]»
 
-A construction is checked against a term or a construction, it's noted respectively @(γ ⊢ c <@ tty) and @(γ ⊢ c <@ tty). Typechecking a construction against a term is merly a matter of traversing the type to access the final conclusion, as shown by rules @tr_constr_term. When we reach the conclusion of the term, we can lookup the definition of this conclusion, which is a construction, and continue typechecking. The @ruleref«Infer» is a bit different in that it uses the inference for hypotheses and typecheck by unifying the two types.
+A construction is checked against a term or a construction, it is noted respectively @(γ ⊢ c <@ tty) and @(γ ⊢ c <@ tty). Typechecking a construction against a term is merly a matter of traversing the type to access the final conclusion, as shown by rules @tr_constr_term. When we reach the conclusion of the term, we can lookup the definition of this conclusion, which is a construction, and continue typechecking. The @ruleref«Infer» is a bit different in that it uses the inference for hypotheses and typecheck by unifying the two types.
 
 @tr_constr_term<-figure«Typechecking a construction against a term: @(γ ⊢ c <@ tty).»«
 @mathpar[[
@@ -682,13 +694,31 @@ The typechecking rules for constructions is very similar to the typechecking for
       «@l ∈ @(fin_ (l @- i))»
      ]
      «@(γ ⊢ l <@ fin_ (l @- i))») »,
+  «@(rule «Sigma» [
+      «@(γ ⊢ (concl y) <@ kind i)»,
+      «@(γ + mparen (x <:> concl y) ⊢ t <@ kind i)»
+     ]
+     «@(γ ⊢ (sigma_ x (concl y) t) <@ kind i)») »,
+  «@(rule «Pi» [
+      «@(γ ⊢ (concl y) <@ kind i)»,
+      «@(γ + mparen (x <:> concl y) ⊢ t <@ kind i)»
+     ]
+     «@(γ ⊢ (pi_ x (concl y) t) <@ kind i)») »,
+  «@(rule «Fin» [
+      « »
+     ]
+     «@(γ ⊢ (fin_ (l @- i)) <@ kind i)») »,
+  «@(rule «Universe» [
+      «@(binop 1 «<» i j)»
+     ]
+     «@(γ ⊢ kind i <@ kind j)») »
+],[
   «@(rule «LazyEvalApp» [
       «@γd (@x) = @(y </> concl z)»,
       «@γd (@y) = @(lambda_ w t)»,
       «@(γ ⊢ c <@ t <-> mbrac ( z // w ))»
      ]
-     «@(γ ⊢ c <@ x)») »,
-  «@todo«add the missing rules»»
+     «@(γ ⊢ c <@ x)») »
 ]]»
 
 While typechecking destructions and constructions, we used the fact that it is possible to infer the type of an hypothesis. The inference relation, noted @(γ ⊢ x @> tty), is presentend @tr_hyp. To infer the type, we lookup the destruction defining a variable and build a term piece by piece by looking up each subvariable of said destruction.
@@ -745,7 +775,7 @@ While typechecking destructions and constructions, we used the fact that it is p
   refl = (\A -> \x -> \P -> \p -> p)
        : (A : *0) -> (x:A) -> Eq A x x;
 »
-@todo«It's not specific to @na, but we need it for the next examples ...»
+@todo«it is not specific to @na, but we need it for the next examples ...»
 »
 
 In @envext, we explained that sharring can be recovered by checking if a variable is already present in a destruction and recording the alias in this case. Here we show an example where this feature is useful. The function in this example takes as argument a pair @agda«p» and a binary predicate @agda«P». We then force the typechecker to unify two versions of the same destructions, once at the term level and the other at the type level. In Agda, this is done by unfolding both term completly in order to compare them. This is quite costly in term of efficiency. In @na, we rediscover the sharring between the two versions of @agda«u1» and @agda«u2», hence the structure to compare is smaller.
@@ -768,10 +798,10 @@ sharring A B P (u1' , u2') =
   @nacode"../examples/031-TripleF.ma"
 @todo«Show the agda version (which will not typecheck) and explain it a bit. Is there a ref ?»
 
-@todo«Actually, it doesn't typecheck, I though it did.»
+@todo«Actually, it does not typecheck, I though it did.»
 »
 
-@todo«Do I include Ulf's case example? It's quite complicated, so I'm not sure I should include it.»
+@todo«Do I include Ulf's case example? it is quite complicated, so I'm not sure I should include it.»
 
 
 @section«Conclusion»
