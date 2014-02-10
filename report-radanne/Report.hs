@@ -72,6 +72,7 @@ description = env "description"
 γd' = Con $ cmd "gamma_d'" nil
 h = text "h"
 h' = text "h'"
+h'' = text "h''"
 
 bot = Con $ cmd "bot" nil
 λ = Con $ cmd "lambda" nil
@@ -113,8 +114,8 @@ proj2 = proj "2"
 
 squig = Con $ cmd0 "rightsquigarrow"
 (~>) = binop 1 $ cmd0 "rightsquigarrow"
-(~~>) = binop 1 $ (backslash <> "rightsquigarrow" <> (element $ indice $ text "c"))
-(~>*) = binop 1 $ (backslash <> "rightsquigarrow" <> tex "*")
+(~~>) = binop 1 $ (backslash <> tex "rightsquigarrow" <> (element $ indice $ text "c"))
+(~>*) = binop 1 $ ((backslash <> tex "rightsquigarrow") ^^^ tex "*")
 (#) = binop 1 ", "
 subst t x y = t <-> mbrac ( concl x // y )
 (==>) = binop 1 $ cmd0 "Rightarrow"
@@ -136,6 +137,7 @@ y = text "y"
 x' = text "x'"
 y' = text "y'"
 z = text "z"
+z' = text "z'"
 w = text "w"
 
 c = text "c"
@@ -152,8 +154,10 @@ j = text "j"
 
 l = text "`l"
 l2 = text "`m"
+n = text "n"
 t = text "t"
 t' = text "t'"
+t'' = text "t''"
 tty = text "T"
 tty' = text "T'"
 
@@ -254,11 +258,11 @@ nacode file =
 -- | Document
 
 abstract :: TeX
-abstract = env "abstract" «Dependent types are an active area of research as fundation of mathematics but also as a programming language as expressive as a theorem prover. Both these objectives argue for a minimal and efficient dependently typed core language.
+abstract = env "abstract" «Dependent types are an active area of research as foundation of mathematics but also as a programming language as expressive as a theorem prover. Both these objectives argue for a minimal and efficient dependently typed core language.
 Most implementations so far use a core language based on natural deduction, which has the problem of making terms become large.
-Large terms cause efficiency issues and impede confidence in the langage since the output of the typechecker is so large that it is impossible to verify it.
+Large terms cause efficiency issues and impede confidence in the language since the output of the typechecker is so large that it is impossible to verify it.
 Following some ideas from PiSigma, we propose to use a core language in sequent calculus style to solve those issues.
-Putting the language in sequent calculus style allows to restore sharring between subexpressions and solve efficiency issues.»
+Putting the language in sequent calculus style allows to restore sharing between subexpressions and solve efficiency issues.»
 
 header = do
   maketitle
@@ -478,7 +482,7 @@ As explained in @sec_seqstyle, every variable is bound. We can separate elements
 
 @item'«Enumerations» are a set of scopeless and non-unique labels. Labels are plain strings starting with an apostrophe. We note them @l, @l2.
 
-@item'«Universes» are arranged in a tower, starting at 0, as explained above. We additionnaly use the shorthand @star for @star @indice(0).
+@item'«Universes» are arranged in a tower, starting at 0, as explained above. We additionally use the shorthand @star for @star @indice(0).
 
 @item'«Constructions», marked by the letter @c and detailed @grammar_na (@todo«can not do ref to internal labels»), are either a conclusion, a universe, a type or a construction of pair, enum or function. The result must be bound to a conclusion.
 »
@@ -774,29 +778,25 @@ The typechecking rules for constructions, shown @tr_constr_concl, are similar to
 
 @sec_typecheck<-section«Typechecking and evaluation strategy»
 
-@subsection«Reduction rules»
+@eval<-subsection«Reduction rules»
 
 We introduce the @squig operator to denote reduction rule. Reduction rules operate on a term and a heap.
 For the sake of clarity, we will sometimes use shortcut for lookup operations, for example we note @(app γ (concl x) \= z </> concl y) instead of
 @(app γc (concl x) \= x' </> text«and» </> app γd (concl x') \= z </> concl y).
 
-As for the previous relations involving terms, we will traverse the term and add every binding to the environment.
+As for the previous relations involving terms, we will traverse the term and add every binding to the environment. When we encounter a case we reduce it, if possible, by taking the right branch.
 @mathpar[[
   «@(rule «EvalCase» [
       «@(app h x \= cut_ (l @- i) (text "_"))»
      ]
-     «@(h # case_ x [«@((l @- i) |-> (t @- i))»] ~> h + (l \== t) # (t @- i))») »,
+     «@(h # case_ x [«@((l @- i) |-> (t @- i))»] ~> h + ((l @- i) \== t) # (t @- i))») »,
   «@(rule «EvalDestr» [ space ]
      «@(h # let_ x d t ~> h + (x \== d) # t)») »,
   «@(rule «EvalConstr» [ space ]
-     «@(h # let_ (concl x) c t ~> h + (concl x \== c) # t)») »,
-  «@(rule «EvalConcl» [
-     «@(app h (concl x) \= c)»
-     ]
-     «@(h # concl x ~> h # c)») »
+     «@(h # let_ (concl x) c t ~> h + (concl x \== c) # t)») »
 ]]
 
-For strict evaluation however, we will immediately reduce any destruction of construction we encounter.
+For strict evaluation however, we will immediately reduce any destruction of construction we encounter, hence we add special rules for each destructions and we check if the destructed hypothesis is a cut with the relevant construction.
 @mathpar[[
   «@(rule «StrictEvalProj@(indice 1)» [
        «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»
@@ -806,41 +806,78 @@ For strict evaluation however, we will immediately reduce any destruction of con
        «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»
      ]
      «@(h # let_ x (proj2 y) t ~> h + (x \== concl w) # t)») »,
-  «@(rule «StrictEvalApp» [
+  «@(rule «StrictEvalApp@todo«This is weird, because the substitution can trigger more reductions, hence not really small step.»» [
        «@(app h y \= cut_ (lambda_ w t') (text "_"))»
      ]
      «@(h # let_ x (mparen $ y </> concl z) t ~> h + (x \== subst t' z w) # t)») »
 ]]
 
+Finally, when we have only a variable left, we can evaluate the redexes available in this variable. If the strict evaluation rules are applied, all those redexes are already reduced. In order for this rules to be able to reduces redexes deep inside the structure, we need to have some rule that proceed by induction, hence the last four rules.
 @mathpar[[
   «@(rule «LazyEvalProj@(indice 1)» [
        «@(app h x \= (proj1 y))»,
        «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»,
        «@(app γc (concl z) \= c)»
      ]
-     «@(h # x ~~> h + (x \== c) # c)») »,
+     «@(h # concl x ~> h + (concl x \== c) # concl x)») »,
   «@(rule «LazyEvalProj@(indice 2)» [
-       «@(app h x \= (proj2 y))»,
+       «@(app h (concl x) \= (proj2 y))»,
        «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»,
        «@(app γc (concl w) \= c)»
      ]
-     «@(h # x ~~> h + (x \== c) # c)») »,
-  «@(rule «StrictEvalApp» [
+     «@(h # concl x ~> h + (concl x \== c) # concl x)») »,
+  «@(rule «LazyEvalApp» [
        «@(app h x \= (mparen $ y </> concl z))»,
        «@(app h y \= cut_ (lambda_ w t) (text "_"))»
      ]
-     «@(h # x ~> h + (x \== subst t z w) # subst t z w)») »,
-  todo«add the induction cases»
+     «@(h # concl x ~> h + (concl x \== subst t z w) # concl x)») »
+],[
+  «@(rule «EvalPair@(indice 1)» [
+       «@(app h (concl x) \= pair_ (concl y) (concl z))»,
+       «@(h # concl y ~> h'# concl y')»
+     ]
+     «@(h # concl x ~> h' + (concl x \== pair_ (concl y') (concl z)) # concl x)») »,
+  «@(rule «EvalPair@(indice 2)» [
+       «@(app h (concl x) \= pair_ (concl y) (concl z))»,
+       «@(h # concl z ~> h'# concl z')»
+     ]
+     «@(h # concl x ~> h' + (concl x \== pair_ (concl y) (concl z')) # concl x)») »
+],[
+  «@(rule «EvalPi» [
+       «@(app h (concl x) \= (pi_ z (concl y) t))»,
+       «@(h # concl y ~> h'# concl y')»
+     ]
+     «@(h # concl x ~> h + (concl x \== pi_ z (concl y') t) # concl x)») »,
+  «@(rule «EvalSigma» [
+       «@(app h (concl x) \= (sigma_ z (concl y) t))»,
+       «@(h # concl y ~> h'# concl y')»
+     ]
+     «@(h # concl x ~> h + (concl x \== pi_ z (concl y') t) # concl x)») »
 ]]
 
-@eval<-subsection«Evaluation: lazy or strict ?»
-
-@todo«talk a bit about the two approaches»
+We proposed rules for both strict and lazy evaluation. In order to select one or the other, one can choose not to apply reduction rules starting by @ruleref«Lazy» or @ruleref«Strict».
 
 @subsection«Subject reduction and strong normalization»
 
-Subject reduction : let @h a heap, @γty a context, @tty and @t two terms. It exists @h' a heap and @t' a term such as @(h # t ~> h' # t').
-Then we have @(pair_ γty h ⊢ t <@ tty ==> (pair_ γty h' ⊢ t' <@ tty))
+In order for @na to be interesting as a core language for a dependently typed framework, we need to provide some guarantee about the behaviour of the execution with relation to the type system. The proof for this properties are still being worked on and are left to be published in a future work. However, since the language is not in natural deduction style, we present those classic properties in a slightly different way.
+
+The first desirable property is that well-typedness is preserved by reduction rules.
+@subjred<-proposition«Subject reduction»«
+Let @h a heap, @γty a context, @tty and @t two terms. It exists @h' a heap and @t' a term such than @(h # t ~> h' # t').
+Then we have @display(pair_ γty h ⊢ t <@ tty ==> (pair_ γty h' ⊢ t' <@ tty))
+»
+
+We also want evaluation to have only one result. This means that the reduction rules must be confluent. For this confluence restul to be meaningful, we consider that two terms whose independent bindings have been reordered are indistinguishable.
+@proposition«Confluence»«
+Let @h, @h' and @h'' heaps, @t, @t' and @t'' terms with @(h # t ~> h' # t') and @(h # t ~> h'' # t''). Then it exists @(h @- text "f") and @(t @- text "f") such than
+@display(h' # t' ~>* (h @- text "f") # (t @- text "f") </> text« and » </> h'' # t'' ~>* (h @- text "f") # (t @- text "f"))
+»
+
+Finally, we want to guarantee that any successfully typechecked term will evaluate to a normal form. This guarantee that the evaluation of typechecked terms will always terminate.
+@proposition«Strong normalization»«
+Let @h a heap, @γty a context and @t, @tty terms such as @(pair_ γty h' ⊢ t' <@ tty). It exists @h' a heap and @n a normal form (a term without cuts) such than @(h # t ~> h' # n) and than cuts in @h' are not accessible from the conclusion of @n.
+»
+@todo«find a nicer formulation ?»
 
 @section«Results and Examples»
 
