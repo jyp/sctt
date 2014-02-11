@@ -6,9 +6,9 @@ import MarXup.Latex.Math
 import MarXup.Latex.Bib
 import MarXup.Tex
 
-import qualified Terms as T
-import qualified TexnAgda as TA
-import qualified Ident
+-- import qualified Terms as T
+-- import qualified TexnAgda as TA
+-- import qualified Ident
 
 import Control.Monad
 import Control.Monad.Fix (MonadFix,mfix)
@@ -65,14 +65,15 @@ description = env "description"
 
 -- | Math commands :
 γ = Con $ cmd "gamma" nil
+γ' = Con $ cmd "gamma'" nil
 γty = Con $ cmd "Gamma" nil
 γc = Con $ cmd "gamma_c" nil
 γa = Con $ cmd "gamma_a" nil
 γd = Con $ cmd "gamma_d" nil
 γd' = Con $ cmd "gamma_d'" nil
 h = text "h"
-h' = text "h'"
-h'' = text "h''"
+h' = prim h
+h'' = prim $ h'
 
 bot = Con $ cmd "bot" nil
 λ = Con $ cmd "lambda" nil
@@ -87,6 +88,7 @@ mbracket = outop "{" "}"
 mbrac = outop "[" "]"
 
 quad = cmd0 "quad"
+qquad = cmd0 "qquad"
 
 app f x = f <-> mparen x
 (\=) = binop 1 "="
@@ -111,6 +113,7 @@ iff = UnOp 1 (\s -> mathsf "if " <> space <> s ) 1
 proj p = UnOp 1 (\s -> s <> mathsf ("." <> p) ) 1
 proj1 = proj "1"
 proj2 = proj "2"
+prim = UnOp 1 (\s -> s <> "'") 1
 
 squig = Con $ cmd0 "rightsquigarrow"
 (~>) = binop 1 $ cmd0 "rightsquigarrow"
@@ -134,18 +137,19 @@ indice = UnOp 1 (\ x -> tex "_" <> braces x) 1
 x,y,z,c,d,l,l2,t :: Math
 x = text "x"
 y = text "y"
-x' = text "x'"
-y' = text "y'"
+x' = prim x
+y' = prim y
 z = text "z"
-z' = text "z'"
+z' = prim z
 w = text "w"
 
 c = text "c"
 cty = text "C"
 d = text "d"
+d' = prim $ text "d'"
 
 xty = text "X"
-xty' = text "X'"
+xty' = prim xty
 yty = text "Y"
 zty = text "Z"
 
@@ -156,10 +160,10 @@ l = text "`l"
 l2 = text "`m"
 n = text "n"
 t = text "t"
-t' = text "t'"
-t'' = text "t''"
+t' = prim $ t
+t'' = prim $ t'
 tty = text "T"
-tty' = text "T'"
+tty' = prim $ text "T"
 
 lra = cmd0 "longrightarrow"
 star = Con $ cmd0 "star"
@@ -181,6 +185,7 @@ figure'' caption body = env' "figure" ["!h"] $ do
   l<-body
   cmd "caption" caption
   l'<-label "Fig."
+  vspace"-0.3cm"
   return (l',l)
 
 figure' :: TeX -> TeX -> Tex SortedLabel
@@ -258,11 +263,11 @@ nacode file =
 -- | Document
 
 abstract :: TeX
-abstract = env "abstract" «Dependent types are an active area of research as foundation of mathematics but also as a programming language as expressive as a theorem prover. Both these objectives argue for a minimal and efficient dependently typed core language.
-Most implementations so far use a core language based on natural deduction, which has the problem of making terms become large.
-Large terms cause efficiency issues and impede confidence in the language since the output of the typechecker is so large that it is impossible to verify it.
+abstract = env "abstract" «Dependent types are an active area of research as foundation of mathematics but also as a programming language where many invariants can be internalized as types. Both these objectives argue for a minimal and efficient dependently typed core language.
+Most implementations so far use a core language based on ``natural deduction'', which we argue is ill-suited for a type-checking backend.
+We think that ``natural deduction'' style is the source of efficiency issues in the presence of inference, it makes terms grows very large, which cause efficiency issues and impede confidence in the language since the output of the typechecker is so large that it is impossible to verify it.
 Following some ideas from PiSigma, we propose to use a core language in sequent calculus style to solve those issues.
-Putting the language in sequent calculus style allows to restore sharing between subexpressions and solve efficiency issues.»
+We believe that putting the language in sequent calculus style allows to solve theses efficiency issues.»
 
 header = do
   maketitle
@@ -292,7 +297,7 @@ GADTs @citep"xi_guarded_2003" allows to encode some properties in a non dependen
 
 @example<-subsection«An example in Agda»
 
-Numerous examples have been presented to motivate the use of dependent types in mainstream programming @citep"oury_power_2008" @citep"brady_invariants_2008". We give here a short and simple example to outline the specificity of dependent type languages from the user point of view but also from the typechecking point of view.
+Numerous examples have been presented to motivate the use of dependent types in mainstream programming @citep"oury_power_2008, brady_invariants_2008". We give here a short and simple example to outline the specificity of dependent type languages from the user point of view but also from the typechecking point of view.
 
 For this example, we use Agda. The syntax should be familiar enough given some knowledge of a statically-typed functional language.
 
@@ -476,7 +481,7 @@ As explained in @sec_seqstyle, every variable is bound. We can separate elements
 
   @item'«Conclusions» are either an hypothesis or the result of a construction of conclusions. We mark conclusions by a bar on the top: @(concl x) .
 »
-@item'«Destructions», marked by the letter @d in @grammar_na, can be either a @texttt«case» (a pattern match) or of the form @d as shown in @grammar_na (@todo«can not do ref to internal labels»): an application, a projection or a cut. We do not need to bind the result of a @texttt«case», as opposed to other destructions.
+@item'«Destructions», marked by the letter @d in @grammar_na, can be either a @texttt«case» (a pattern match) or of the form @d as shown in @grammar_na: an application, a projection or a cut. We do not need to bind the result of a @texttt«case», as opposed to other destructions.
 
 @item'«Dependent functions and products» are both of the same form: @(pi_ x (concl y) t) and @(sigma_ x (concl y) t) . The type on the left hand side can be a conclusion, since it does not depend on the element @x, hence it is possible to bind it before. However, the right hand side must be a term, since it depends on @x. @x is an hypothesis since it is abstract here.
 
@@ -484,23 +489,24 @@ As explained in @sec_seqstyle, every variable is bound. We can separate elements
 
 @item'«Universes» are arranged in a tower, starting at 0, as explained above. We additionally use the shorthand @star for @star @indice(0).
 
-@item'«Constructions», marked by the letter @c and detailed @grammar_na (@todo«can not do ref to internal labels»), are either a conclusion, a universe, a type or a construction of pair, enum or function. The result must be bound to a conclusion.
+@item'«Constructions», marked by the letter @c and detailed @grammar_na, are either a conclusion, a universe, a type or a construction of pair, enum or function. The result must be bound to a conclusion.
 »
 @grammar_na<-figure'«Abstract syntax for @na»«
-  @grammar_term<-subfigure"b"«0.3»«Terms»«@align(
+  @vspace"-30pt"
+  @subfigure"b"«0.3»«Terms»«@align(
     (\(x:xs) -> [ «@t ::=@space», x ] : map (\y -> [ « |@space»  , y ]) xs)
     [ «@(concl x)»,
       «@(let_ x d t)» ,
       «@(case_ x [ «@(mparen $ l → t) @text«*»» ])» ,
       «@(let_ (concl x) c t)»
     ])»
-  @grammar_destr<-subfigure"b"«0.3»«Destructions»«@align(
+  @subfigure"b"«0.3»«Destructions»«@align(
     (\(x:xs) -> [ «@d ::=@space», x ] : map (\y -> [ « |@space»  , y ]) xs)
     [ «@x @space @(concl y)» ,
       «@(proj1 x) @space | @space @(proj2 x) » ,
       «@(color "red" «@(concl x <:> concl y)»)»
     ])»
-  @grammar_constr<-subfigure"b"«0.3»«Constructions»«@align(
+  @subfigure"b"«0.3»«Constructions»«@align(
     (\(x:xs) -> [ «@c ::=@space», x ] : map (\y -> [ «|@space»  , y ]) xs) $
     map (mconcat . intersperse «@space|@space»)
     [ [ «@x» ],
@@ -509,6 +515,7 @@ As explained in @sec_seqstyle, every variable is bound. We can separate elements
       [ «@l»,                     «@(fin_ l)» ],
       [ «@star @(indice i)» ]
     ])»
+  @vspace"-0.2cm"
 »
 Conclusions are the result of constructions of conclusions and hypothesis is the base case of constructions. An hypothesis is the result of destructions of hypotheses. This means that we can only produce constructions of destructions, hence there is no reduction possible and the program is in normal form.
 
@@ -520,10 +527,11 @@ Of course, it is tedious to write reasonable programs with this syntax as it is 
 
 Every program is composed of two parts: a term and its type. The typechecker check the term against its type.
 @fig_syntaxes is an example of a program in high-level syntax and its translation to the low-level syntax. The low-level version is verbose, which argues for the need of a high-level one.
-
 @fig_syntaxes<-figure'«The polymorphic identity, in both high-level and low-level syntax.»«
-  @minipage"c"«0.3»«@nacode"../examples/010-Lam.ma"»
-  @minipage"c"«0.3»«@nacode"../examples/010-Lam.na"»
+  @vspace"-0.4cm"
+  @minipage"c"«0.4»«@nacode"../examples/010-Lam.ma"»
+  @minipage"c"«0.55»«@nacode"../examples/010-Lam.na"»
+  @vspace"-0.2cm"
   @centering
 »
 
@@ -534,6 +542,7 @@ Before giving the details of the type system and the evaluation strategy, let us
 The trick in this encoding is to separate the tag part (@nai«Foo» and @nai«Bar») from the type part. The tag part can be easily encoded as an enumeration. For the type part, we take advantage of the dependent product to pattern match the tag and return the appropriate type. In this case, we have a datatype with a parameter, which is translated into a function.
 
 @fig_iex<-figure'«A datatype in Agda and @na.»«
+  @vspace"-0.4cm"
 @minipage"c"«0.4»«
 @agdacode«
 data MyDatatype (s : Set) : Set where
@@ -541,13 +550,13 @@ data MyDatatype (s : Set) : Set where
   Bar : MyDatatype s
 »»
 @minipage"c"«0.4»«@nacode"../examples/datatype.ma"»
+  @vspace"-0.2cm"
 @centering»
 
 This example shows the fact that, in a dependently typed programming language, enumerations are enough to simulate datatypes, which is not possible in a non dependently typed programming language. Here, a more powerful type system allows to use an arguably simpler core language.
 
 
-
-@sec_type<-section«Type system»
+@sec_type_eval<-section«Evaluation and type system»
 
 The typing rules for @na are usual, most of the cleverness is contained in the way the environment is updated. Hence we start by presenting environment and environment extensions.
 
@@ -591,6 +600,61 @@ When checking or evaluating a case, we keep track of constraints on the variable
   [ «»               , «= @γ @text« with » @(γc ← (l \== x))», «@text«otherwise»»                             ]
 ]
 
+@sec_eval<-subsection«Evaluation strategy»
+
+We use the @squig operator to denote the reduction relation. Reduction rules operate on a term and a heap.
+For clarity, we sometimes use shortcuts for lookup operations, for example we note @(app γ (concl x) \= z </> concl y) instead of
+@(app γc (concl x) \= x' </> text«and» </> app γd (concl x') \= z </> concl y).
+
+The evaluation relation is presented as a big step semantic from a heap and a term to a multiset of heap and terms. We use a multiset as return value to handle case decomposition on an abstract variable.
+
+As for every relation involving terms, we will traverse the term and add every binding to the environment. When we encounter a case on a tag, we reduce it by taking the right branch. If the variable is abstract, we return the multiset of the evaluation of each branches.
+@mathpar[[
+  «@(rule «EvalCase» [
+      «@(app h x \= cut_ (l @- i) (text "_"))»,
+      «@(h + ((l @- i) \== x) ⊢ (t @- i) ~> h' ⊢ t')»
+     ]
+     «@(h ⊢ case_ x [«@((l @- i) |-> (t @- i))»] ~> h' ⊢ t')») »,
+  «@(rule «AbstractCase» [
+      «∀ @i @quad @(h + ((l @- i) \== x) ⊢ (t @- i) ~> (h' @- i) ⊢ (t' @- i))»
+     ]
+     «@(h ⊢ case_ x [«@((l @- i) |-> (t @- i))»] ~> mbracket ((h @- i) ⊢ (t @- i)))») »,
+  «@(rule «EvalDestr» [
+      «@(h ⊢ d ~> h' ⊢ t')»,
+      «@(h' + (x \== t') ⊢ t ~> h'' ⊢ t'')»
+     ]
+     «@(h ⊢ let_ x d t ~> h'' ⊢ t'')») »,
+  «@(rule «AddDestr» [
+      «@(h + (x \== d) ⊢ t ~> h' ⊢ t')»
+     ]
+     «@(h ⊢ let_ x d t ~> h' ⊢ t')») »,
+  «@(rule «AddConstr» [
+      «@(h + (concl x \== c) ⊢ t ~> h' ⊢ t')»
+     ]
+     «@(h ⊢ let_ (concl x) c t ~> h' ⊢ t')») »
+]]
+
+Destruction of construction are evaluated eagerly, hence we add special rules for each destructions and we check if the destructed hypothesis is a cut with the relevant construction. We need to evaluate only one cut for projections, since all previous cuts have already been evaluated. However, a reduction on a lambda can reveal multiple cuts inside the lambda, which are then evaluated.
+@mathpar[[
+  «@(rule «EvalProj@(indice 1)» [
+       «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»
+     ]
+     «@(h ⊢ (proj1 y) ~> h ⊢ concl z)») »,
+  «@(rule «EvalProj@(indice 2)» [
+       «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»
+     ]
+     «@(h ⊢ (proj2 y) ~> h ⊢ concl w)») »,
+  «@(rule «EvalApp» [
+      «@(app h y \= cut_ (lambda_ w t) (text "_"))»,
+      «@(h ⊢ subst t z w ~> h' ⊢ t')»
+     ]
+     «@(h ⊢ (mparen $ y </> concl z) ~> h' ⊢ t')») »
+]]
+
+When we have only a conclusion left, the evaluation is finished since every redexes has been evaluated when updating the heap.
+
+In the following section, we will write @(γ ⊢ t ~> γ' ⊢ t') to mean @(γ \= pair_ γty h), @(h ⊢ t ~> h' ⊢ t') and @(γ' \= pair_ γty h').
+
 @eqrules<-subsection«Equality rules»
 
 Equality rules can only be applied to normalized terms (a term without cuts). The equality relation, noted @(γ ⊢ t \= t') is commutative for @t and @t', hence the rules are given only in one way. Equality rules use the following two operators:
@@ -599,14 +663,17 @@ Equality rules can only be applied to normalized terms (a term without cuts). Th
 @item @(x ≅ y) is the symbol equality with respect to aliases. It is defined as @(x ≡ y ∨ app γa x ≅ y ∨ x ≅ app γa y). In other words, it tests if two hypotheses are in the same class of aliases. Since the alias environment is only for hypotheses, this operator is not usable for conclusions.»
 Those two operators are used to test equality between conclusions and hypotheses respectively.
 
-If the context is inconsistent, everything true. It is necessary to handle uninteresting branches for @texttt«case». It fulfills the same purpose as the rule for environment extensions on labels presented @envext.
+If the context is inconsistent, everything is true. It is necessary to handle uninteresting branches for @texttt«case». It fulfills the same purpose as the rule for environment extensions on labels presented @envext.
 @align[
   [ «@(bot ⊢ text "_")», «@lra true»]
 ]
 
 To verify equality on terms, we traverse both terms until we reach the conclusions, then we compare the definition of the conclusions. If the conclusions are equal according to @(math $ cmd0"equiv"), we can return directly.
+
+@todo«we are supposed to compare normal form only, so we shouldn't need to reduce»
 @align[
-  [ «@(γ ⊢ let_ x d t \= t')», «@lra @(γ + x \== d ⊢ t \= t')»],
+  [ «@(γ ⊢ let_ x d t \= t')», «@lra @(γ' + x \== t'' ⊢ t \= t')»,
+    «@text«with » @(γ ⊢ d ~> γ' ⊢ t'')»],
   [ «@(γ ⊢ let_ (concl x) c t \= t')», «@lra @(γ + (concl x) \== c ⊢ t \= t')»],
   [ «@(γ ⊢ case_ x [«@((l @- i) |-> (t @- i))»] \= t)»,
     «@lra @fa @i @quad @(γ + x \== (l @- i) ⊢ (t @- i) \= t)»],
@@ -643,7 +710,7 @@ The last two rules are interesting in that they are asymmetric: a construction o
 The typing rules can be divided in three relations. The two first relations are typechecking relations for respectively terms and constructions, we note typechecking @(Con $ cmd0 "leftleftarrows"). The last relation, for destructions, is an inference, noted @(Con $ cmd0 "rightrightarrows").
 
 We note typechecking for terms @(γ ⊢ t <@ tty), the rules are presented @tr_term. The type here is always a complete term and must have been checked beforehand.
-In the @ruleref«Constr» rules, we do not need to typecheck the construction in detail since any construction added this way is typechecked by either the @ruleref«Concl» rule or the @ruleref«Cut» rule. In the @ruleref«Destr» rule, we use the inference relation on destructions so that every hypothesis has a type in the context.
+In the @ruleref«Constr» rules, we do not need to typecheck the construction in detail since any construction added this way is typechecked by either the @ruleref«Concl» rule or the @ruleref«Cut» rule. In the @ruleref«Destr» rule, we use the inference relation on destructions so that every hypothesis has a type in the context. We also evaluate the destruction eagerly.
 
 @tr_term<-figure'«Typechecking a term: @(γ ⊢ t <@ tty)»«
 @mathpar[[
@@ -652,11 +719,6 @@ In the @ruleref«Constr» rules, we do not need to typecheck the construction in
       «@γty (x) = @(fin_ $ (l @- i))»
      ]
      «@(γ ⊢ case_ x [«@((l @- i) |-> (t @- i))»] <@ tty)») »,
-  «@(rule «Destr» [
-      «@(γ + (x \== d) + cut_ x tty'  ⊢ t <@ tty)»,
-      «@(γ ⊢ d @> tty')»
-     ]
-     «@(γ ⊢ let_ x d t <@ tty)») »,
   «@(rule «Constr» [
       «@(γ + (concl x \== c) ⊢ t <@ tty)»
      ]
@@ -665,7 +727,18 @@ In the @ruleref«Constr» rules, we do not need to typecheck the construction in
       «@γc (@concl(x)) = @c»,
       «@(γ ⊢ c <@ tty)»
      ]
-     «@(γ ⊢ concl x <@ tty)») »
+     «@(γ ⊢ concl x <@ tty)») »,
+  «@(rule «Destr» [
+      «@(γ ⊢ d @> tty')»,
+      «@(γ ⊢ d ~> γ' ⊢ t')»,
+      «@(γ' + (x \== t') + cut_ x tty'  ⊢ t <@ tty)»
+     ]
+     «@(γ ⊢ let_ x d t <@ tty)») »,
+  «@(rule «Eval@todo«Not convinced, See relation with constructions»» [
+      «@(γ ⊢ tty ~> γ' ⊢ concl xty)»,
+      «@(γ' ⊢ t <@ concl xty)»
+     ]
+     «@(γ ⊢ t <@ tty)») »
 ]]»
 
 The inference relation for destructions, presented @tr_destr, is noted @(γ ⊢ d @> tty). Most rules rely on the fact that every hypothesis has its type in the context. Once we know the type of the hypothesis part of the destruction, we check that the destruction is consistent and reconstruct the complete type. The @ruleref«Cut» destructions, on the other hand, are verified by typechecking a trivial term composed only of a conclusion.
@@ -720,7 +793,7 @@ A construction is checked against a term or a construction, it is noted respecti
      «@(γ ⊢ x <@ tty)») »
 ]]»
 
-The typechecking rules for constructions, shown @tr_constr_concl, are similar to the typechecking rules for a language in natural deduction style, except that instead of subterms, we have conclusions. The definition of those conclusions play the role of subterms. @ruleref«Lazy»s rules can only happen if the language is lazily evaluated. On the other hand, if the evaluation is strict, the redex has already been reduced to a normal form. @eval give more details about the evaluation strategy.
+The typechecking rules for constructions, shown @tr_constr_concl, are similar to the typechecking rules for a language in natural deduction style, except that instead of subterms, we have conclusions. The definition of those conclusions play the role of subterms. @ruleref«Lazy»s rules can only happen if the language is lazily evaluated. On the other hand, if the evaluation is strict, the redex has already been reduced to a normal form. @sec_eval give more details about the evaluation strategy.
 
 @tr_constr_concl<-figure'«Typechecking a construction against a construction: @(γ ⊢ c <@ cty).»«
 @mathpar[[
@@ -755,129 +828,35 @@ The typechecking rules for constructions, shown @tr_constr_concl, are similar to
       «@(binop 1 «<» i j)»
      ]
      «@(γ ⊢ kind i <@ kind j)») »
-],[
-  «@(rule «LazyEvalProj@(indice 1)» [
-      «@γd (@x) = @(proj1 y)»,
-      «@γd (@y) = @(pair_ (concl z) (concl w))»,
-      «@(γ ⊢ c <@ concl z)»
-     ]
-     «@(γ ⊢ c <@ x)») »,
-  «@(rule «LazyEvalProj@(indice 2)» [
-      «@γd (@x) = @(proj2 y)»,
-      «@γd (@y) = @(pair_ (concl z) (concl w))»,
-      «@(γ ⊢ c <@ concl w)»
-     ]
-     «@(γ ⊢ c <@ x)») »,
-  «@(rule «LazyEvalApp» [
-      «@γd (@x) = @(y </> concl z)»,
-      «@γd (@y) = @(lambda_ w t)»,
-      «@(γ ⊢ c <@ subst t z w )»
-     ]
-     «@(γ ⊢ c <@ x)») »
 ]]»
 
-@sec_typecheck<-section«Typechecking and evaluation strategy»
 
-@eval<-subsection«Reduction rules»
-
-We introduce the @squig operator to denote reduction rule. Reduction rules operate on a term and a heap.
-For the sake of clarity, we will sometimes use shortcut for lookup operations, for example we note @(app γ (concl x) \= z </> concl y) instead of
-@(app γc (concl x) \= x' </> text«and» </> app γd (concl x') \= z </> concl y).
-
-As for the previous relations involving terms, we will traverse the term and add every binding to the environment. When we encounter a case we reduce it, if possible, by taking the right branch.
-@mathpar[[
-  «@(rule «EvalCase» [
-      «@(app h x \= cut_ (l @- i) (text "_"))»
-     ]
-     «@(h # case_ x [«@((l @- i) |-> (t @- i))»] ~> h + ((l @- i) \== t) # (t @- i))») »,
-  «@(rule «EvalDestr» [ space ]
-     «@(h # let_ x d t ~> h + (x \== d) # t)») »,
-  «@(rule «EvalConstr» [ space ]
-     «@(h # let_ (concl x) c t ~> h + (concl x \== c) # t)») »
-]]
-
-For strict evaluation however, we will immediately reduce any destruction of construction we encounter, hence we add special rules for each destructions and we check if the destructed hypothesis is a cut with the relevant construction.
-@mathpar[[
-  «@(rule «StrictEvalProj@(indice 1)» [
-       «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»
-     ]
-     «@(h # let_ x (proj1 y) t ~> h + (x \== concl z) # t)») »,
-  «@(rule «StrictEvalProj@(indice 2)» [
-       «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»
-     ]
-     «@(h # let_ x (proj2 y) t ~> h + (x \== concl w) # t)») »,
-  «@(rule «StrictEvalApp@todo«This is weird, because the substitution can trigger more reductions, hence not really small step.»» [
-       «@(app h y \= cut_ (lambda_ w t') (text "_"))»
-     ]
-     «@(h # let_ x (mparen $ y </> concl z) t ~> h + (x \== subst t' z w) # t)») »
-]]
-
-Finally, when we have only a variable left, we can evaluate the redexes available in this variable. If the strict evaluation rules are applied, all those redexes are already reduced. In order for this rules to be able to reduces redexes deep inside the structure, we need to have some rule that proceed by induction, hence the last four rules.
-@mathpar[[
-  «@(rule «LazyEvalProj@(indice 1)» [
-       «@(app h x \= (proj1 y))»,
-       «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»,
-       «@(app γc (concl z) \= c)»
-     ]
-     «@(h # concl x ~> h + (concl x \== c) # concl x)») »,
-  «@(rule «LazyEvalProj@(indice 2)» [
-       «@(app h (concl x) \= (proj2 y))»,
-       «@(app h y \= cut_ (pair_ (concl z) (concl w)) (text "_"))»,
-       «@(app γc (concl w) \= c)»
-     ]
-     «@(h # concl x ~> h + (concl x \== c) # concl x)») »,
-  «@(rule «LazyEvalApp» [
-       «@(app h x \= (mparen $ y </> concl z))»,
-       «@(app h y \= cut_ (lambda_ w t) (text "_"))»
-     ]
-     «@(h # concl x ~> h + (concl x \== subst t z w) # concl x)») »
-],[
-  «@(rule «EvalPair@(indice 1)» [
-       «@(app h (concl x) \= pair_ (concl y) (concl z))»,
-       «@(h # concl y ~> h'# concl y')»
-     ]
-     «@(h # concl x ~> h' + (concl x \== pair_ (concl y') (concl z)) # concl x)») »,
-  «@(rule «EvalPair@(indice 2)» [
-       «@(app h (concl x) \= pair_ (concl y) (concl z))»,
-       «@(h # concl z ~> h'# concl z')»
-     ]
-     «@(h # concl x ~> h' + (concl x \== pair_ (concl y) (concl z')) # concl x)») »
-],[
-  «@(rule «EvalPi» [
-       «@(app h (concl x) \= (pi_ z (concl y) t))»,
-       «@(h # concl y ~> h'# concl y')»
-     ]
-     «@(h # concl x ~> h + (concl x \== pi_ z (concl y') t) # concl x)») »,
-  «@(rule «EvalSigma» [
-       «@(app h (concl x) \= (sigma_ z (concl y) t))»,
-       «@(h # concl y ~> h'# concl y')»
-     ]
-     «@(h # concl x ~> h + (concl x \== pi_ z (concl y') t) # concl x)») »
-]]
-
-We proposed rules for both strict and lazy evaluation. In order to select one or the other, one can choose not to apply reduction rules starting by @ruleref«Lazy» or @ruleref«Strict».
-
-@subsection«Subject reduction and strong normalization»
+@section«Properties on typing and reduction»
 
 In order for @na to be interesting as a core language for a dependently typed framework, we need to provide some guarantee about the behaviour of the execution with relation to the type system. The proof for this properties are still being worked on and are left to be published in a future work. However, since the language is not in natural deduction style, we present those classic properties in a slightly different way.
 
-The first desirable property is that well-typedness is preserved by reduction rules.
-@subjred<-proposition«Subject reduction»«
-Let @h a heap, @γty a context, @tty and @t two terms. It exists @h' a heap and @t' a term such than @(h # t ~> h' # t').
-Then we have @display(pair_ γty h ⊢ t <@ tty ==> (pair_ γty h' ⊢ t' <@ tty))
+We first want the reduction relation to behave well in the presence of substitution.
+@proposition«Substitution Lemma»«
+Let @h and @h' heaps, @γty a context, @t, @t', @tty and @tty' terms such as
+@display( (pair_ γty h ⊢ t <@ tty) </> Con qquad </>
+(h ⊢ t ~> h' ⊢ t') </> Con qquad </> (h ⊢ tty ~> h' ⊢ tty'))
+Then, we have @todo«Finish this»
+@display(pair_ γty h ⊢ t <@ tty ==> (pair_ γty h' ⊢ t' <@ tty))
 »
 
-We also want evaluation to have only one result. This means that the reduction rules must be confluent. For this confluence restul to be meaningful, we consider that two terms whose independent bindings have been reordered are indistinguishable.
-@proposition«Confluence»«
-Let @h, @h' and @h'' heaps, @t, @t' and @t'' terms with @(h # t ~> h' # t') and @(h # t ~> h'' # t''). Then it exists @(h @- text "f") and @(t @- text "f") such than
-@display(h' # t' ~>* (h @- text "f") # (t @- text "f") </> text« and » </> h'' # t'' ~>* (h @- text "f") # (t @- text "f"))
+A desirable property is that well-typedness is preserved by reduction rules.
+@subjred<-proposition«Subject reduction»«
+Let @h a heap, @γty a context, @tty and @t two terms. It exists @h' a heap and @t' a term such than @(h ⊢ t ~> h' ⊢ t').
+Then we have @display(pair_ γty h ⊢ t <@ tty ==> (pair_ γty h' ⊢ t' <@ tty))
 »
 
 Finally, we want to guarantee that any successfully typechecked term will evaluate to a normal form. This guarantee that the evaluation of typechecked terms will always terminate.
 @proposition«Strong normalization»«
-Let @h a heap, @γty a context and @t, @tty terms such as @(pair_ γty h' ⊢ t' <@ tty). It exists @h' a heap and @n a normal form (a term without cuts) such than @(h # t ~> h' # n) and than cuts in @h' are not accessible from the conclusion of @n.
+Let @h a heap, @γty a context and @t, @tty terms such as
+@(pair_ γty h' ⊢ t' <@ tty).
+It exists @h' a heap withtout cuts and @n a normal form (a term without cuts) such as
+@display(h ⊢ t ~> h' ⊢ n)
 »
-@todo«find a nicer formulation ?»
 
 @section«Results and Examples»
 
@@ -888,16 +867,20 @@ In @na, we rediscover the sharing between the two versions of @agdai«u1» and @
 In particular, if @nai«p» in this piece of code was a big term instead of being abstract, the performance penalty for Agda would have been important.
 
 @example_sharing<-figure'«Recovering sharing in Agda and @na.»«
-@minipage"c"«0.5»«
+@vspace"-0.4cm"
+@minipage"c"«0.45»«
 @agdacode«
-sharing : (A : Set) -> (B : Set) -> (P : A -> B -> Set) -> (p : A * B) ->
+sharing :
+  (A : Set) -> (B : Set) ->
+  (P : A -> B -> Set) -> (p : A * B) ->
   let (u1 , u2) = p
       v = P u1 u2
   in v -> v
 sharing A B P (u1' , u2') =
-  let v' = P u1' u2' in \(x : v') -> x
+  let v' = P u1' u2'
+  in \(x : v') -> x
 »»
-@minipage"c"«0.45»«@nacode"../examples/032-Nisse.ma"»
+@minipage"c"«0.5»«@nacode"../examples/032-Nisse.ma"»
 @centering
 »
 
@@ -906,14 +889,17 @@ For example, provided @nai«Bool» and @nai«not», @nai«refl Bool 'true : Eq B
 The only element of the @agdai«Eq» type is a proof by reflexivity.
 If the two arguments of @agdai«Eq» do not unify, the program do not typecheck.
 @example_eq<-figure'«Encoding equality at the type level»«
-@minipage"c"«0.5»«
+@vspace"-0.4cm"
+@minipage"c"«0.43»«
 @agdacode«
-data _==_ {A : Set} (x : A) : A -> Set where
+data _==_
+    {A:Set} (x:A) : A -> Set where
   refl : x == x
 »»
-@minipage"c"«0.45»«@listing["language=nanoAgda"]«
-Eq = (\A -> \x -> \y -> (P : A -> *0) -> P x -> P y)
-   : (A : *0) -> A -> A -> *1;
+@minipage"c"«0.54»«@listing["language=nanoAgda"]«
+Eq =
+  (\A -> \x -> \y -> (P: A -> *0) -> P x -> P y)
+  : (A : *0) -> A -> A -> *1;
 refl = (\A -> \x -> \P -> \p -> p)
      : (A : *0) -> (x:A) -> Eq A x x;
 »»
@@ -927,10 +913,12 @@ On the contrary, the Agda typechecker unfold each term but do not reconstruct th
 The fact that this example typecheck in @na and not in Agda is a direct consequence of the sequent calculus presentation. The fact that each subterm is bound to a variable allows to express constraints on a much more precise level.
 
 @example_ulf<-figure'«Smart case»«
+@vspace"-0.4cm"
 @minipage"c"«0.5»«
 @agdacode«
 SmartCase :
-  (A : Set) -> (A -> Bool) -> (A -> Bool) -> A -> Bool
+  (A : Set) -> (A -> Bool) ->
+    (A -> Bool) -> A -> Bool
 SmartCase A f g x = h' y
   where h : Bool -> A -> Bool
         h true = f
@@ -940,9 +928,10 @@ SmartCase A f g x = h' y
         y = f x0
 
         h' : Bool -> Bool
-        h' true = let z : (h y x0) == y
-                      z = refl
-                  in true
+        h' true =
+            let z : (h y x0) == y
+                z = refl
+            in true
         h' false = false
 »»@minipage"c"«0.5»«@listing["language=nanoAgda"]«
 Bool = { 'true, 'false } : *0;
@@ -962,36 +951,40 @@ SmartCase =
         'true.
       'false -> 'false.}
   ))
-  : (f : A -> Bool) -> (g : A -> Bool) -> A -> Bool
+  : (f : A -> Bool) -> (g : A -> Bool) ->
+     A -> Bool
 »»
 @centering
 »
 
-A property of boolean functions is that if @nai«f» is of type @nai«Bool ->  Bool», then @nai«f x» = @nai«f (f (f x))». @example_triplef encode this property in Agda and @na using @nai«Eq» and @nai«refl». Neither Agda nor @na manage to typecheck this example, however we think that it is possible in @na with a better handling of nested cases.
+A property of boolean functions is that if @nai«f» is of type @nai«Bool ->  Bool», then @nai«f x» = @nai«f (f (f x))». This was introduced by @citet"Altenkirch_norm_2004" in the context of type theory. @example_triplef encode this property in Agda and @na using @nai«Eq» and @nai«refl». Neither Agda nor @na manage to typecheck this example, however we think that it is possible in @na with a better handling of nested cases.
 @example_triplef<-figure'«Triple application of boolean function»«
+@vspace"-0.4cm"
 @minipage"c"«0.5»«
 @agdacode«
-tripleF : (f : Bool -> Bool) -> (x : Bool) ->
-                (f x) == (f (f (f x)))
+tripleF :
+  (f : Bool -> Bool) -> (x : Bool) ->
+     (f x) == (f (f (f x)))
 tripleF f x with x | f x
 ... | true  | true  = refl
 ... | true  | false = refl
 ... | false | true  = refl
 ... | false | false = refl
 »»@minipage"c"«0.5»«@listing["language=nanoAgda"]«
-tripleF = (\f -> \x -> (
-              case x of {
-                 'true  -> case f x of {
-                      'true  -> refl Bool 'true.
-                      'false -> refl Bool 'false.
-                 }.
-                 'false -> case f x of {
-                      'true  -> refl Bool 'true.
-                      'false -> refl Bool 'false.
-                 }.
-              }))
-        : (f: Bool -> Bool) -> (x : Bool) ->
-              Eq Bool (f x) (f (f (f x)))
+tripleF =
+  (\f -> \x -> (
+    case x of {
+       'true  -> case f x of {
+            'true  -> refl Bool 'true.
+            'false -> refl Bool 'false.
+       }.
+       'false -> case f x of {
+            'true  -> refl Bool 'true.
+            'false -> refl Bool 'false.
+       }.
+    }))
+  : (f: Bool -> Bool) -> (x : Bool) ->
+        Eq Bool (f x) (f (f (f x)))
 »»
 @centering
 »
