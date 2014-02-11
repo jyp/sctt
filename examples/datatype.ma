@@ -6,4 +6,4 @@ TERM
            'Bar -> Unit.
        } )
 TYPE
-  *0 -> *1
+  *0 -> *0
