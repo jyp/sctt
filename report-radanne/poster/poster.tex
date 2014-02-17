@@ -1,0 +1,183 @@
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
+\documentclass[final, xcolor=svgnames]{beamer}
+\usepackage[orientation=portrait,size=a0extended,scale=1.6]{beamerposter}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+% \input{../../PaperTools/latex/unicodedefs}
+
+\usepackage{multicol}
+\usepackage{mathpartir}
+\usepackage{listings}
+\usepackage[]{xspace}
+\usetheme{I6pd2}
+
+
+\colorlet{titlecolor}{tabutter}
+\colorlet{blockcolor}{ta3aluminium}
+\colorlet{fillcolor}{tagray}
+
+% \usepackage[right=1cm,left=1cm,top=1cm,bottom=1cm]{geometry}
+% \setlength{\parindent}{0.0cm}
+% \geometry{
+% hmargin=2.5cm, % little modification of margins
+% }
+
+
+\newcommand{\coq}{\textsc{Coq}\xspace}
+\newcommand{\agda}{\textsc{Agda}\xspace}
+\newcommand{\ma}{\textsc{microAgda}\xspace}
+\newcommand{\na}{\textsc{nanoAgda}\xspace}
+
+\input{../lst}
+
+\lstset{
+  aboveskip=0pt,
+  belowcaptionskip=0pt,
+  basicstyle=\small\ttfamily,
+  keywordstyle=\bfseries\color{ta3chameleon},
+  keywordstyle=[2]\bfseries\color{tascarletred},
+  commentstyle=\itshape\color{taplum},
+  identifierstyle=\color{ta3skyblue},
+  stringstyle=\color{taorange},
+}
+
+\usepackage{tikz}
+\input{../tikz}
+\usetikzlibrary{shapes,arrows,calc,decorations.markings}
+
+\title{A sequent-calculus presentation of type-theory}
+\author{Gabriel Radanne --- Under the supervision of Jean-Philippe Bernardy}
+\institute{ENS Rennes --- Chalmers University of Technology}
+
+\begin{document}
+\raggedright{}
+\begin{frame}[shrink]
+  \begin{block}{Dependent Types}
+    \begin{columns}[t]
+      \column{.55\textwidth}
+      In most programming languages, terms and types live in two different worlds: one cannot refer to terms in types and types can not be manipulated like terms.
+      On the other hand, in a dependently typed programming language, types can depend on terms.
+      This addition may sound modest at first, but it makes the language more powerful... and harder to typecheck.
+
+      Here is an example of a program in Agda. Agda is statically typed functional programming language that use dependent types to express more properties with types, and use them to increase safety.
+      This piece of code define the \lstinline[language=nanoAgda]{Nat} datatype, encoding natural numbers and the addition on natural numbers.
+      We then use it to create the \lstinline[language=nanoAgda]{Vec} datatype. Vectors are similar to list except that the length of the list is encoded in the type. We then use the addition on natural numbers to calculate the length of the concatenation of two vectors.
+      With the \lstinline[language=nanoAgda]{Vec} datatype, we can use types to verify that array access are never out of bounds.
+
+      However, The Agda typechecker contains some well known issues.
+      \column{.44\textwidth}
+      \lstinputlisting[language=Agda]{code.agda}
+    \end{columns}
+  \end{block}
+
+
+  \begin{columns}[c]
+   \column{.008\linewidth}
+    \column{.45\linewidth}
+    \begin{block}{Natural Deduction vs. Sequent calculus}
+      \agda's type checker uses a natural deduction style:
+      \begin{itemize}
+      \item Inference duplicates parts of terms.
+      \item These parts are not shared in the \agda core representation anymore.
+      \item Typechecking must be done multiple time, causing performance penalties.
+      \end{itemize}
+      In sequent calculus style, every subterm is bound to a variable.
+      \begin{figure}
+        \vspace{30pt}
+        \begin{tikzpicture}[yscale=3]
+          \node[anchor=center] (lambda) at (0,0) {
+            \texttt{$\lambda{}x$.($f$ $x$ $x$) {\color{Gray}(.\tikzcoord{bt}..)}}
+          };
+          \node[anchor=center, text centered, text width=14cm] (lambda2) at (-9.5,-2) {
+            \texttt{$f$\ {\color{Gray}(.\tikzcoord{bt2}..)\ (.\tikzcoord{bt3}..)}}\\
+            in natural deduction style
+          };
+          \node[anchor=center, text centered, text width=15cm] (lambda3) at (9.5,-2) {
+            \texttt{let $x'$ = {\color{Gray}(.\tikzcoord{bt4}..)}\ in $f$ $x'$ $x'$}\\
+            in sequent calculus style
+          };
+        \end{tikzpicture}
+        \centering
+      \end{figure}
+      \begin{tikzpicture}[remember picture, overlay]
+        \node[xshift=0.31cm,yshift=-0.2cm, coordinate] (bt') at (bt) {} ;
+        \draw[remember picture, big arrow] (bt') to[out=-120,in=60] ($(bt2)+(0.3,0.8)$) ;
+        \draw[remember picture, big arrow] (bt') to[out=-120,in=60] ($(bt3)+(0.3,0.8)$) ;
+        \draw[remember picture, big arrow] (bt') to[out=-60,in=120] ($(bt4)+(0.3,0.8)$) ;
+      \end{tikzpicture}
+    \end{block}
+    \begin{block}{Minimality}
+      \agda currently does not have a core language that can be reasoned about and formally verified. \coq, on the other hand, is built as successive extensions of a core language.
+
+      We aim to create a language that can serve as core for \agda or other dependently typed languages and that is small enough to be formally verified.
+      \begin{figure}[htbp]
+        \centering
+        \begin{tikzpicture}[yscale=1.1]
+          \node[draw, circle, scale=1.8] (Coq) at (8,3) {\coq} ;
+          \node[draw, circle, scale=1.1] (CCC) at (8,-4) {CIC} ;
+          \node[draw, circle, scale=1.7] (agda) at (-7,3) {\agda} ;
+          \node[draw, circle, scale=2.8] (truc) at (-20,3) {?} ;
+          \node[draw, circle,scale=0.7] (ma) at (-7,-4.2) {\ma} ;
+          \node[draw, circle,scale=0.5] (na) at (-7,-10) {\na} ;
+          \draw[big arrow,thick] (Coq) -- (CCC) ;
+          \draw[big arrow,thick] (ma) -- (na) ;
+          \draw[big arrow,thick, loosely dashed] (agda) to[bend right=60] (na) ;
+          \draw[big arrow,thick, loosely dashed] (truc) to[bend right] (na) ;
+          \draw[big arrow,thick, loosely dashed] (CCC) to[bend left] (na) ;
+        \end{tikzpicture}
+      \end{figure}
+    \end{block}
+    \begin{block}{Propagation of typing information}
+      Natural deduction style makes propagating typing constraints to subterms difficult.
+
+      For example, \agda's typechecker has no knowledge of which branch was taken while it typechecks the body of a case.
+      \begin{center}
+        \begin{minipage}{0.95\textwidth}
+          \lstinputlisting[basicstyle=\ttfamily,language=Agda]{case.agda}
+        \end{minipage}
+     \end{center}
+   \end{block}
+   \column{.016\linewidth}
+   \column{.52\linewidth}
+   \begin{block}{\na}
+     We propose a type-theory which can be used as a back-end for dependently-typed languages such as \agda or \coq. We call this language \na. Concretely, our goals are to have a language that is:
+     \begin{itemize}
+     \item A type-theory: Correctness should be expressible via types.
+     \item Low-level: One should be able to translate high-level languages into this language while retaining properties such as run-time behaviour, complexity, etc.
+     \item Minimal: It should be well defined and be possible to formally verify the type-checking algorithm.
+     \end{itemize}
+   \end{block}
+   \begin{block}{\ma}
+     \ma is another new language with a simpler syntax than \na. This new syntax can be translated to \na without typechecking. The translation binds every intermediate terms to a fresh variable and replaces the subterm by this variable.
+   \end{block}
+   \begin{block}{Translation from Agda to \na}
+     Here is an example of the polymorphic identity in \agda, \na and \ma.
+     \begin{figure}
+       \begin{tikzpicture}
+         \tikzstyle{foo}=[draw=Gray, very thick, rectangle, rounded corners=10pt]
+
+         \node[foo, text width=16cm] (agda) at (0,0)
+         {\lstinputlisting[language=nanoAgda]{Lam.agda}} ;
+         \node[foo, text width=17.4cm] (ma) at (20,0)
+         {\lstinputlisting[language=nanoAgda]{../../examples/010-Lam.ma}} ;
+         \node[foo, scale=0.65,text width=30.5cm] (na) at (10,-15)
+         {\lstinputlisting[language=nanoAgda]{../../examples/010-Lam.na}} ;
+
+         \node[anchor=north] at (agda.south) {\agda} ;
+         \node[anchor=north] at (ma.south) {\ma} ;
+         \node[anchor=north] at (na.south) {\na} ;
+       \end{tikzpicture}
+     \end{figure}
+   \end{block}
+ \end{columns}
+ \centering
+\end{frame}
+\end{document}
