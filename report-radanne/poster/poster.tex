@@ -51,7 +51,7 @@
 
 \usepackage{tikz}
 \input{../tikz}
-\usetikzlibrary{shapes,arrows,calc,decorations.markings}
+\usetikzlibrary{shapes,shapes.arrows,arrows,calc,decorations.markings}
 
 \title{A sequent-calculus presentation of type-theory}
 \author{Gabriel Radanne --- Under the supervision of Jean-Philippe Bernardy}
@@ -67,21 +67,20 @@
       On the other hand, in a dependently typed programming language, types can depend on terms.
       This addition may sound modest at first, but it makes the language more powerful... and harder to typecheck.
 
-      Here is an example of a program in Agda. Agda is statically typed functional programming language that use dependent types to express more properties with types, and use them to increase safety.
-      This piece of code define the \lstinline[language=nanoAgda]{Nat} datatype, encoding natural numbers and the addition on natural numbers.
+      Here is an example of a program in \agda. \agda is a statically typed functional programming language that uses dependent types to express more properties with types and to increase safety.
+      Th code on the right define the \lstinline[language=nanoAgda]{Nat} datatype, encoding natural numbers and the addition on natural numbers.
       We then use it to create the \lstinline[language=nanoAgda]{Vec} datatype. Vectors are similar to list except that the length of the list is encoded in the type. We then use the addition on natural numbers to calculate the length of the concatenation of two vectors.
       With the \lstinline[language=nanoAgda]{Vec} datatype, we can use types to verify that array access are never out of bounds.
 
-      However, The Agda typechecker contains some well known issues.
+      However, the \agda typechecker exhibits some well known issues.
       \column{.44\textwidth}
       \lstinputlisting[language=Agda]{code.agda}
     \end{columns}
   \end{block}
-
-
-  \begin{columns}[c]
-   \column{.008\linewidth}
-    \column{.45\linewidth}
+  \vspace{2cm}
+  \begin{columns}[T]
+   \column{.009\linewidth}
+    \column{.495\linewidth}
     \begin{block}{Natural Deduction vs. Sequent calculus}
       \agda's type checker uses a natural deduction style:
       \begin{itemize}
@@ -114,51 +113,67 @@
         \draw[remember picture, big arrow] (bt') to[out=-60,in=120] ($(bt4)+(0.3,0.8)$) ;
       \end{tikzpicture}
     \end{block}
+    \column{.495\linewidth}
     \begin{block}{Minimality}
-      \agda currently does not have a core language that can be reasoned about and formally verified. \coq, on the other hand, is built as successive extensions of a core language.
+      \agda currently does not have a core language that can be reasoned about and formally verified. \coq, on the other hand, is built as successive extensions of a core language (CIC).
 
       We aim to create a language that can serve as core for \agda or other dependently typed languages and that is small enough to be formally verified.
       \begin{figure}[htbp]
         \centering
-        \begin{tikzpicture}[yscale=1.1]
-          \node[draw, circle, scale=1.8] (Coq) at (8,3) {\coq} ;
-          \node[draw, circle, scale=1.1] (CCC) at (8,-4) {CIC} ;
-          \node[draw, circle, scale=1.7] (agda) at (-7,3) {\agda} ;
-          \node[draw, circle, scale=2.8] (truc) at (-20,3) {?} ;
-          \node[draw, circle,scale=0.7] (ma) at (-7,-4.2) {\ma} ;
-          \node[draw, circle,scale=0.5] (na) at (-7,-10) {\na} ;
+        \begin{tikzpicture}[yscale=1]
+          \node[draw, circle, scale=1.6] (Coq) at (8,3) {\coq} ;
+          \node[draw, circle, scale=0.9] (CCC) at (8,-3.8) {CIC} ;
+          \node[draw, circle, scale=1.5] (agda) at (-20,3) {\agda} ;
+          \node[draw, ellipse, scale=0.9] (ma) at (-7,3) {\ma} ;
+          \node[draw, ellipse, scale=0.7] (na) at (-7,-3.8) {\na} ;
           \draw[big arrow,thick] (Coq) -- (CCC) ;
           \draw[big arrow,thick] (ma) -- (na) ;
-          \draw[big arrow,thick, loosely dashed] (agda) to[bend right=60] (na) ;
-          \draw[big arrow,thick, loosely dashed] (truc) to[bend right] (na) ;
-          \draw[big arrow,thick, loosely dashed] (CCC) to[bend left] (na) ;
+          \draw[big arrow,thick, loosely dashed] (agda) to[bend right] (na) ;
+          \draw[big arrow,thick, loosely dashed] (CCC) to (na) ;
         \end{tikzpicture}
       \end{figure}
     \end{block}
+  \end{columns}
+  \begin{columns}[t]
+   \column{.2\linewidth}
+   \column{.60\linewidth}
     \begin{block}{Propagation of typing information}
       Natural deduction style makes propagating typing constraints to subterms difficult.
 
       For example, \agda's typechecker has no knowledge of which branch was taken while it typechecks the body of a case.
       \begin{center}
-        \begin{minipage}{0.95\textwidth}
+        \begin{minipage}{0.85\textwidth}
           \lstinputlisting[basicstyle=\ttfamily,language=Agda]{case.agda}
         \end{minipage}
      \end{center}
    \end{block}
-   \column{.016\linewidth}
-   \column{.52\linewidth}
+   \column{.2\linewidth}
+ \end{columns}
+ % \begin{figure}[htbp]
+ %   \centering
+ %   \begin{tikzpicture}
+ %     \node [thick, shape border uses incircle, draw=black, single arrow, minimum width=3cm, minimum height=8cm, single arrow head extend=1cm, shape border rotate=-90]{};
+ %   \end{tikzpicture}
+ %   \vspace{-2cm}
+ % \end{figure}
+ \vspace{6cm}
+ \begin{columns}[t]
+   \column{.005\linewidth}
+   \column{.495\linewidth}
    \begin{block}{\na}
      We propose a type-theory which can be used as a back-end for dependently-typed languages such as \agda or \coq. We call this language \na. Concretely, our goals are to have a language that is:
      \begin{itemize}
      \item A type-theory: Correctness should be expressible via types.
      \item Low-level: One should be able to translate high-level languages into this language while retaining properties such as run-time behaviour, complexity, etc.
-     \item Minimal: It should be well defined and be possible to formally verify the type-checking algorithm.
+     \item Minimal: The language should be well defined and it should be possible to formally verify the type-checking algorithm.
      \end{itemize}
    \end{block}
    \begin{block}{\ma}
      \ma is another new language with a simpler syntax than \na. This new syntax can be translated to \na without typechecking. The translation binds every intermediate terms to a fresh variable and replaces the subterm by this variable.
+     \vspace{25pt}
    \end{block}
-   \begin{block}{Translation from Agda to \na}
+   \column{.495\linewidth}
+   \begin{block}{Translation from \agda to \na}
      Here is an example of the polymorphic identity in \agda, \na and \ma.
      \begin{figure}
        \begin{tikzpicture}
@@ -168,7 +183,7 @@
          {\lstinputlisting[language=nanoAgda]{Lam.agda}} ;
          \node[foo, text width=17.4cm] (ma) at (20,0)
          {\lstinputlisting[language=nanoAgda]{../../examples/010-Lam.ma}} ;
-         \node[foo, scale=0.65,text width=30.5cm] (na) at (10,-15)
+         \node[foo, scale=0.8,text width=30.5cm] (na) at (10,-12.5)
          {\lstinputlisting[language=nanoAgda]{../../examples/010-Lam.na}} ;
 
          \node[anchor=north] at (agda.south) {\agda} ;
