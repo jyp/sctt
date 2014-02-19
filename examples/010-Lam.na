@@ -3,7 +3,7 @@ TERM
              f' ) ;
   f
 TYPE
-  s1 = *1 ;
+  s1 = *0 ;
   f_ty = (a : s1) -> ( a' = a ;
                       a2a = (x : a') -> a';
                       a2a ) ;

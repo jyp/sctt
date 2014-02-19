@@ -27,9 +27,11 @@
 
 \beamertemplatenavigationsymbolsempty
 \usepackage{tikz}
-\usetikzlibrary{backgrounds,positioning,shapes,shadings,shadows,arrows,decorations.markings,calc,fit,fadings}
+\usetikzlibrary{backgrounds,positioning,shapes,
+  shadings,shadows,arrows,decorations.markings,calc,fit,fadings}
 \input{../tikz}
 
+\newcommand{\mysc}[1]{\textsc{#1}\xspace}
 \newcommand{\coq}{\textsc{Coq}\xspace}
 \newcommand{\agda}{\textsc{Agda}\xspace}
 \newcommand{\ma}{\textsc{microAgda}\xspace}
@@ -60,15 +62,138 @@
 
 \section{An Introduction to dependent types}
 
-\begin{frame}{Dependent types}
+\begin{frame}[fragile]
+  Imagine we want to define lists, but with guaranties on the length of the list.
+
+  We have the length operation:
+
+\alt<1>{$|$ \lstinline[language=caml,basicstyle=\ttfamily]{['a' ; 'b' ; 'c']} $| = 3$.}{$|$ \lstinline[language=caml,basicstyle=\ttfamily]{ 'a' :: 'b' :: 'c' :: []} $| = 3$.}
+
+  \pause\pause
+  \ \\We can define the head function like this in \mysc{OCaml}:
+\begin{lstlisting}[language=caml]
+let head x = match x with
+  | [] -> failwith "PANIC" !\only<4->{\\\color{Gray}We want the type-system to ensure this doesn't happen.}!
+  | (h::t) -> h
+\end{lstlisting}\pause
+
+\lstinline[language=caml,basicstyle=\ttfamily]{head l}
+should only be valid if $|$\lstinline[language=caml,basicstyle=\ttfamily]{l}$|>0$.
+\end{frame}
+
+\begin{frame}[fragile]
+  Let's start by natural numbers:
+\begin{lstlisting}[language=Agda]
+data Nat : Set where
+Zero : Nat
+Succ : Nat -> Nat
+\end{lstlisting}\pause
+
+\begin{lstlisting}[language=Agda]
+three : Nat
+three = Succ (Succ (Succ Zero))
+\end{lstlisting}\pause
+
+  We can now define a special kind of list:
+\begin{lstlisting}[language=Agda]
+data Vec (A : Set) : Nat -> Set where
+Nil : Vec A Zero
+Cons : {n : Nat} -> A -> Vec A n -> Vec A (Succ n)
+\end{lstlisting}\pause
+
+\begin{lstlisting}[language=Agda]
+myVec : Vec Char three
+myVec = Cons 'a' (Cons 'b' (Cons 'c' Nil))
+\end{lstlisting}
 
 \end{frame}
 
-\begin{frame}{A crash course into dependent types}
-The example from the report, maybe a bit shortened
+\begin{frame}[fragile]
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,language=Agda]
+data Nat : Set where
+Zero : Nat
+Succ : Nat -> Nat
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,language=Agda]
+data Vec (A : Set) : Nat -> Set where
+Nil : Vec A Zero
+Cons : {n : Nat} -> A -> Vec A n -> Vec A (Succ n)
+\end{lstlisting}
+
+\ \\The head function:
+\begin{lstlisting}[language=Agda]
+head : forall { A n } -> Vec A (Succ n) -> A
+head (Cons x xs) = x
+\end{lstlisting}\pause
+
+\ \\
+\begin{lstlisting}[language=Agda]
+  head Nil !\color{Gray}$\gets$ This is a type error.!
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,language=Agda]
+data Nat : Set where
+Zero : Nat
+Succ : Nat -> Nat
+\end{lstlisting}
+\begin{lstlisting}[basicstyle=\footnotesize\ttfamily,language=Agda]
+data Vec (A : Set) : Nat -> Set where
+Nil : Vec A Zero
+Cons : {n : Nat} -> A -> Vec A n -> Vec A (Succ n)
+\end{lstlisting}
+
+\ \\When we concatenate two vectors, $|$\lstinline[language=caml,basicstyle=\ttfamily]{append l l'}$| = |$
+\lstinline[language=caml,basicstyle=\ttfamily]{l}$| + |$
+\lstinline[language=caml,basicstyle=\ttfamily]{l'}$|$.\pause
+\begin{lstlisting}[language=Agda]
+append : forall { n m A } ->
+    Vec A n -> Vec A m -> Vec A (n + m)
+append Nil ys = ys
+append (Cons x xs) ys = Cons x (append xs ys)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Dependent types}
+What have we done?
+\begin{itemize}
+\item We defined a type with a {\bf term} as parameter:
+\lstinline[language=Agda,basicstyle=\ttfamily]{Vec A n}.\pause
+\item We used these values to enforce properties.\pause.. by type-checking.\pause
+\item We manipulated these values inside the type: \lstinline[language=Agda,basicstyle=\ttfamily]{Vec A (n+m)}.
+\end{itemize}\pause
+
+Types depends on terms.
+\end{frame}
+
+\begin{frame}{Dependent types}
+\begin{columns}
+\column{0.6\textwidth}
+Dependent types:
+\begin{itemize}
+\item<2-> Strongly related to Curry-Howard Isomorphism.
+\item<3-> Introduce as a type-theory by Martin-Löf in 1971. Proposed as foundation of mathematics.
+\item<4-> As gain popularity recently for theorem-proving with \coq,
+\item<5-> but also in programming: {\only<6>{\bf}\agda}, \mysc{Idris}, \mysc{ATS},\dots
+\end{itemize}
+\column{0.4\textwidth}
+\uncover<3->{
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{../martin-lof}
+
+  Martin-Löf
+\end{figure}
+}
+\end{columns}
 \end{frame}
 
 \section{Limitations of current typecheckers}
+\begin{frame}
+  \frametitle{Limitations of current typecheckers}
+  \tableofcontents[currentsection]
+\end{frame}
 
 \subsection{Efficiency issues}
 \begin{frame}{Efficiency issues}
@@ -120,11 +245,11 @@ The example from the report, maybe a bit shortened
       \node[draw, circle, scale=0.9] (CCC) at (8,-3.8) {CIC} ;
       \node[draw, circle, scale=1.5] (agda) at (-7,3) {\agda} ;
       % \node[draw, ellipse, scale=0.9] (ma) at (-7,3) {\ma} ;
-      \node<3>[draw, ellipse, scale=0.7] (na) at (-7,-3.8) {\na} ;
+      \node<2>[draw, ellipse, scale=0.7] (na) at (-7,-3.8) {\na} ;
       \draw[-latex,thick] (Coq) -- (CCC) ;
       % \draw[-latex,thick] (ma) -- (na) ;
-      \draw<3>[-latex,thick, loosely dashed] (agda) to (na) ;
-      \draw<3>[-latex,thick, loosely dashed] (CCC) to (na) ;
+      \draw<2>[-latex,thick, loosely dashed] (agda) to (na) ;
+      \draw<2>[-latex,thick, loosely dashed] (CCC) to (na) ;
     \end{tikzpicture}
     \centering
   \end{figure}
@@ -143,12 +268,47 @@ The example from the report, maybe a bit shortened
 \end{frame}
 
 \subsection{\na}
-\begin{frame}{\na}
-Some introductory example of \na
+\begin{frame}[fragile]{\na}
+\begin{columns}
+\column{0.5\textwidth}
+\lstinputlisting[language=nanoAgda]{../poster/Lam.agda}
+\centering in \agda
+\column{0.7\textwidth}
+\lstinputlisting[basicstyle=\scriptsize\ttfamily,language=nanoAgda]{../../examples/010-Lam.na}
+\centering in \na
+\end{columns}
 \end{frame}
 
 \begin{frame}{Sequent calculus}
-Explanation of why Sequent calculus will solve all the problems in the (type theory) word.
+  There are various definitions of sequent calculus. Here, we mean that every intermediate results or sub-terms are bound to a variable.
+  \alt<2->{
+    \begin{figure}
+      \begin{tikzpicture}[yscale=1.7]
+        \node (lambda) at (0,0) {
+          \texttt{$\lambda{}x$.($f$ $x$ $x$) {\color{Gray}(.\tikzcoord{bt}..)}}
+        };
+        \node[text centered, text width=5cm] (lambda2) at (-3,-1.5) {
+          \texttt{$f$\ {\color{Gray}(.\tikzcoord{bt2}..)\ (.\tikzcoord{bt3}..)}}\\
+          in natural deduction style
+        };
+        \uncover<3->{\node[text centered, text width=5cm] (lambda3) at (3,-1.5) {
+          \texttt{let $x'$ = {\color{Gray}(.\tikzcoord{bt4}..)}\ in $f$ $x'$ $x'$}\\
+          in sequent calculus style
+        };}
+      \end{tikzpicture}
+      \centering
+    \end{figure}
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[xshift=0.1cm,yshift=-0.2cm, coordinate] (bt') at (bt) {} ;
+    \draw[remember picture, -latex] (bt') to[out=-90,in=80] ($(bt2)+(0.1,0.3)$) ;
+    \draw[remember picture, -latex] (bt') to[out=-90,in=60] ($(bt3)+(0.1,0.3)$) ;
+    \draw<3->[remember picture, -latex] (bt') to[out=-90,in=90] ($(bt4)+(0.1,0.3)$) ;
+  \end{tikzpicture}
+  }{\begin{figure}[htbp]
+      \lstinputlisting[language=Caml]{seq.ml}
+      \centering
+    \end{figure}
+  }
 \end{frame}
 
 \begin{frame}[shrink]{Presentation of the language}
@@ -174,8 +334,114 @@ Explanation of why Sequent calculus will solve all the problems in the (type the
 \end{frame}
 
 
-\section{Future work}
+\begin{frame}[fragile]{How to encode sumtypes}
+\begin{columns}
+\column{0.5\textwidth}
+\begin{lstlisting}[language=Agda]
+data MySumtype (s : Set) : Set where
+  Foo : s -> MySumtype s
+  Bar : MySumtype s
+\end{lstlisting}
+\centering in \agda
+\column{0.5\textwidth}
+TODO
+\end{columns}
+\end{frame}
 
+%TODO Act interactive highlighting
+\subsection{\ma}
+\begin{frame}[fragile]{\ma}
+A new syntax, easier to manipulate, and that can be translated easily into \na.
+
+\begin{columns}
+\column{0.5\textwidth}
+\lstinputlisting[language=nanoAgda]{../../examples/010-Lam.ma}
+\centering in \ma
+\column{0.7\textwidth}
+\lstinputlisting[basicstyle=\scriptsize\ttfamily,language=nanoAgda]{../../examples/010-Lam.na}
+\centering in \na
+\end{columns}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{How to encode sumtypes -- $2^{nd}$ edition}
+\begin{columns}
+\column{0.5\textwidth}
+\begin{lstlisting}[language=Agda]
+data MySumtype (s : Set) : Set where
+  Foo : s -> MySumtype s
+  Bar : MySumtype s
+\end{lstlisting}
+\centering in \agda
+\column{0.56\textwidth}
+\lstinputlisting[basicstyle=\scriptsize\ttfamily,language=nanoAgda]
+{../../examples/datatype.ma}
+\centering in \ma
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{How to encode stupidly simple sumtypes}
+\begin{columns}
+\column{0.56\textwidth}
+\begin{lstlisting}[language=Agda]
+data SimpleSum : Set where
+  Foo : Nat -> SimpleSum
+  Bar : Nat -> SimpleSum
+\end{lstlisting}
+\centering in \agda
+\column{0.56\textwidth}
+\begin{lstlisting}[language=nanoAgda]
+TERM
+  { 'Foo ; 'Bar } * Nat
+Type
+  *0
+\end{lstlisting}
+\centering in \ma
+\end{columns}
+\end{frame}
+
+%TODO Act interactive highlighting
+\begin{frame}[fragile]{How to encode sumtypes -- $2^{nd}$ edition}
+\begin{columns}
+\column{0.5\textwidth}
+\begin{lstlisting}[language=Agda]
+data MySumtype (s : Set) : Set where
+  Foo : s -> MySumtype s
+  Bar : MySumtype s
+\end{lstlisting}
+\centering in \agda
+\column{0.56\textwidth}
+\lstinputlisting[basicstyle=\scriptsize\ttfamily,language=nanoAgda]
+{../../examples/datatype.ma}
+\centering in \ma
+\end{columns}
+\end{frame}
+
+\subsection{Results}
+\begin{frame}{Results}
+\begin{itemize}
+\item We implemented a typechecker and evaluator for \na.
+\item We introduced a new intermediate language: \ma.
+\item We exhibited some examples that don't typecheck in \agda but typecheck in \na.
+\end{itemize}
+\end{frame}
+
+\section{Conclusion}
+\begin{frame}{Future work}
+\begin{itemize}
+\item Precisely evaluate the efficiency of this new approach.
+\item Prove subject-reduction of \na (in \coq).
+\item Introduce recursion.
+\item Experiment with extensions of the type system (linear, colors,\dots).
+\end{itemize}
+\end{frame}
+
+\begin{frame}[plain]
+  \begin{center}
+    \Huge Questions ?
+  \end{center}
+\end{frame}
 
 
 \end{document}
