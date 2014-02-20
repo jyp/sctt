@@ -48,6 +48,12 @@
 }
 
 
+\addtobeamertemplate{footline}{
+\hfill
+\insertframenumber/20 \hspace{1mm}
+\vspace{2 mm}
+}
+
 \title{A sequent-calculus presentation of type-theory}
 \author[Gabriel Radanne]{Gabriel Radanne\\ Under the supervision of Jean-Philippe Bernardy}
 \institute[ENS Rennes]{ENS Rennes --- Chalmers University of Technology}
@@ -289,7 +295,7 @@ TYPE
 set = *0 ;
 !\tikzcoord{z1}!f_ty = (a : set) -> (
             !\tikzcoord{x1}!a' = a ;
-            a2a = !\tikzcoord{y1}!(x : a') -> a';!\tikzcoord{x2}!
+            a2a = (x : a') -> !\tikzcoord{y1}!a';!\tikzcoord{x2}!
             a2a!\tikzcoord{x3}!
     ) ;
 f_ty!\tikzcoord{z2}!
@@ -405,7 +411,7 @@ TYPE
 set = *0 ;
 !\tikzcoord{z1}!f_ty = (a : set) -> (
             !\tikzcoord{x1}!a' = a ;
-            a2a = !\tikzcoord{y1}!(x : a') -> a';!\tikzcoord{x2}!
+            a2a = (x : a') -> !\tikzcoord{y1}!a';!\tikzcoord{x2}!
             a2a!\tikzcoord{x3}!
     ) ;
 f_ty!\tikzcoord{z2}!
