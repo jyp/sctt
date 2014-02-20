@@ -9,20 +9,22 @@
   frame=none,
   xleftmargin=\parindent,
   basicstyle=\footnotesize\ttfamily,
-  keywordstyle=\bfseries\color{green!30!black},
+  keywordstyle=\bfseries\color{green!60!black},
   keywordstyle=[2]\bfseries\color{red!50!white},
-  commentstyle=\itshape\color{purple!40!black},
+  commentstyle=\itshape\color{purple!60!black},
   identifierstyle=\color{blue!30!black},
   stringstyle=\color{orange},
 }
 
 \lstdefinelanguage{Agda}{
-  morekeywords={data,where,case,let,in,with},
+  keywords=[2]{Nil, Cons, Zero, Succ, Foo, Bar},
+  morekeywords={data,where,case,let,in,with,forall},
   literate={->}{{$\to{}$}}1 {xx}{{$\times$}}1 {==}{{$\equiv$}}1 {*}{{$\times$}}1,
 }
 
 \lstdefinelanguage{nanoAgda}{
-  morekeywords={case,of,split,rec},
+  keywords=[2]{Foo, Bar},
+  morekeywords={case,of,split,rec,TERM, TYPE},
   literate={->}{{$\to$}}1 {\\}{{$\lambda$}}1 {'}{`}1
     {*}{{$\times$}}1 {*0}{{$\star_0$}}2 {*1}{{$\star_1$}}2 {*2}{{$\star_2$}}2,
 }
