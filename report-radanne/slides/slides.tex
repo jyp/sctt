@@ -63,7 +63,7 @@
 \section{An Introduction to dependent types}
 
 \begin{frame}[fragile]
-  Imagine we want to define lists, but with guaranties on the length of the list.
+  Imagine we want to define lists, but with guarantees on the length of the list.
 
   We have the length operation:
 
@@ -174,7 +174,7 @@ Dependent types:
 \begin{itemize}
 \item<2-> Strongly related to Curry-Howard Isomorphism.
 \item<3-> Introduce as a type-theory by Martin-Löf in 1971. Proposed as foundation of mathematics.
-\item<4-> As gain popularity recently for theorem-proving with \coq,
+\item<4-> Has gained popularity recently for theorem-proving with \coq,
 \item<5-> but also in programming: {\only<6>{\bf}\agda}, \mysc{Idris}, \mysc{ATS},\dots
 \end{itemize}
 \column{0.4\textwidth}
@@ -201,7 +201,7 @@ Dependent types:
   \begin{itemize}
   \item Inference duplicates parts of terms.
   \item These parts are not shared in the \agda core representation anymore.
-  \item Typechecking must be done multiple time, causing performance penalties.
+  \item Typechecking must be done multiple times, causing performance penalties.
   \end{itemize}
   \pause
   \begin{figure}
@@ -280,7 +280,7 @@ Dependent types:
 \end{frame}
 
 \begin{frame}{Sequent calculus}
-  There are various definitions of sequent calculus. Here, we mean that every intermediate results or sub-terms are bound to a variable.
+  There are various definitions of sequent calculus. Here, we mean that every intermediate result or sub-term are bound to a variable.
   \alt<2->{
     \begin{figure}
       \begin{tikzpicture}[yscale=1.7]
@@ -334,7 +334,7 @@ Dependent types:
 \end{frame}
 
 
-\begin{frame}[fragile]{How to encode sumtypes}
+\begin{frame}[fragile]{How to encode sum types}
 \begin{columns}
 \column{0.5\textwidth}
 \begin{lstlisting}[language=Agda]
@@ -343,18 +343,42 @@ data MySumtype (s : Set) : Set where
   Bar : MySumtype s
 \end{lstlisting}
 \centering in \agda
-\column{0.5\textwidth}
-TODO
+\column{0.6\textwidth}\pause
+\begin{lstlisting}[basicstyle=\scriptsize\ttfamily,language=nanoAgda]
+TERM
+Unit_t = { 'unit } ;
+Unit_ty = *0 ;
+Unit = Unit_t : Unit_ty ;
+f = \s -> (
+      tag = { 'Foo , 'Bar } ;
+      f' = (c : tag) *
+           (case c of {
+              'Foo -> s' = s ; s' .
+              'Bar -> Unit' = Unit ;
+                     Unit'
+           }) ;
+      f') ;
+f
+TYPE
+star0 = *0 ;
+f_ty = ( s : star0) -> star0 ;
+f_ty
+\end{lstlisting}
 \end{columns}
 \end{frame}
 
 %TODO Act interactive highlighting
 \subsection{\ma}
 \begin{frame}[fragile]{\ma}
-A new syntax, easier to manipulate, and that can be translated easily into \na.
+A new syntax, easier to manipulate, and that can be translated easily into \na.\pause
 
+\ \\
 \begin{columns}
 \column{0.5\textwidth}
+\lstinputlisting[language=nanoAgda]{../poster/Lam.agda}
+\centering in \agda
+
+\ \\
 \lstinputlisting[language=nanoAgda]{../../examples/010-Lam.ma}
 \centering in \ma
 \column{0.7\textwidth}
@@ -365,7 +389,7 @@ A new syntax, easier to manipulate, and that can be translated easily into \na.
 \end{frame}
 
 
-\begin{frame}[fragile]{How to encode sumtypes -- $2^{nd}$ edition}
+\begin{frame}[fragile]{How to encode sum types -- $2^{nd}$ edition}
 \begin{columns}
 \column{0.5\textwidth}
 \begin{lstlisting}[language=Agda]
@@ -381,7 +405,7 @@ data MySumtype (s : Set) : Set where
 \end{columns}
 \end{frame}
 
-\begin{frame}[fragile]{How to encode stupidly simple sumtypes}
+\begin{frame}[fragile]{How to encode stupidly simple sum types}
 \begin{columns}
 \column{0.56\textwidth}
 \begin{lstlisting}[language=Agda]
@@ -402,7 +426,7 @@ Type
 \end{frame}
 
 %TODO Act interactive highlighting
-\begin{frame}[fragile]{How to encode sumtypes -- $2^{nd}$ edition}
+\begin{frame}[fragile]{How to encode sum types -- $2^{nd}$ edition}
 \begin{columns}
 \column{0.5\textwidth}
 \begin{lstlisting}[language=Agda]
