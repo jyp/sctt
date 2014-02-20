@@ -1,0 +1,17 @@
+TERM
+Unit_t = { 'unit } ;
+Unit_ty = *0 ;
+Unit = Unit_t : Unit_ty ;
+f = \s -> (
+      tag = { 'Foo , 'Bar } ;
+      f' = (c : tag) X
+           (case c of {
+	     'Foo -> s' = s ; s' .
+	     'Bar -> Unit' = Unit ; Unit'
+	   }) ;
+      f') ;
+f
+TYPE
+star0 = *0 ;
+f_ty = ( s : star0) -> star0 ;
+f_ty
