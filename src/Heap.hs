@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances, RecordWildCards  #-}
 
-module Heap (emptyHeap, addDef,addCut,lookHeapC,getAlias,addConstr,enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
+module Heap (emptyHeap, addDef,addCut,lookHeapC,getAlias,addConstr, addConstr', addDestr', enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
 
 import Control.Monad.RWS
 import Control.Applicative

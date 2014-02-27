@@ -4,8 +4,12 @@ TERM
   refl = (\A -> \x -> \P -> \p -> p)
        : (A : *0) -> (x:A) -> Eq A x x;
 
-  EtaEq = (\A -> \B -> \f -> (refl (A -> B) f))
-  	: (A : *0) -> (B : *0) -> (f : A -> B) -> (Eq (A -> B) f (\x -> f x))
+  EtaEq = (\A -> \B -> \f -> (
+  	      foo = (refl (A -> B) f)
+	      	  : Eq (A -> B) f (\x -> f x) ;
+	      *0
+	      ))
+  	: (A : *0) -> (B : *0) -> (f : A -> B) -> *1
   ;
 *0
 TYPE

@@ -7,8 +7,9 @@ TERM
   EtaEq = (\A -> \B -> \p ->
   	    (refl ((a : A) * B) p))
   	: (A : *0) -> (B : *0) -> (p : (a : A) * B) ->
-	    ((x,y) = split p ;
-	     Eq ((a : A) * B) p (x,y))
+	    (p' = p ;
+	     (x,y) = split p' ;
+	     Eq ((a : A) * B) p' (x,y))
   ;
 *0
 TYPE

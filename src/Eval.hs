@@ -1,5 +1,5 @@
 {-#LANGUAGE NamedFieldPuns, RecordWildCards, GeneralizedNewtypeDeriving, GADTs, ScopedTypeVariables, OverloadedStrings, PatternGuards #-}
-module Eval(hnf, onConcl, addTag, addSplit, unfoldRec,hnfUnfoldRec) where
+module Eval(hnf, onConcl, addTag, addSplit, unfoldRec,hnfUnfoldRec, normalizeAndAddDestr) where
 
 import qualified Data.Map as M
 import Data.Monoid
@@ -119,5 +119,3 @@ addSplit x y z k = do
              addConstr yName (Hyp y) $
              addConstr zName (Pair xName yName) $
                addCut z' zName k
-
-

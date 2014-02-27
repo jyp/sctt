@@ -10,6 +10,7 @@ import Display
 import TCM
 import Heap
 import Eval
+import Fresh (freshId, refreshId)
 
 
 testTerm :: (r~Id,n~Id) =>   Term n r -> Term n r -> TC Bool
@@ -43,6 +44,24 @@ testConstr (Tag t1)(Tag t2) = return $ t1 == t2
 testConstr (Fin ts1)(Fin ts2) = return $ ts1 == ts2
 testConstr (Universe x1)(Universe x2) = return $ x1 <= x2 -- yes, we do subtyping: TODO make that clean in the names
 testConstr (Rec r1 t1)(Rec r2 t2) = local (addAlias' r1 r2) $ testTerm t1 t2 -- note that we don't unfold here!
+
+-- handling eta expansion
+testConstr (Lam x tl) (Hyp y) = do
+    x' <- Conc <$> liftTC (refreshId x)
+    z <- liftTC freshId
+    z' <- Conc <$> liftTC (refreshId z)
+    local (addConstr' x' (Hyp x)) $
+     local (addConstr' z' (Hyp z)) $
+      normalizeAndAddDestr z (App y x') $
+      testTerm (Concl z') tl
+testConstr (Hyp y) (Lam x tl) = do
+    x' <- Conc <$> liftTC (refreshId x)
+    z <- liftTC freshId
+    z' <- Conc <$> liftTC (refreshId z)
+    local (addConstr' x' (Hyp x)) $
+     local (addConstr' z' (Hyp z)) $
+      normalizeAndAddDestr z (App y x') $
+      testTerm tl (Concl z')
 testConstr _ _ = return False
 
 testHyp :: Hyp Id -> Hyp Id -> TC Bool
