@@ -116,7 +116,7 @@ testHyp d a1 a2 = dbgTest "Hyp" d a1 a2 $ do
      _ -> return False
 
 lookDestr x = do
-  hC <- heapCuts <$> ask
+  hC <- heapDestr <$> ask
   return $ M.lookup x hC
 
 testDestr d (App f1 a1) (App f2 a2) = testHyp d f1 f2 <&&> testConc d a1 a2

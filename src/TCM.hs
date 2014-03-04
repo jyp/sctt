@@ -23,8 +23,8 @@ type DeCo r = Either (Destr r) (Conc r)
 
 data Heap n r = Heap { dbgDepth :: Int
                      , heapConstr :: Map (Conc n) (Constr n r)
-                     , heapCuts   :: Map (Hyp n) (DeCo r)  -- TODO: rename to heapDestr
-                     , heapDestr  :: Map (Destr r) (Hyp n) -- TODO: rename to heapDestr'
+                     , heapDestr   :: Map (Hyp n) (DeCo r)
+                     , heapRevDestr  :: Map (Destr r) (Hyp n)
                      , heapAlias  :: Map r r
                      , context    :: Map n (Variance, Conc r) -- ^ types
                      }
@@ -32,10 +32,10 @@ data Heap n r = Heap { dbgDepth :: Int
 instance (Pretty r, Pretty n) => Pretty (Heap n r) where
   pretty (Heap {..}) = sep [hang lab 2  v
                            | (lab,v) <- [("constr" ,pretty heapConstr)
-                                        ,("cuts"   ,pretty heapCuts)
-                                        ,("destr"  ,pretty heapDestr)
-                                        ,("alias"  ,pretty heapAlias)
-                                        ,("context",pretty context)]
+                                       ,("cuts"   ,pretty heapDestr)
+                                       ,("destr"  ,pretty heapRevDestr)
+                                       ,("alias"  ,pretty heapAlias)
+                                       ,("context",pretty context)]
                              ]
 
 newtype TC a = TC {fromTC :: ErrorT Doc (RWST Heap' [Doc] () FreshM) a}

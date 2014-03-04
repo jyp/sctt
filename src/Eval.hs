@@ -47,7 +47,7 @@ hnfHyp unfold x k = do
   report $ "Evaluating hyp: " <> pretty x
   h <- ask
   -- lookup definition of hypothesis
-  let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
+  let lk = M.lookup (getAlias (heapAlias h) x) $ heapDestr h
   case lk of
     -- case: abstract (free) hypothesis without a definition
     Nothing -> k (Hyp x)
