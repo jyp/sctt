@@ -152,14 +152,14 @@ instance Prettier Constr' where
   prettier (Lam x b) = do
     b' <- prettier b
     return $ ("\\" <> pretty x <> " ->") $$+ b'
-  prettier (Pi x t b) = do
+  prettier (Pi v x t b) = do
     t' <- pConc t
     b' <- prettier b
-    return $ (parens (pretty x <>":"<> t') <+> "->") $$+ b'
-  prettier (Sigma x t b) = do
+    return $ (parens (pretty x <+> (":"<> pretty v) <+> t') <+> "->") $$+ b'
+  prettier (Sigma v x t b) = do
     t' <- pConc  t
     b' <- prettier b
-    return $ parens (pretty x <>":"<> t') <> " × " <> b'
+    return $ (parens (pretty x <+> (":"<> pretty v) <+> t') <+> " × ") $$+ b'
   prettier (Pair a b) = do
     a' <- pConc  a
     b' <- pConc  b

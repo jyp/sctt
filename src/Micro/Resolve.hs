@@ -112,19 +112,19 @@ resolveConstr name (A.Pi x c t) = do
   r <- freshFromR name
   insert hyp x $ \x' -> do
     t' <- resolveTerm' (nameRight name) t
-    return (r,c' . Constr (Conc r) (Pi x' (Conc c'id) t'))
+    return (r,c' . Constr (Conc r) (Pi Invar x' (Conc c'id) t'))
 resolveConstr name (A.Fun c t) = do
   (c'id,c') <- resolveConstr (nameLeft name) c
   r <- freshFromR name
   t' <- resolveTerm' (nameRight name) t
   x' <- freshIdR
-  return (r,c' . Constr (Conc r) (Pi x' (Conc c'id) t'))
+  return (r,c' . Constr (Conc r) (Pi Invar x' (Conc c'id) t'))
 resolveConstr name (A.Sigma x c t) = do
   (c'id,c') <- resolveConstr (nameLeft name) c
   r <- freshIdR
   insert hyp x $ \x' -> do
     t' <- resolveTerm' (nameRight name) t
-    return (r,c' . Constr (Conc r) (Sigma x' (Conc c'id) t'))
+    return (r,c' . Constr (Conc r) (Sigma Invar x' (Conc c'id) t'))
 resolveConstr name (A.Pair a b) = do
   (a'id,a') <- resolveConstr (name ++ ".1") a
   (b'id,b') <- resolveConstr (name ++ ".2") b

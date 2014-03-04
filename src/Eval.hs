@@ -83,8 +83,8 @@ hnfDestr unfold h d k = case d of
          if h' /= h -- condition to avoid looping
             then hnfHyp unfold h' k  -- to establish unique normal forms wrt. sharing
             else k (Hyp h)
-       _ -> error $ "type-error in app-evaluation"
-   _ -> error $ "cannot be found as target in cut maps: " ++ show d
+       _ -> terr $ "type-error in app-evaluation"
+   _ -> terr $ "cannot be found as target in cut maps:" <+> pretty d
 
 normalizeAndAddDestr :: Hyp Id -> Destr Id -> TC a -> TC a
 normalizeAndAddDestr = addDestr

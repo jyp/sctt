@@ -1,0 +1,14 @@
+TERM
+  s1 = *1 ;
+  s0 = *0 ;
+  t1 = (x' : s1) -> s0 ;
+  t2 = (x' : s0) -> s1 ; -- we have t1 ≤ t2 but not t2 ≤ t1
+  f = \y -> (y = y ; y) ;
+  f_ty = (x : t1) -> t2 ;
+  -- f_ty = (x : t2) -> t1 ; -- this should fail.
+  x = f : f_ty ;
+  s0
+
+TYPE
+  s1 = *1 ;
+  s1

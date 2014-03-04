@@ -30,11 +30,30 @@ instance Pretty Proj where
    pretty Terms.Second = ".2"
 
 data Branch n r = Br Tag (Term n r)
-    deriving (Show, Functor)
+    deriving (Functor)
 
 instance Bifoldable Term where  bifoldMap = bifoldMapDefault
 instance Bifunctor Term where  bimap = bimapDefault
 instance Bitraversable Term where  bitraverse = $(genTraverse ''Term)
+
+data Variance =
+    Covar
+  | Contravar
+  | Invar
+    deriving (Eq)
+
+instance Pretty Variance where
+    pretty Covar = "₊"
+    pretty Contravar = "₋"
+    pretty Invar = "₌"
+
+instance Ord Variance where
+    Covar <= Covar = True
+    Covar <= Invar = True
+    Invar <= Invar = True
+    Contravar <= Invar = True
+    Contravar <= Contravar = True
+    _ <= _ = False
 
 data Term n r where
   Destr  :: Hyp n  -> Destr r -> Term n r -> Term n r
@@ -42,25 +61,25 @@ data Term n r where
   Case   :: Hyp r  -> [Branch n r] -> Term n r
   Constr :: Conc n -> Constr n r -> Term n r -> Term n r
   Concl  :: Conc r -> Term n r  -- ^ Conclude
-    deriving (Show, Functor)
+    deriving (Functor)
 
 data Destr r where
   App :: Hyp r -> Conc r -> Destr r
   -- Proj :: Hyp r -> Proj -> Destr r
   Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
-    deriving (Show, Eq, Ord, Functor)
+    deriving (Eq, Ord, Functor)
 
 data Constr n r where
   Hyp :: Hyp r -> Constr n r
   Rec :: Hyp n -> Term n r -> Constr n r
   Lam :: Hyp n -> Term n r -> Constr n r
-  Pi :: Hyp n -> Conc r -> Term n r -> Constr n r
-  Sigma :: Hyp n -> Conc r -> Term n r -> Constr n r
+  Pi :: Variance -> Hyp n -> Conc r -> Term n r -> Constr n r
+  Sigma :: Variance -> Hyp n -> Conc r -> Term n r -> Constr n r
   Pair :: Conc r -> Conc r -> Constr n r
   Tag :: Tag -> Constr n r
   Fin :: [Tag] -> Constr n r
   Universe :: Int -> Constr n r
-    deriving (Show, Functor)
+    deriving (Functor)
 
 instance (Pretty r) => Pretty (Conc r) where
   pretty (Conc x) = text "_" <> pretty x
@@ -86,11 +105,11 @@ instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Hyp h) = pretty h
   pretty (Rec x b) = ("rec " <> pretty x <> " ->") $$+ (pretty b)
   pretty (Lam x b) = ("\\" <> pretty x <> " ->") $$+ (pretty b)
-  pretty (Pi x t b) =
-      (parens (pretty x <+>":"<+>pretty t) <> " ->")
+  pretty (Pi v x t b) =
+      (parens (pretty x <+> (":" <> pretty v) <+> pretty t) <> " ->")
       $$+ (pretty b)
-  pretty (Sigma x t b) =
-      (parens (pretty x <+>":"<+>pretty t) <> " ×")
+  pretty (Sigma v x t b) =
+      (parens (pretty x <+> (":" <> pretty v) <+> pretty t) <> " ×")
       $$+ (pretty b)
   pretty (Pair a b) = parens $ pretty a <> "," <> pretty b
   pretty (Tag t) = "'" <> text t

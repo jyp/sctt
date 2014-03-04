@@ -26,7 +26,7 @@ data Heap n r = Heap { dbgDepth :: Int
                      , heapCuts   :: Map (Hyp n) (DeCo r)  -- TODO: rename to heapDestr
                      , heapDestr  :: Map (Destr r) (Hyp n) -- TODO: rename to heapDestr'
                      , heapAlias  :: Map r r
-                     , context    :: Map n (Conc r) -- ^ types
+                     , context    :: Map n (Variance, Conc r) -- ^ types
                      }
 
 instance (Pretty r, Pretty n) => Pretty (Heap n r) where
