@@ -19,9 +19,6 @@ import RM
 
 nameVar (A.Var (_,x)) = x
 
-nameProj x A.First = x ++ ".1"
-nameProj x A.Second = x ++ ".2"
-
 nameLeft x = x ++ "ˡ"
 nameRight x = x ++ "ʳ"
 
@@ -81,16 +78,11 @@ resolveDestr _ (A.V x) = do
   case x' of
     Just x'' -> return (x'',id)
     Nothing -> error $ "Unknown variable: " ++ show x
-
 resolveDestr name (A.Appl f x) = do
   (f'id,f') <- resolveDestr (name ++ "ᶠ") f
   (x'id,x') <- resolveConstr (name ++ "ᵃ") x
   r <- freshFromR name
   return (r,f' . x' . Destr r (App f'id (Conc x'id)))
--- resolveDestr name (A.Proj p f) = do
---   (p'id,p') <- resolveDestr (name ++ "ᵖ") p
---   r <- freshFromR name
---   return (r,p'.Destr r (Proj p'id $ resolveProj f))
 resolveDestr name (A.Cut x t) = do
   (x'id,x') <- resolveConstr (nameLeft name) x
   (t'id,t') <- resolveConstr (nameRight name) t
@@ -98,9 +90,6 @@ resolveDestr name (A.Cut x t) = do
   return (r, x'.t'.Destr r (Cut (Conc x'id) (Conc t'id)))
 resolveDestr _ x = do
   error $ "Tryed to make an inline cut. (Cuts must be explicit via use of =)\n" ++ show x
-
-resolveProj (A.First) = First
-resolveProj (A.Second) = Second
 
 resolveConstr :: String -> A.DC -> R (Id,Slice)
 resolveConstr _name (A.V x) = do

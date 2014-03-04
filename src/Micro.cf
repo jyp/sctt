@@ -5,9 +5,6 @@ layout "of" ;
 
 Module. Module ::= "TERM" Term "TYPE" Term ;
 
-First.  Proj ::= ".1" ;
-Second. Proj ::= ".2" ;
-
 separator Tag ",";
 T.  Tag      ::= "'" Var;
 Br. Branch   ::= Tag "->" Term;
@@ -28,7 +25,6 @@ V.      DC3 ::= Var;
 Pair.   DC3 ::= "(" DC "," DC ")";
 Lam.    DC3 ::= "\\" Var "->" Term2;
 Rec.    DC3 ::= "rec" Var "->" Term2;
-Proj.   DC3 ::= DC3 Proj;
 Fin.    DC3 ::= "{" [Tag] "}" ;
 Univ.   DC3 ::= "*" Nat;
 Appl.   DC2 ::= DC2 DC3;
@@ -44,4 +40,3 @@ position token Nat digit+ ;
 
 comment "{-" "-}" ;
 comment "--" ;
-
