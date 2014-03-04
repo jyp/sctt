@@ -36,7 +36,7 @@ x <&&> y = do
 
 isSubTypeOf :: (r~Id) => (Variance, Conc r) -> (Variance, Conc r) -> TC Bool
 isSubTypeOf (v1,t1) (v2,t2) =
-    return (subCompare R v1 v2) <&&> isSubConcOf t1 t2
+    return (subCompare R v1 v2) <&&> testConc R t1 t2
 
 
 testTerm :: (r~Id,n~Id) => Dir -> Term n r -> Term n r -> TC Bool
