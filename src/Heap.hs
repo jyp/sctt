@@ -40,7 +40,7 @@ addCut src c k = do
     _ -> local (addCut' src $ Right c) k
 
 addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
-addCut' src trg h@Heap{..} = h{heapCuts = M.insert src trg heapCuts }
+addCut' src trg h@Heap{..} = h{heapDestr = M.insert src trg heapDestr }
 
 addAlias' :: Ord r => r -> r -> Heap n r -> Heap n r
 addAlias' src trg h@Heap{..} = h{heapAlias = f <$> M.insert src trg heapAlias }
@@ -53,7 +53,7 @@ addConstr' :: Ord n => Conc n -> Constr n r -> Heap n r -> Heap n r
 addConstr' src trg h@Heap{..} = h{heapConstr = M.insert src trg heapConstr }
 
 addDestr' :: Ord r => Destr r -> n -> Heap n r -> Heap n r
-addDestr' src trg h@Heap{..} = h{heapDestr = M.insert src trg heapDestr }
+addDestr' src trg h@Heap{..} = h{heapRevDestr = M.insert src trg heapRevDestr }
 
 getAlias h x = M.findWithDefault x x h
 
@@ -64,7 +64,7 @@ addAliases as k = do
   h <- addAliases' as <$> ask
   let hD' :: M.Map (Destr Id) [Hyp Id]
       applyAlias = getAlias $ heapAlias h
-      hD' = M.mapKeysWith (++) (fmap applyAlias) $ fmap (:[]) $ heapDestr h
+      hD' = M.mapKeysWith (++) (fmap applyAlias) $ fmap (:[]) $ heapRevDestr h
       myhead (x:_) = x
       hD'' = fmap myhead hD'
       classes = M.elems hD'
@@ -72,8 +72,8 @@ addAliases as k = do
       -- apply aliases to redexes
       -- todo: remove orphan redexes?
       hC' :: M.Map (Hyp Id) (DeCo Id)
-      hC' =  bimap (applyAlias <$>) id <$> heapCuts h
-  local (\h2 -> h2 {heapDestr = hD'', heapAlias = heapAlias h, heapCuts = hC'}) $
+      hC' =  bimap (applyAlias <$>) id <$> heapDestr h
+  local (\h2 -> h2 {heapRevDestr = hD'', heapAlias = heapAlias h, heapDestr = hC'}) $
     addAliases aliases k
 
 addAlias :: Id -> Id -> TC a -> TC a
@@ -99,7 +99,7 @@ addDestr x d k = do
   report ("Adding destr."
         $$+ pretty x <+> "="
         $$+ pretty d  <+> "; aliased to" <+> pretty d')
-  local (addCut' x (Left d')) $ case M.lookup d' (heapDestr h) of
+  local (addCut' x (Left d')) $ case M.lookup d' (heapRevDestr h) of
      Just y -> addAlias y x k
      Nothing -> local (addDestr' d' x) k
 
@@ -128,7 +128,7 @@ pConc x = prettier =<< lookHeapC x
 pHyp :: Hyp Id -> TC Doc
 pHyp x = do
   h <- ask
-  let lk = M.lookup (getAlias (heapAlias h) x) $ heapCuts h
+  let lk = M.lookup (getAlias (heapAlias h) x) $ heapDestr h
   case lk of
     Nothing -> return $ pretty x
     Just (Right c) -> pConc c
