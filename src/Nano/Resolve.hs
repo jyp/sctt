@@ -55,9 +55,6 @@ resolveDestr (A.Appl f x) = App <$> resolveVar hyp f <*> resolveConc con x
 -- resolveDestr (A.Proj p f) = Proj <$> resolveVar hyp p <*> pure (resolveProj f)
 resolveDestr (A.Cut x t) = Cut <$>  resolveConc con x <*> resolveConc con t
 
-resolveProj (A.First) = First
-resolveProj (A.Second) = Second
-
 resolveConstr :: A.Constr -> R (Constr Id Id)
 resolveConstr (A.Hyp x) = Hyp <$> resolveVar hyp x
 resolveConstr (A.Lam x t) = insert hyp x $ \x' ->

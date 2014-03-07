@@ -22,15 +22,8 @@ newtype Conc a = Conc { conc :: a }
 instance Show a => Show (Conc a) where
   show (Conc x) = "_" ++ show x
 
-data Proj = First | Second
-     deriving (Eq, Ord, Show)
-
-instance Pretty Proj where
-   pretty Terms.First = ".1"
-   pretty Terms.Second = ".2"
-
 data Branch n r = Br Tag (Term n r)
-    deriving (Show, Functor)
+    deriving (Eq, Ord, Functor)
 
 instance Bifoldable Term where  bifoldMap = bifoldMapDefault
 instance Bifunctor Term where  bimap = bimapDefault
@@ -42,11 +35,10 @@ data Term n r where
   Case   :: Hyp r  -> [Branch n r] -> Term n r
   Constr :: Conc n -> Constr n r -> Term n r -> Term n r
   Concl  :: Conc r -> Term n r  -- ^ Conclude
-    deriving (Show, Functor)
+    deriving (Eq, Ord, Functor)
 
 data Destr r where
   App :: Hyp r -> Conc r -> Destr r
-  -- Proj :: Hyp r -> Proj -> Destr r
   Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
     deriving (Show, Eq, Ord, Functor)
 
@@ -60,7 +52,7 @@ data Constr n r where
   Tag :: Tag -> Constr n r
   Fin :: [Tag] -> Constr n r
   Universe :: Int -> Constr n r
-    deriving (Show, Functor)
+    deriving (Eq, Ord, Functor)
 
 instance (Pretty r) => Pretty (Conc r) where
   pretty (Conc x) = text "_" <> pretty x

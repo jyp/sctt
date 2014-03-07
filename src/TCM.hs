@@ -23,6 +23,7 @@ type DeCo r = Either (Destr r) (Conc r)
 
 data Heap n r = Heap { dbgDepth :: Int
                      , heapConstr :: Map (Conc n) (Constr n r)
+                     , heapRevConstr :: Map (Constr n r) (Conc n)
                      , heapDestr   :: Map (Hyp n) (DeCo r)
                      , heapRevDestr  :: Map (Destr r) (Hyp n)
                      , heapAlias  :: Map r r
@@ -32,8 +33,9 @@ data Heap n r = Heap { dbgDepth :: Int
 instance (Pretty r, Pretty n) => Pretty (Heap n r) where
   pretty (Heap {..}) = sep [hang lab 2  v
                            | (lab,v) <- [("constr" ,pretty heapConstr)
-                                       ,("cuts"   ,pretty heapDestr)
-                                       ,("destr"  ,pretty heapRevDestr)
+                                       ,("revconstr" ,pretty heapRevConstr)
+                                       ,("destr"   ,pretty heapDestr)
+                                       ,("revdestr"  ,pretty heapRevDestr)
                                        ,("alias"  ,pretty heapAlias)
                                        ,("context",pretty context)]
                              ]
