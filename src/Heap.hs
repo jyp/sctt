@@ -15,7 +15,7 @@ import TCM
 import Fresh
 
 emptyHeap :: Heap n r
-emptyHeap = Heap 0 M.empty M.empty M.empty M.empty M.empty
+emptyHeap = Heap 0 M.empty M.empty M.empty M.empty M.empty M.empty
 
 enter :: TC a -> TC a
 enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1})
@@ -52,6 +52,9 @@ addAliases' = foldr (.) id . map (uncurry addAlias')
 addConstr' :: Ord n => Conc n -> Constr n r -> Heap n r -> Heap n r
 addConstr' src trg h@Heap{..} = h{heapConstr = M.insert src trg heapConstr }
 
+addRevConstr' :: (Ord n, Ord r) => Constr n r -> Conc n -> Heap n r -> Heap n r
+addRevConstr' src trg h@Heap{..} = h{heapRevConstr = M.insert src trg heapRevConstr }
+
 addDestr' :: Ord r => Destr r -> n -> Heap n r -> Heap n r
 addDestr' src trg h@Heap{..} = h{heapRevDestr = M.insert src trg heapRevDestr }
 
@@ -79,16 +82,18 @@ addAliases as k = do
 addAlias :: Id -> Id -> TC a -> TC a
 addAlias src trg = addAliases [(src,trg)]
 
-aliasOf :: Id -> TC Id
 aliasOf x = flip getAlias x . heapAlias <$> ask
 
 -- | Look for some constructed value in the heap.
 lookHeapC :: (r~Id,n~Id) => Conc n -> TC (Constr n r)
 lookHeapC x = do
-  lk <- M.lookup x . heapConstr <$> ask
+  h <- ask
+  x' <- Conc <$> aliasOf (conc x)
+  let lk = M.lookup x' (heapConstr h)
   case lk of
     Nothing -> terr $ "Construction not found: " <> pretty x
     Just c -> return c
+
 
 
 addDestr :: Hyp Id -> Destr Id -> TC a -> TC a
@@ -106,12 +111,17 @@ addDestr x d k = do
 -- | return true if fizzled, otherwise call the continuation.
 addConstr :: Monoid a => Conc Id -> Constr' -> TC a -> TC a
 addConstr x c k = do
-  report ("Adding construction" $$++ pretty x <+> "=" $$+ pretty c)
-  hC <- heapConstr <$> ask
-  hA <- heapAlias <$> ask
+  h <- ask
+  let c' = getAlias (heapAlias h) <$> c
+  report ("Adding construction"
+        $$+ pretty x <+> "="
+        $$+ pretty c  <+> "; aliased to" <+> pretty c')
   case c of
-    Tag t | Just (Tag t') <- M.lookup x hC -> if t /= t' then return mempty else k
-    _ -> local (addConstr' x $ getAlias hA <$> c) k
+    Tag t | Just (Tag t') <- M.lookup x $ heapConstr h ->
+         if t /= t' then return mempty else k
+    _ -> local (addConstr' x c') $ case M.lookup c' (heapRevConstr h) of
+          Just (Conc y) -> addAlias y (conc x) k
+          Nothing -> local (addRevConstr' c' x) k
 
 instance Monoid Bool where
   mempty = True
