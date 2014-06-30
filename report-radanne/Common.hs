@@ -2,7 +2,9 @@
 module Common where
 
 import MarXup
+import MarXup.Math
 import MarXup.Latex
+import MarXup.Verbatim
 import MarXup.Latex.Math
 import MarXup.Latex.Bib
 import MarXup.Tex
@@ -60,7 +62,7 @@ mbrac = outop "[" "]"
 
 quad = cmd0 "quad"
 qquad = cmd0 "qquad"
-
+space = tex "\\,"
 app f x = f <-> mparen x
 (\=) = binop 1 "="
 (=/=) = binop 1 "≠"
@@ -92,7 +94,7 @@ squig = Con $ cmd0 "rightsquigarrow"
 (~>) = binop 1 $ cmd0 "rightsquigarrow"
 (~/>) = binop 1 $ cmd0 "not \\rightsquigarrow"
 (~~>) = binop 1 $ (backslash <> tex "rightsquigarrow" <> (element $ indice $ text "c"))
-(~>*) = binop 1 $ ((backslash <> tex "rightsquigarrow") ^^^ tex "*")
+(~>*) = binop 1 $ ((backslash <> tex "rightsquigarrow") <> superscript (tex "*"))
 (#) = binop 1 ", "
 subst t x y = t <-> mbrac ( x // y )
 (==>) = binop 1 $ cmd0 "Rightarrow"
@@ -196,21 +198,8 @@ ruleref = cmd "textsc"
 
 -- | Lstlistings
 
-data Listing a = Listing {fromListing::String, value::a}
-
-instance Textual Listing where
-    textual s = Listing s ()
-
-instance Monad Listing where
-    return x = Listing "" x
-    (Listing s0 x) >>= f =
-        Listing (s0 ++ s1) y
-        where Listing s1 y = f x
-
-instance MonadFix Listing where
-    mfix f =
-        let Listing _ x = f x in
-        f x
+-- data Listing a = Listing {fromListing::String, value::a}
+type Listing a = Verbatim a
 
 agdai :: Listing () -> TeX
 agdai = lstinline ["language=Agda"]
@@ -218,16 +207,17 @@ agdai = lstinline ["language=Agda"]
 nai :: Listing () -> TeX
 nai = lstinline ["language=nanoAgda"]
 
-listing :: [String] -> Listing () -> TeX
-listing opt (Listing s _) =
-    env' "lstlisting" opt (tex s)
+-- listing :: [String] -> Listing () -> TeX
+-- listing opt (Listing s _) =
+--     env' "lstlisting" opt (tex s)
 
-lstinline :: [String] -> Listing () -> TeX
-lstinline opt (Listing s _) =
-    let sep = tex "$"
-        opt' = tex $ mconcat . intersperse ", "
-               $ "basicstyle=\\ttfamily" :  opt in
-    backslash <> "lstinline" <> brackets opt' <> sep <> tex s <> sep
+-- lstinline :: [String] -> Listing () -> TeX
+-- lstinline opt (Listing s _) =
+--     let sep = tex "$"
+--         opt' = tex $ mconcat . intersperse ", "
+--                $ "basicstyle=\\ttfamily" :  opt in
+--     backslash <> "lstinline" <> brackets opt' <> sep <> tex s <> sep
+
 
 agdacode :: Listing () -> TeX
 agdacode code =

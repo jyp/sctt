@@ -1,20 +1,14 @@
 
-mainTest: Report.pdf
+all: Report.pdf
 
-%-delayed.mp: %.mp
-	rm -f $@
-	mpost $<
-	mpost $<
-
-%.pdf: %.tex %-delayed.mp
-	pdflatex $<
-	bibtex $(basename $<).aux
+%.pdf: %.tex
 	pdflatex $<
 	pdflatex $<
 
-%.mp %.tex: %.hs
-	ghc -i../src/ --make $<
+%.tex: %.hs
+	ghc --make $<
 	./$*
 
 %.hspp: %.hs
 	ghc -E $<
+

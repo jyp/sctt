@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -i../src/ -XTypeSynonymInstances -XOverloadedStrings -XRecursiveDo -pgmF marxup3 -F #-}
 
 import MarXup
+import MarXup.Math
 import MarXup.Latex
 import MarXup.Latex.Math
 import MarXup.Latex.Bib
@@ -21,6 +22,8 @@ classUsed = LNCS
 
 classFile LNCS = "llncs"
 
+math = ensureMath
+
 preamble :: Bool -> Tex ()
 preamble inMetaPost = do
   if inMetaPost
@@ -28,7 +31,7 @@ preamble inMetaPost = do
   else documentClass (classFile classUsed) [] -- ["authoryear","preprint"]
   stdPreamble
   mathpreamble classUsed
-  cmd "input" (tex "../PaperTools/latex/unicodedefs")
+  cmd "input" (tex "../../PaperTools/latex/unicodedefs")
   unless inMetaPost $ do
     usepackage "natbib" ["sectionbib"]
     usepackage "tikz" []
@@ -61,7 +64,7 @@ header = do
     [ "Dependent types", "Type theory", "Sequent calculus"]
 
 
-main = renderToDisk' EPS "Report" $ latexDocument preamble $ «
+main = writeFile "Report.tex" =<< renderTex preamble «
 
 @header
 
@@ -486,7 +489,7 @@ To verify that two constructions are equal, we proceed by induction on the struc
     «@lra @fa @i @quad @((l @- i) \= (l2 @- i))»]
 ]
 
-The last two rules are interesting in that they are asymmetric: a construction on the left and a variable on the right. To test the equality in this case, we need to introduce new variables and apply destructions on the left-hand side of the equality. This allows to have η-equality in the type theory, therefore we can prove that @(lambda_ x (mparen (text«f» </> x)) .=. text«f»), even if @text«f» is abstract.
+The last two rules are interesting in that they are asymmetric: a construction on the left and a variable on the right. To test the equality in this case, we need to introduce new variables and apply destructions on the left-hand side of the equality. This allows to have η-equality in the type theory, therefore we can prove that @(lambda_ x (mparen (text«f» </> x)) =: text«f»), even if @text«f» is abstract.
 @align[
   [ «@(γ ⊢ lambda_ x t \= y)»,
     «@lra @(γ + (concl x \== x) + (z \== (y </> concl x)) ⊢ t \= z)»],

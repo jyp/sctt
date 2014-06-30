@@ -13,3 +13,6 @@ dist/
 *.aux
 *.log
 PaperTools/
+/report-radanne/Report
+/report-radanne/Report.out
+/report-radanne/mpboxes.txt
