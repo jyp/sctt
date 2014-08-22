@@ -43,7 +43,7 @@ data Destr r where
     deriving (Show, Eq, Ord, Functor)
 
 data Constr n r where
-  Hyp :: Hyp r -> Constr n r
+  Hyp :: Hyp r -> Constr n r -- not found in the heap!
   Rec :: Hyp n -> Term n r -> Constr n r
   Lam :: Hyp n -> Term n r -> Constr n r
   Pi :: Hyp n -> Conc r -> Term n r -> Constr n r
@@ -54,6 +54,25 @@ data Constr n r where
   Universe :: Int -> Constr n r
     deriving (Eq, Ord, Functor)
 
+data Suc r = Here | There r
+data Val n r  = VApp r r
+              | VLam n (Term n r)
+              | VPair r r
+              | VTag Tag
+              | VPi    r r -- 2nd arg must point to a function
+              | VSigma r r
+              | VFin [Tag]
+              | VUniv Int
+              | VHyp r
+    deriving (Eq, Ord, Functor)
+
+instance Bifoldable Val where  bifoldMap = bifoldMapDefault
+instance Bifunctor Val where  bimap = bimapDefault
+instance Bitraversable Val where  bitraverse = $(genTraverse ''Val)
+
+instance (Pretty r, Pretty n) => Pretty (Val n r) where
+  pretty _ = "<VAL>"
+  
 instance (Pretty r) => Pretty (Conc r) where
   pretty (Conc x) = text "_" <> pretty x
 

@@ -17,27 +17,18 @@ type Constr' = Constr Id Id
 type Destr' = Destr Id
 type Heap' = Heap Id Id
 type Branch' = Branch Id Id
-
-
-type DeCo r = Either (Destr r) (Conc r)
+type Val' = Val Id Id
 
 data Heap n r = Heap { dbgDepth :: Int
-                     , heapConstr :: Map (Conc n) (Constr n r)
-                     , heapRevConstr :: Map (Constr n r) (Conc n)
-                     , heapDestr   :: Map (Hyp n) (DeCo r)
-                     , heapRevDestr  :: Map (Destr r) (Hyp n)
-                     , heapAlias  :: Map r r
-                     , context    :: Map n (Conc r) -- ^ types
+                     , definitions :: [(r,Val n r)] -- should be congruence-closure
+                     , aliases :: Map r r -- should be union-find
+                     , context :: Map r r -- Mapping
                      }
-
 instance (Pretty r, Pretty n) => Pretty (Heap n r) where
   pretty (Heap {..}) = sep [hang lab 2  v
-                           | (lab,v) <- [("constr" ,pretty heapConstr)
-                                       ,("revconstr" ,pretty heapRevConstr)
-                                       ,("destr"   ,pretty heapDestr)
-                                       ,("revdestr"  ,pretty heapRevDestr)
-                                       ,("alias"  ,pretty heapAlias)
-                                       ,("context",pretty context)]
+                           | (lab,v) <- [("defs" ,pretty definitions)
+                                        ,("aliases" ,pretty aliases)
+                                        ,("context",pretty context)]
                              ]
 
 newtype TC a = TC {fromTC :: ErrorT Doc (RWST Heap' [Doc] () FreshM) a}

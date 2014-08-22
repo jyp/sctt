@@ -1,12 +1,13 @@
-{-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances, RecordWildCards  #-}
+{-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances, RecordWildCards, ViewPatterns, PatternGuards #-}
 
-module Heap (emptyHeap, addDef,addCut,lookHeapC,getAlias,addConstr, addConstr', addDestr', enter,addDestr,addAlias',aliasOf,pConc,pHyp,addAlias) where
+module Heap (emptyHeap, addDef,addCut,lookHeapC,getAlias,enter,addAlias',aliasOf,pConc,pHyp,addAlias) where
 
 import Control.Monad.RWS
 import Control.Applicative
 
 import Data.Bifunctor
 import qualified Data.Map as M
+import Data.Either
 
 import Terms
 import Ident
@@ -15,113 +16,116 @@ import TCM
 import Fresh
 
 emptyHeap :: Heap n r
-emptyHeap = Heap 0 M.empty M.empty M.empty M.empty M.empty M.empty
+emptyHeap = Heap 0 [] M.empty M.empty
 
 enter :: TC a -> TC a
 enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1})
 
-addDef :: (Monoid a,Id~n,Id~r,Ord n) => Hyp n -> Constr n r -> TC a -> TC a
-addDef h c k = do
-  case c of
-    Hyp h' -> addAlias h h' k
-    _ -> do
-      c' <- Conc <$> liftTC (refreshId h)
-      addConstr c' c $ local (addCut' h (Right c')) k
+addTermDef' :: (Monoid a,Id~n,Id~r,Ord n) => n -> Val n r -> Term n n -> Maybe (Heap n r)
+addTermDef' = error "addTermDef"
 
-addElimDef :: (Monoid a,Id~n,Id~r,Ord n) => Hyp n -> Destr n -> TC a -> TC a
-addElimDef h d = local (addCut' h $ Left d)
+addTermDef :: (Monoid a) => Id -> Term' -> TC a -> TC a
+addTermDef = error "addTermDef"
 
-addCut :: (Id~n,Id~r,Ord n) => Hyp n -> Conc r -> TC a -> TC a
-addCut src c k = do
-  report $ "adding cut: " <> pretty src <> " => " <> pretty c
-  c' <- lookHeapC c
-  case c' of
-    Hyp h' -> addAlias src h' k
-    _ -> local (addCut' src $ Right c) k
+app :: Monoid a => Val Id Id -> Id -> (Term' -> TC a) -> TC a
+app lam arg k = do
+  (VLam x t) <- liftTC (refreshBinders lam)
+  addCut x arg (k t)
 
-addCut' :: Ord n => n -> DeCo r -> Heap n r -> Heap n r
-addCut' src trg h@Heap{..} = h{heapDestr = M.insert src trg heapDestr }
+-- 1st arg is the hypothesis (may be eliminated somewhere); 2nd arg the conclusion
+addCut :: Monoid a => Id -> Id -> TC a -> TC a
+addCut hyp concl k = do
+  Heap{..} <- ask
+  case lookup concl definitions of
+    Nothing -> case lookup hyp definitions of
+      Nothing -> addAlias hyp concl k
+      Just def -> addDef concl def k
+    Just def -> addDef hyp def k
 
-addAlias' :: Ord r => r -> r -> Heap n r -> Heap n r
-addAlias' src trg h@Heap{..} = h{heapAlias = f <$> M.insert src trg heapAlias }
+applyAliases :: Val' -> TC (Val')
+applyAliases = error "arouwfydt"
+
+partitionWith :: (a -> Either b c) -> [a] -> ([b],[c])
+partitionWith f xs = partitionEithers (map f xs)
+
+redex :: Monoid a => Id -> Val' -> Id -> TC a -> TC a
+redex result fun arg k = app fun arg $ \t' -> addTermDef result t' k
+
+addDef ::  Monoid a => Id -> Val' -> TC a -> TC a
+addDef r d0 k = do
+  d <- applyAliases d0
+  Heap{..} <- ask
+  case [r' |(r',d') <- definitions, d == d'] of
+    (r':_) -> addAlias r r' k
+    [] -> local (\h -> h {definitions = (r,d):definitions}) $
+            case d of
+                VApp f a | Just lam <- lookup f definitions -> redex r lam a k
+                    -- Is there a definition for the thing being eliminated? Then reduce.
+                VHyp y -> addAlias r y k
+                VLam x t -> do
+                  -- find all eliminators and evaluate them.
+                  let rest :: [(Id,Val')]
+                      (ra, rest) = partitionWith (\(r',d') -> case d' of {VApp f a | f == r -> Left (r',a); otherwise -> Right (r',d')}) definitions
+                      go [] k = k
+                      go ((ret,arg):ras) k = redex ret d arg (go ras k)
+                  go ra $ local (\h -> h {definitions = (r,d):rest}) k
+                VPair x y -> do
+                   let pairs = [(x',y') | (r',VPair x' y') <- definitions, r == r']
+                       go [] k = k
+                       go ((x',y'):ps) k = addAliases [(x,x'),(y,y')] $ go ps k
+                       -- we can keep all the defs here; aliasing mechanism will take care of cleaning them up.
+                   go pairs k
+                VTag t -> case lookup r definitions of -- is the variable given another tag value?
+                  Just (VTag t') | t == t'  -> return mempty -- Then the heap is inconsistent.
+                  Nothing -> k
+                _ -> k -- nothing special to do.
+
+addAlias' :: Ord r => r -> r -> M.Map r r -> M.Map r r
+addAlias' src trg as = f <$> M.insert src trg as
   where f x = if x == src then trg else x
 
-addAliases' :: Ord r => [(r,r)] -> Heap n r -> Heap n r
+addAliases' :: Ord r => [(r,r)] -> M.Map r r -> M.Map r r
 addAliases' = foldr (.) id . map (uncurry addAlias')
 
-addConstr' :: Ord n => Conc n -> Constr n r -> Heap n r -> Heap n r
-addConstr' src trg h@Heap{..} = h{heapConstr = M.insert src trg heapConstr }
 
-addRevConstr' :: (Ord n, Ord r) => Constr n r -> Conc n -> Heap n r -> Heap n r
-addRevConstr' src trg h@Heap{..} = h{heapRevConstr = M.insert src trg heapRevConstr }
+getAlias as x = case M.lookup x as of
+  Just h' -> h'
+  Nothing -> x
 
-addDestr' :: Ord r => Destr r -> n -> Heap n r -> Heap n r
-addDestr' src trg h@Heap{..} = h{heapRevDestr = M.insert src trg heapRevDestr }
-
-getAlias h x = M.findWithDefault x x h
-
+swap (x,y) = (y,x)
 addAliases :: [(Id,Id)] -> TC a -> TC a
 addAliases [] k = k
 addAliases as k = do
+  h <- ask
   report $ ("Adding aliases:" $$+ pretty as)
-  h <- addAliases' as <$> ask
-  let hD' :: M.Map (Destr Id) [Hyp Id]
-      applyAlias = getAlias $ heapAlias h
-      hD' = M.mapKeysWith (++) (fmap applyAlias) $ fmap (:[]) $ heapRevDestr h
+  origAliases <- aliases <$> ask
+  let allAliases = addAliases' as origAliases
+  let applyAlias = getAlias allAliases
+      hD' :: M.Map (Val Id Id) [Id]
+      hD' = M.fromListWith (++) [(fmap applyAlias d, [x]) | (x,d) <- definitions h]
       myhead (x:_) = x
       hD'' = fmap myhead hD'
       classes = M.elems hD'
       aliases = [(x,y) | (x:xs) <- classes, y <- xs]
-      -- apply aliases to redexes
-      -- todo: remove orphan redexes?
-      hC' :: M.Map (Hyp Id) (DeCo Id)
-      hC' =  bimap (applyAlias <$>) id <$> heapDestr h
-  local (\h2 -> h2 {heapRevDestr = hD'', heapAlias = heapAlias h, heapDestr = hC'}) $
+      defs' :: [(Id,Val Id Id)]
+      defs' =  fmap (applyAlias <$>) <$> definitions h
+  local (\h2 -> h2 {aliases = allAliases, definitions = defs'}) $
     addAliases aliases k
 
 addAlias :: Id -> Id -> TC a -> TC a
 addAlias src trg = addAliases [(src,trg)]
 
-aliasOf x = flip getAlias x . heapAlias <$> ask
+aliasOf x = flip getAlias x . aliases <$> ask
 
 -- | Look for some constructed value in the heap.
-lookHeapC :: (r~Id,n~Id) => Conc n -> TC (Constr n r)
-lookHeapC x = do
+lookHeapC :: (r~Id,n~Id) => Conc n -> TC (Val n r)
+lookHeapC (Conc x) = do
   h <- ask
-  x' <- Conc <$> aliasOf (conc x)
-  let lk = M.lookup x' (heapConstr h)
+  x' <- aliasOf x
+  let lk = lookup x' (definitions h)
   case lk of
     Nothing -> terr $ "Construction not found: " <> pretty x
     Just c -> return c
-
-
-
-addDestr :: Hyp Id -> Destr Id -> TC a -> TC a
-addDestr x (Cut c _ct) k = addCut x c k
-addDestr x d k = do
-  h <- ask
-  let d' = getAlias (heapAlias h) <$> d
-  report ("Adding destr."
-        $$+ pretty x <+> "="
-        $$+ pretty d  <+> "; aliased to" <+> pretty d')
-  local (addCut' x (Left d')) $ case M.lookup d' (heapRevDestr h) of
-     Just y -> addAlias y x k
-     Nothing -> local (addDestr' d' x) k
-
--- | return true if fizzled, otherwise call the continuation.
-addConstr :: Monoid a => Conc Id -> Constr' -> TC a -> TC a
-addConstr x c k = do
-  h <- ask
-  let c' = getAlias (heapAlias h) <$> c
-  report ("Adding construction"
-        $$+ pretty x <+> "="
-        $$+ pretty c  <+> "; aliased to" <+> pretty c')
-  case c of
-    Tag t | Just (Tag t') <- M.lookup x $ heapConstr h ->
-         if t /= t' then return mempty else k
-    _ -> local (addConstr' x c') $ case M.lookup c' (heapRevConstr h) of
-          Just (Conc y) -> addAlias y (conc x) k
-          Nothing -> local (addRevConstr' c' x) k
 
 instance Monoid Bool where
   mempty = True
@@ -138,24 +142,25 @@ pConc x = prettier =<< lookHeapC x
 pHyp :: Hyp Id -> TC Doc
 pHyp x = do
   h <- ask
-  let lk = M.lookup (getAlias (heapAlias h) x) $ heapDestr h
+  let lk = lookup (getAlias (aliases h) x) $ definitions h
   case lk of
     Nothing -> return $ pretty x
-    Just (Right c) -> pConc c
-    Just (Left d) -> prettier d
+    Just d -> prettier d
+
+instance Prettier Val' where
 
 instance Prettier Term' where
-  prettier (Concl c) = pConc c
-  prettier (Destr h d t) = addDestr h d $ prettier t
-  prettier (Constr x c t) = addConstr x c $ prettier t
-  prettier (Split x y z t) = do
-    z' <- pHyp z
-    t' <- prettier t
-    return $ ("split " <> z' <> "into " <> pretty x <> "," <> pretty y $$ t')
-  prettier (Case x bs) = do
-    bs' <- mapM prettier bs
-    h <- pHyp x
-    return $ ("case" <+> h <+> "of {") $$+ (sep $ punctuate "." $ bs') $$ "}"
+  -- prettier (Concl c) = pConc c
+  -- prettier (Destr h d t) = addDef h d $ prettier t
+  -- prettier (Constr x c t) = addConstr x c $ prettier t
+  -- prettier (Split x y z t) = do
+  --   z' <- pHyp z
+  --   t' <- prettier t
+  --   return $ ("split " <> z' <> "into " <> pretty x <> "," <> pretty y $$ t')
+  -- prettier (Case x bs) = do
+  --   bs' <- mapM prettier bs
+  --   h <- pHyp x
+  --   return $ ("case" <+> h <+> "of {") $$+ (sep $ punctuate "." $ bs') $$ "}"
 
 instance Prettier Constr' where
   prettier (Hyp h) = pHyp h
