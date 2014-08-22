@@ -16,11 +16,13 @@ type Tag = String
 type Hyp a = a
 
 -- | Conclusion variables.
-newtype Conc a = Conc { conc :: a }
-  deriving (Functor, Eq, Ord)
+-- newtype Conc a = Conc { conc :: a }
+--   deriving (Functor, Eq, Ord)
 
-instance Show a => Show (Conc a) where
-  show (Conc x) = "_" ++ show x
+type Conc a = a
+
+-- instance Show a => Show (Conc a) where
+--   show (Conc x) = "_" ++ show x
 
 data Branch n r = Br Tag (Term n r)
     deriving (Eq, Ord, Functor)
@@ -63,8 +65,8 @@ data Val n r  = VApp r r
               | VSigma r r
               | VFin [Tag]
               | VUniv Int
-              | VHyp r
-              | VClosure r (Term n r) -- Closure blocked on r
+              -- | VHyp r
+              | VClosure r (Term n r) -- Closure blocked on r (probably: all free vars should be listed here.)
     deriving (Eq, Ord, Functor)
 
 instance Bifoldable Val where  bifoldMap = bifoldMapDefault
@@ -74,8 +76,8 @@ instance Bitraversable Val where  bitraverse = $(genTraverse ''Val)
 instance (Pretty r, Pretty n) => Pretty (Val n r) where
   pretty _ = "<VAL>"
   
-instance (Pretty r) => Pretty (Conc r) where
-  pretty (Conc x) = text "_" <> pretty x
+-- instance (Pretty r) => Pretty (Conc r) where
+--   pretty (Conc x) = text "_" <> pretty x
 
 instance (Pretty r, Pretty n) => Pretty (Term n r) where
   pretty (Destr x v t) = pretty x <+> "=" $$+ pretty v <+> ";" $$ pretty t

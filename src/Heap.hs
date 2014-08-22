@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, GADTs, OverloadedStrings, TypeSynonymInstances, FlexibleInstances, RecordWildCards, ViewPatterns, PatternGuards #-}
 
-module Heap (emptyHeap, addDef,addCut,lookHeapC,getAlias,enter,addAlias',aliasOf,pConc,pHyp,addAlias) where
+module Heap where
 
 import Control.Monad.RWS
 import Control.Applicative
@@ -21,20 +21,50 @@ emptyHeap = Heap 0 [] M.empty M.empty
 enter :: TC a -> TC a
 enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1})
 
+onConcl :: Monoid a => Term' -> (Conc Id -> TC a) -> TC a
+onConcl (Concl c)       k = k c
+onConcl (Destr x d t1)  k = addDestr x d (onConcl t1 k)
+onConcl (Constr ( x) c t1) k = addConstr x c (onConcl t1 k)
+onConcl (Split x y z t1) k = addSplit x y z $ onConcl t1 k
+onConcl (Case x bs)     k = mconcat <$> do
+    forM bs $ \(Br tag t1) ->
+      addTag x tag $ onConcl t1 k
+
+addTag :: Monoid a => Hyp Id -> String -> TC a -> TC a
+addTag x t k = addDef x (VTag t) k
+
+addSplit :: (Monoid a,r~Id,n~Id) => Hyp r -> Hyp r -> Hyp n -> TC a -> TC a
+addSplit x y z k = addDef z (VPair x y) k
+
+addConstr :: Monoid a => Id -> Constr' -> TC a -> TC a
+addConstr c d = addDef c $ case d of
+  -- (Hyp h) -> (VHyp h)
+  (Lam x t) -> (VLam x t)
+  -- (Pi x t u) -> Pi t (VLam x u)
+  -- TODO
+
+addDestr :: Monoid a => Id -> Destr' -> TC a -> TC a
+addDestr h d = case d of
+  App f ( a) -> addDef h (VApp f a)
+  Cut ( c) _typ -> addCut h c
+
 addTermDef :: (Monoid a) => Id -> Term' -> TC a -> TC a
-addTermDef = error "addTermDef"
+addTermDef x t k = onConcl t $ \( c) -> addCut x c k
+
 
 app :: Monoid a => Val Id Id -> Id -> (Val' -> TC a) -> TC a
-app (VLam x t) arg k = do
+app fun arg k = do
+  VLam x t <- liftTC (refreshBinders fun)
   t' <- substTC x arg t
   k (VClosure arg t')
 
 -- 1st arg is the hypothesis (may be eliminated somewhere); 2nd arg the conclusion
 addCut :: Monoid a => Id -> Id -> TC a -> TC a
 addCut hyp concl k = do
-  Heap{..} <- ask
-  case lookup concl definitions of
-    Nothing -> case lookup hyp definitions of
+  h' <- lookHeap hyp
+  c' <- lookHeap concl
+  case h' of
+    Nothing -> case c' of
       Nothing -> addAlias hyp concl k
       Just def -> addDef concl def k
     Just def -> addDef hyp def k
@@ -42,8 +72,28 @@ addCut hyp concl k = do
 partitionWith :: (a -> Either b c) -> [a] -> ([b],[c])
 partitionWith f xs = partitionEithers (map f xs)
 
+isCon :: Val t t1 -> Bool
+isCon v = case v of
+  VLam _ _ -> True
+  VPair _ _ -> True
+  VTag _ -> True
+  VPi _ _ -> True
+  VSigma _ _-> True
+  VFin _ -> True
+  VUniv _ -> True
+  _ -> False
+
 redex :: Monoid a => Id -> Val' -> Id -> TC a -> TC a
 redex result fun arg k = app fun arg $ \clos -> addDef result clos k
+
+wakeClosures :: Monoid a => Id -> TC a -> TC a
+wakeClosures a k = do
+  Heap{..} <- ask
+  let (closures, rest) = partitionWith (\(r',d') -> case d' of {VClosure a' t | a' == a -> Left (r',t);
+                                                                _ -> Right (r',d')}) definitions
+      go [] k = k
+      go ((ret,t):rts) k = addTermDef ret t $ go rts k
+  local (\h -> h {definitions = rest}) $ go closures k
 
 addDef ::  Monoid a => Id -> Val' -> TC a -> TC a
 addDef r d0 k = do
@@ -54,25 +104,29 @@ addDef r d0 k = do
     (r':_) -> addAlias r r' k
     [] -> local (\h -> h {definitions = (r,d):definitions}) $
             case d of
+                VClosure x t -> case [() | (x',v) <- definitions, x == x', isCon v] of
+                  [] -> k
+                  _ -> local (\h -> h {definitions = definitions}) $ addTermDef r t k
                 VApp f a | Just lam <- lookup f definitions -> redex r lam a k
                     -- Is there a definition for the thing being eliminated? Then reduce.
-                VHyp y -> addAlias r y k
+                -- VHyp y -> addAlias r y k
                 VLam _x _t -> do
                   -- find all eliminators and evaluate them.
                   let rest :: [(Id,Val')]
-                      (ra, rest) = partitionWith (\(r',d') -> case d' of {VApp f a | f == r -> Left (r',a); otherwise -> Right (r',d')}) definitions
+                      (ra, rest) = partitionWith (\(r',d') -> case d' of {VApp f a | f == r -> Left (r',a);
+                                                                          _ -> Right (r',d')}) definitions
                       go [] k = k
                       go ((ret,arg):ras) k = redex ret d arg (go ras k)
-                  go ra $ local (\h -> h {definitions = (r,d):rest}) k
+                  local (\h -> h {definitions = (r,d):rest}) $ go ra $ wakeClosures r k
                 VPair x y -> do
                    let pairs = [(x',y') | (r',VPair x' y') <- definitions, r == r']
                        go [] k = k
-                       go ((x',y'):ps) k = addAliases [(x,x'),(y,y')] $ go ps k
+                       go ((x',y'):ps) k = addAliases [(x,x'),(y,y')] $ go ps $ wakeClosures r k
                        -- we can keep all the defs here; aliasing mechanism will take care of cleaning them up.
                    go pairs k
                 VTag t -> case lookup r definitions of -- is the variable given another tag value?
                   Just (VTag t') | t == t'  -> return mempty -- Then the heap is inconsistent.
-                  Nothing -> k
+                  Nothing -> wakeClosures r k
                 _ -> k -- nothing special to do.
 
 
@@ -122,13 +176,18 @@ applyAliases v = do
 
 -- | Look for some constructed value in the heap.
 lookHeapC :: (r~Id,n~Id) => Conc n -> TC (Val n r)
-lookHeapC (Conc x) = do
-  h <- ask
-  x' <- aliasOf x
-  let lk = lookup x' (definitions h)
+lookHeapC ( x) = do
+  lk <- lookHeap x
   case lk of
     Nothing -> terr $ "Construction not found: " <> pretty x
     Just c -> return c
+
+-- | Look for some constructed value in the heap.
+lookHeap :: (r~Id,n~Id) => n -> TC (Maybe (Val n r))
+lookHeap x = do
+  h <- ask
+  x' <- aliasOf x
+  return $ lookup x' (definitions h)
 
 instance Monoid Bool where
   mempty = True
