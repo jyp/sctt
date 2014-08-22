@@ -64,6 +64,7 @@ data Val n r  = VApp r r
               | VFin [Tag]
               | VUniv Int
               | VHyp r
+              | VClosure r (Term n r) -- Closure blocked on r
     deriving (Eq, Ord, Functor)
 
 instance Bifoldable Val where  bifoldMap = bifoldMapDefault

@@ -86,36 +86,27 @@ hnfDestr unfold h d k = case d of
        _ -> error $ "type-error in app-evaluation"
    _ -> error $ "cannot be found as target in cut maps: " ++ show d
 
-normalizeAndAddDestr :: Hyp Id -> Destr Id -> TC a -> TC a
-normalizeAndAddDestr = addDestr
-
 onConcl :: Monoid a => Term' -> (Conc Id -> TC a) -> TC a
 onConcl (Concl c)       k = k c
-onConcl (Destr x d t1)  k = normalizeAndAddDestr x d (onConcl t1 k)
+onConcl (Destr x d t1)  k = addDestr x d (onConcl t1 k)
 onConcl (Constr x c t1) k = addConstr x c (onConcl t1 k)
 onConcl (Split x y z t1) k = addSplit x y z $ onConcl t1 k
 onConcl (Case x bs)     k = mconcat <$> do
     forM bs $ \(Br tag t1) ->
       addTag x tag $ onConcl t1 k
 
-addTag :: forall a. Monoid a => Hyp Id -> String -> TC a -> TC a
-addTag x t k = do
-  report $ "Adding tag " <> pretty x <> " = '" <> text t
-  hnfHyp True x $ \c -> case c of
-    (Tag t') -> if t == t' then k else return mempty  -- conflicting tags, abort.
-    (Hyp x') -> addDef x' (Tag t) k
+addTag :: Monoid a => Hyp Id -> String -> TC a -> TC a
+addTag x t k = addDef x (VTag t) k
 
 addSplit :: (Monoid a,r~Id,n~Id) => Hyp r -> Hyp r -> Hyp n -> TC a -> TC a
-addSplit x y z k = do
-  hnfHyp True z $ \c -> case c of
-    Pair x' y' -> addCut x x' $
-                   addCut y y' $
-                    k
-    Hyp z' -> do
-          xName <- Conc <$> liftTC (refreshId x)
-          yName <- Conc <$> liftTC (refreshId y)
-          zName <- Conc <$> liftTC (refreshId z)
-          addConstr xName (Hyp x) $
-             addConstr yName (Hyp y) $
-             addConstr zName (Pair xName yName) $
-               addCut z' zName k
+addSplit x y z k = addDef z (VPair x y) k
+
+addConstr c d = addDef c $ case d of
+  (Hyp h) -> (VHyp h)
+  (Lam x t) -> (VLam x t)
+  -- (Pi x t u) -> Pi t (VLam x u)
+  -- TODO
+
+addDestr h d = case d of
+  App f (Conc a) -> addDef h (VApp f a)
+  Cut (Conc c) _typ -> addCut h c

@@ -21,16 +21,13 @@ emptyHeap = Heap 0 [] M.empty M.empty
 enter :: TC a -> TC a
 enter = local (\h@Heap{..} -> h {dbgDepth = dbgDepth + 1})
 
-addTermDef' :: (Monoid a,Id~n,Id~r,Ord n) => n -> Val n r -> Term n n -> Maybe (Heap n r)
-addTermDef' = error "addTermDef"
-
 addTermDef :: (Monoid a) => Id -> Term' -> TC a -> TC a
 addTermDef = error "addTermDef"
 
-app :: Monoid a => Val Id Id -> Id -> (Term' -> TC a) -> TC a
-app lam arg k = do
-  (VLam x t) <- liftTC (refreshBinders lam)
-  addCut x arg (k t)
+app :: Monoid a => Val Id Id -> Id -> (Val' -> TC a) -> TC a
+app (VLam x t) arg k = do
+  t' <- substTC x arg t
+  k (VClosure arg t')
 
 -- 1st arg is the hypothesis (may be eliminated somewhere); 2nd arg the conclusion
 addCut :: Monoid a => Id -> Id -> TC a -> TC a
@@ -42,19 +39,17 @@ addCut hyp concl k = do
       Just def -> addDef concl def k
     Just def -> addDef hyp def k
 
-applyAliases :: Val' -> TC (Val')
-applyAliases = error "arouwfydt"
-
 partitionWith :: (a -> Either b c) -> [a] -> ([b],[c])
 partitionWith f xs = partitionEithers (map f xs)
 
 redex :: Monoid a => Id -> Val' -> Id -> TC a -> TC a
-redex result fun arg k = app fun arg $ \t' -> addTermDef result t' k
+redex result fun arg k = app fun arg $ \clos -> addDef result clos k
 
 addDef ::  Monoid a => Id -> Val' -> TC a -> TC a
 addDef r d0 k = do
   d <- applyAliases d0
   Heap{..} <- ask
+  error "FIXME: unblock closures when necessary"
   case [r' |(r',d') <- definitions, d == d'] of
     (r':_) -> addAlias r r' k
     [] -> local (\h -> h {definitions = (r,d):definitions}) $
@@ -62,7 +57,7 @@ addDef r d0 k = do
                 VApp f a | Just lam <- lookup f definitions -> redex r lam a k
                     -- Is there a definition for the thing being eliminated? Then reduce.
                 VHyp y -> addAlias r y k
-                VLam x t -> do
+                VLam _x _t -> do
                   -- find all eliminators and evaluate them.
                   let rest :: [(Id,Val')]
                       (ra, rest) = partitionWith (\(r',d') -> case d' of {VApp f a | f == r -> Left (r',a); otherwise -> Right (r',d')}) definitions
@@ -80,6 +75,7 @@ addDef r d0 k = do
                   Nothing -> k
                 _ -> k -- nothing special to do.
 
+
 addAlias' :: Ord r => r -> r -> M.Map r r -> M.Map r r
 addAlias' src trg as = f <$> M.insert src trg as
   where f x = if x == src then trg else x
@@ -87,10 +83,6 @@ addAlias' src trg as = f <$> M.insert src trg as
 addAliases' :: Ord r => [(r,r)] -> M.Map r r -> M.Map r r
 addAliases' = foldr (.) id . map (uncurry addAlias')
 
-
-getAlias as x = case M.lookup x as of
-  Just h' -> h'
-  Nothing -> x
 
 swap (x,y) = (y,x)
 addAliases :: [(Id,Id)] -> TC a -> TC a
@@ -115,7 +107,18 @@ addAliases as k = do
 addAlias :: Id -> Id -> TC a -> TC a
 addAlias src trg = addAliases [(src,trg)]
 
+getAlias :: Ord a => M.Map a a -> a -> a
+getAlias as x = case M.lookup x as of
+  Just h' -> h'
+  Nothing -> x
+
+aliasOf :: Id -> TC Id
 aliasOf x = flip getAlias x . aliases <$> ask
+
+applyAliases :: Val' -> TC (Val')
+applyAliases v = do
+  as <- aliases <$> ask
+  return (fmap (getAlias as) v)
 
 -- | Look for some constructed value in the heap.
 lookHeapC :: (r~Id,n~Id) => Conc n -> TC (Val n r)
