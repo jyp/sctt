@@ -7,6 +7,7 @@ import Control.Applicative
 
 import qualified Data.Map as M
 import Data.Either
+import Data.Maybe
 
 import Terms
 import Ident
@@ -68,18 +69,15 @@ checkCuts (x:xs) = checkCut x . checkCuts xs
 checkCut :: Monoid a => Id -> TC a -> TC a
 checkCut v0 k = do
   v <- aliasOf v0
-  Heap {..} <- ask
   mdef <- lookHeap v
-  -- fixme: wake all closures on v
   case mdef of
-    Nothing -> k
-    Just def -> do
-      wakeClosures v $ case def of
-         VLam _x _t -> do
+    Nothing -> k -- if there is no definition; there can't be a reduction.
+    Just def -> wakeClosures v $ do
+       Heap {..} <- ask
+       case def of
+         VLam _ _ -> do
            -- find all eliminators and evaluate them.
-           let rest :: [(Id,Val')]
-               (ra, rest) = partitionWith (\(r',d') -> case d' of {VApp f a | f == v -> Left (r',a);
-                                                                   _ -> Right (r',d')}) definitions
+           let ra = [(r',a) | (r',VApp f a) <- definitions, f == v]
                go [] k = k
                go ((ret,arg):ras) k = redex ret def arg (go ras k)
            go ra k
@@ -92,21 +90,16 @@ checkCut v0 k = do
          VTag t -> case [t' | (v',VTag t') <- definitions, v == v', t /= t'] of -- is the variable given another tag value?
            [] -> k
            _:_ -> return mempty -- Then the heap is inconsistent.
-         _ -> k -- nothing special to do.
+         _ -> k -- No eliminable construction found: nothing special to do.
 
 partitionWith :: (a -> Either b c) -> [a] -> ([b],[c])
 partitionWith f xs = partitionEithers (map f xs)
 
 isCon :: Val t t1 -> Bool
 isCon v = case v of
-  VLam _ _ -> True
-  VPair _ _ -> True
-  VTag _ -> True
-  VPi _ _ -> True
-  VSigma _ _-> True
-  VFin _ -> True
-  VUniv _ -> True
-  _ -> False
+  VApp _ _ -> False
+  VClosure _ _ -> False
+  _ -> True
 
 redex :: Monoid a => Id -> Val' -> Id -> TC a -> TC a
 redex result fun arg k = app fun arg $ \clos -> addDef result clos k
@@ -121,7 +114,8 @@ wakeClosures a k = do
   local (\h -> h {definitions = rest}) $ go closures k
 
 addDef ::  Monoid a => Id -> Val' -> TC a -> TC a
-addDef r d0 k = do
+addDef r0 d0 k = do
+  r <- aliasOf r0
   d <- applyAliases d0
   Heap{..} <- ask
   case [r' | (r',d') <- definitions, d == d'] of
@@ -130,6 +124,7 @@ addDef r d0 k = do
             VClosure x t -> case [() | (x',v) <- definitions, x == x', isCon v] of
               [] -> k
               _ -> local (\h -> h {definitions = definitions}) $ addTermDef r t k
+                   -- if there is a construction for the arg, expand the closure.
             VApp f a | Just lam <- lookup f (filter (isCon . snd) definitions) -> redex r lam a k
                 -- Is there a definition for the thing being eliminated? Then reduce.
             _ -> checkCut r k
