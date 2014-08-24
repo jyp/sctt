@@ -8,7 +8,7 @@ import Display
 import qualified Text.PrettyPrint.HughesPJ as P
 
 instance Pretty Id where
-  pretty (Id n (Unique i) _) = text n P.<> subscriptPretty i
+  pretty (Id n (Unique i) _) = text n P.<> int i
 
 type Name = String
 
