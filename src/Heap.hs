@@ -5,7 +5,6 @@ module Heap where
 import Control.Monad.RWS
 import Control.Applicative
 
-import Data.Bifunctor
 import qualified Data.Map as M
 import Data.Either
 
@@ -37,19 +36,25 @@ addSplit :: (Monoid a,r~Id,n~Id) => Hyp r -> Hyp r -> Hyp n -> TC a -> TC a
 addSplit x y z k = addDef z (VPair x y) k
 
 addConstr :: Monoid a => Id -> Constr' -> TC a -> TC a
-addConstr c d = addDef c $ case d of
-  -- (Hyp h) -> (VHyp h)
-  (Lam x t) -> (VLam x t)
-  -- (Pi x t u) -> Pi t (VLam x u)
-  -- TODO
+addConstr c d k = case d of
+  (Hyp h) -> addAlias c h k
+  (Lam x t) -> addDef c (VLam x t) k
+  (Pi x t u) -> do y <- liftTC $ freshId
+                   addDef y (VLam x u) $ addDef c (VPi t y) k
+  (Sigma x t u) -> do y <- liftTC $ freshId
+                      addDef y (VLam x u) $ addDef c (VSigma t y) k
+  (Pair x y) -> addDef c (VPair x y) k
+  (Tag x) -> addDef c (VTag x) k
+  (Fin x) -> addDef c (VFin x) k
+  (Universe x) -> addDef c (VUniv x) k
 
 addDestr :: Monoid a => Id -> Destr' -> TC a -> TC a
 addDestr h d = case d of
   App f ( a) -> addDef h (VApp f a)
-  Cut ( c) _typ -> addCut h c
+  Cut ( c) _typ -> addAlias h c
 
 addTermDef :: (Monoid a) => Id -> Term' -> TC a -> TC a
-addTermDef x t k = onConcl t $ \( c) -> addCut x c k
+addTermDef x t k = onConcl t $ \( c) -> addAlias x c k
 
 app :: Monoid a => Val Id Id -> Id -> (Val' -> TC a) -> TC a
 app fun arg k = do
@@ -60,7 +65,7 @@ app fun arg k = do
 checkCuts [] = id
 checkCuts (x:xs) = checkCut x . checkCuts xs
 
-checkCut :: Monoid a -> Id -> TC a -> TC a
+checkCut :: Monoid a => Id -> TC a -> TC a
 checkCut v0 k = do
   v <- aliasOf v0
   Heap {..} <- ask
@@ -73,20 +78,20 @@ checkCut v0 k = do
          VLam _x _t -> do
            -- find all eliminators and evaluate them.
            let rest :: [(Id,Val')]
-               (ra, rest) = partitionWith (\(r',d') -> case d' of {VApp f a | f == r -> Left (r',a);
+               (ra, rest) = partitionWith (\(r',d') -> case d' of {VApp f a | f == v -> Left (r',a);
                                                                    _ -> Right (r',d')}) definitions
                go [] k = k
-               go ((ret,arg):ras) k = redex ret d arg (go ras k)
-           go ra
+               go ((ret,arg):ras) k = redex ret def arg (go ras k)
+           go ra k
          VPair x y -> do
-            let pairs = [(x',y') | (r',VPair x' y') <- definitions, r == r']
+            let pairs = [(x',y') | (v',VPair x' y') <- definitions, v == v']
                 go [] k = k
-                go ((x',y'):ps) k = addCut x x' $ addCut y y' $ go ps k
+                go ((x',y'):ps) k = addAlias x x' $ addAlias y y' $ go ps k
                 -- we can keep all the defs here; aliasing mechanism will take care of cleaning them up.
             go pairs k
-         VTag t -> case lookup r definitions of -- is the variable given another tag value?
-           Just (VTag t') | t == t'  -> return mempty -- Then the heap is inconsistent.
-           Nothing -> k
+         VTag t -> case [t' | (v',VTag t') <- definitions, v == v', t /= t'] of -- is the variable given another tag value?
+           [] -> k
+           _:_ -> return mempty -- Then the heap is inconsistent.
          _ -> k -- nothing special to do.
 
 partitionWith :: (a -> Either b c) -> [a] -> ([b],[c])
@@ -127,7 +132,7 @@ addDef r d0 k = do
               _ -> local (\h -> h {definitions = definitions}) $ addTermDef r t k
             VApp f a | Just lam <- lookup f (filter (isCon . snd) definitions) -> redex r lam a k
                 -- Is there a definition for the thing being eliminated? Then reduce.
-           _ -> checkCut r k
+            _ -> checkCut r k
 
 addAlias' :: Ord r => r -> r -> M.Map r r -> M.Map r r
 addAlias' src trg as = f <$> M.insert src trg as
@@ -137,7 +142,8 @@ addAliases' :: Ord r => [(r,r)] -> M.Map r r -> M.Map r r
 addAliases' = foldr (.) id . map (uncurry addAlias')
 
 swap (x,y) = (y,x)
-addAliases :: [(Id,Id)] -> TC a -> TC a
+
+addAliases :: Monoid a => [(Id,Id)] -> TC a -> TC a
 addAliases [] k = k
 addAliases as k = do
   h <- ask
@@ -156,7 +162,7 @@ addAliases as k = do
   local (\h2 -> h2 {aliases = allAliases, definitions = defs'}) $
     checkCuts (map snd as) $ addAliases aliases k
 
-addAlias :: Id -> Id -> TC a -> TC a
+addAlias :: Monoid a => Id -> Id -> TC a -> TC a
 addAlias src trg = addAliases [(src,trg)]
 
 getAlias :: Ord a => M.Map a a -> a -> a
