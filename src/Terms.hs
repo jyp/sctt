@@ -3,10 +3,6 @@
 
 module Terms where
 
-import Data.Bitraversable
-import Data.Bifoldable
-import Data.Bifunctor
-import Data.Generics.Genifunctors
 import Display
 import Data.Monoid
 
@@ -27,9 +23,6 @@ type Conc a = a
 data Branch n r = Br Tag (Term n r)
     deriving (Eq, Ord, Functor)
 
-instance Bifoldable Term where  bifoldMap = bifoldMapDefault
-instance Bifunctor Term where  bimap = bimapDefault
-instance Bitraversable Term where  bitraverse = $(genTraverse ''Term)
 
 data Term n r where
   Destr  :: Hyp n  -> Destr r -> Term n r -> Term n r
@@ -69,9 +62,6 @@ data Val n r  = VApp r r
               | VClosure r (Term n r) -- Closure blocked on r (probably: all free vars should be listed here.)
     deriving (Eq, Ord, Functor)
 
-instance Bifoldable Val where  bifoldMap = bifoldMapDefault
-instance Bifunctor Val where  bimap = bimapDefault
-instance Bitraversable Val where  bitraverse = $(genTraverse ''Val)
 
 instance (Pretty r, Pretty n) => Pretty (Val n r) where
   pretty _ = "<VAL>"

@@ -2,6 +2,7 @@
 module TCM where
 
 import Terms
+import TermsInstances()
 import Ident
 import Fresh
 import Display
