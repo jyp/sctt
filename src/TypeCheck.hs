@@ -65,7 +65,8 @@ checkBindings (Constr y c@(Q _ x t u) t1) k = do
   checkType t
   addCtx x t $ checkBindings u $ \u' -> checkType u'
   addConstr y c $ checkBindings t1 k
-checkBindings (Constr ( x) c t1) k = do
+  -- OPT: add y to the context.
+checkBindings (Constr x c t1) k = do
   -- report $ "constructing" <> pretty x
   addConstr x c $ do
     -- report $ "constructed" <> pretty x
@@ -96,17 +97,42 @@ checkTerm e t = do
   checkBindings e $ \c -> checkVar c t
 
 checkVar :: (n~Id,r~Id) => Conc r -> Conc r -> TC ()
-checkVar v t = do
-  report $ "checking conclusion " <> pretty v <> ":" <> pretty t
-  checkConAgainstVal v =<< lookHeapC t
-
-checkConAgainstVal :: Hyp Id -> Val Id Id -> TC ()
-checkConAgainstVal v t' = do
+checkVar v0 t = do
   ctx <- context <$> ask
+  v <- aliasOf v0
+  report $ "checking conclusion " <> pretty v <> ":" <> pretty t
   case M.lookup v ctx of
-    Just _ -> checkHyp v t'
+    Just u -> do
+      let eq = t == u
+      doc_t <- pHyp t
+      doc_u <- pHyp u
+      doc_h <- pHyp v
+      unless eq $ terr $
+        pretty t <+> "is not a subtype of" <+> pretty u <+> " in the following context, hence the type of" <+> pretty v <+> "is wrong."
+                   $+$ (pretty t <+> "=") $$+ doc_t
+                   $+$ (pretty u <+> "=") $$+ doc_u
+                   $+$ (pretty v <+> "=") $$+ doc_h
+    Nothing -> checkConstr0 v t
+
+isClosure v = case v of
+  VClosure _ x -> True
+  _ -> False
+
+hnf :: Id -> (Val' -> TC ()) -> TC ()
+hnf v k = do
+  c <- lookHeap v
+  case c of
+    Just c' -> k c'
     Nothing -> do
-      v' <- lookHeapC v
+      cl <- lkHeap isClosure v
+      case cl of
+        Just (VClosure _ t) -> onConcl t $ \v' -> hnf v' k
+        Nothing -> terr "cannot be evaluated to head normal form"
+      
+checkConstr0 :: Id -> Id -> TC ()
+checkConstr0 v t = do
+  Just v' <- lookHeap v -- cannot fail: things not in the context must be constructions.
+  hnf t $ \t' -> do
       report $ "checking construction"
          $$+ (sep ["val" <+> pretty v, "typ" <+> pretty t'])
       checkConstr v' t'
@@ -130,22 +156,12 @@ checkConstr (VApp _ _) _ = error "App is not a construction"
 checkConstr v t = terr $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
 
 
-checkHyp :: Hyp Id -> Val Id Id -> TC ()
-checkHyp h u = do
-  report $ "checking hypothesis " <> pretty h <> ":" <> pretty u
-  t <- inferHyp h
-  let eq = t == u
-  -- doc_t <- pConc t
-  -- doc_u <- pConc u
-  doc_h <- pHyp h
-  unless eq $ terr $
-    pretty t <+> "is not a subtype of" <+> pretty u <+> " in the following context, hence the type of" <+> pretty h <+> "is wrong."
-               -- $+$ (pretty t <+> "=") $$+ doc_t
-               -- $+$ (pretty u <+> "=") $$+ doc_u
-               $+$ (pretty h <+> "=") $$+ doc_h
 
 checkType :: (n~Id,r~Id) => Conc r -> TC ()
 checkType c = do
   report $ "checking " <> pretty c <> " is a type "
-  checkConAgainstVal c (VUniv)
+  s <- liftTC freshId
+  addDef s VUniv $ do
+    s' <- aliasOf s
+    checkVar c s'
 

@@ -178,20 +178,16 @@ applyAliases v = do
   as <- aliases <$> ask
   return (fmap (getAlias as) v)
 
--- | Look for some constructed value in the heap.
-lookHeapC :: (r~Id,n~Id) => Conc n -> TC (Val n r)
-lookHeapC x = do
-  lk <- lookHeap x
-  case lk of
-    Nothing -> terr $ "Construction not found: " <> pretty x
-    Just c -> return c
 
 -- | Look for some constructed value in the heap.
 lookHeap :: (r~Id,n~Id) => n -> TC (Maybe (Val n r))
-lookHeap x = do
+lookHeap = lkHeap isCon
+
+lkHeap :: (r~Id,n~Id) => (Val n r -> Bool) -> n -> TC (Maybe (Val n r))
+lkHeap p x = do
   h <- ask
   x' <- aliasOf x
-  return $ lookup x' (filter (isCon . snd) $ definitions h)
+  return $ lookup x' (filter (p . snd) $ definitions h)
 
 instance Monoid Bool where
   mempty = True
@@ -202,20 +198,21 @@ instance Monoid Bool where
 class Prettier a where
   prettier :: a -> TC Doc
 
-pConc :: Conc Id -> TC Doc
-pConc x = prettier =<< lookHeapC x
+pConc = pHyp
 
 pHyp :: Hyp Id -> TC Doc
 pHyp x = do
   h <- ask
-  let lk = lookup (getAlias (aliases h) x) $ definitions h
+  let lk = lookup (getAlias (aliases h) x) $ definitions h -- fixme: should look for "best" definition; including reverse pairs.
   case lk of
     Nothing -> return $ pretty x
     Just d -> prettier d
 
 instance Prettier Val' where
+  prettier = return . pretty
 
 instance Prettier Term' where
+  prettier = return . pretty
   -- prettier (Concl c) = pConc c
   -- prettier (Destr h d t) = addDef h d $ prettier t
   -- prettier (Constr x c t) = addConstr x c $ prettier t
