@@ -7,7 +7,6 @@ import Control.Applicative
 
 import qualified Data.Map as M
 import Data.Either
-import Data.Maybe
 
 import Terms
 import Ident
@@ -57,12 +56,16 @@ addDestr h d = case d of
 addTermDef :: (Monoid a) => Id -> Term' -> TC a -> TC a
 addTermDef x t k = onConcl t $ \( c) -> addAlias x c k
 
-app :: Monoid a => Val Id Id -> Id -> (Val' -> TC a) -> TC a
+app :: Monoid a => Val' -> Id -> (Val' -> TC a) -> TC a
 app fun arg k = do
-  VLam x t <- liftTC (refreshBinders fun)
-  t' <- substTC x arg t
-  k (VClosure arg t')
+  fun' <- liftTC (refreshBinders fun)
+  case fun' of
+    VLam x t -> do
+      t' <- substTC x arg t
+      k (VClosure arg t')
+    _ -> terr $ "panic: app: expected lambda but got " <> pretty fun'
 
+checkCuts :: Monoid a => [Id] -> TC a -> TC a
 checkCuts [] = id
 checkCuts (x:xs) = checkCut x . checkCuts xs
 
@@ -120,14 +123,16 @@ addDef r0 d0 k = do
   Heap{..} <- ask
   case [r' | (r',d') <- definitions, d == d'] of
     (r':_) -> addAlias r r' k
-    [] -> local (\h -> h {definitions = (r,d):definitions}) $ case d of
-            VClosure x t -> case [() | (x',v) <- definitions, x == x', isCon v] of
-              [] -> k
-              _ -> local (\h -> h {definitions = definitions}) $ addTermDef r t k
-                   -- if there is a construction for the arg, expand the closure.
-            VApp f a | Just lam <- lookup f (filter (isCon . snd) definitions) -> redex r lam a k
-                -- Is there a definition for the thing being eliminated? Then reduce.
-            _ -> checkCut r k
+    [] -> do
+      report $ "Added def: " <> pretty r <> " = " <> pretty d
+      local (\h -> h {definitions = (r,d):definitions}) $ case d of
+        VClosure x t -> case [() | (x',v) <- definitions, x == x', isCon v] of
+          [] -> k
+          _ -> local (\h -> h {definitions = definitions}) $ addTermDef r t k
+               -- if there is a construction for the arg, expand the closure.
+        VApp f a | Just lam <- lookup f (filter (isCon . snd) definitions) -> redex r lam a k
+            -- Is there a definition for the thing being eliminated? Then reduce.
+        _ -> checkCut r k
 
 addAlias' :: Ord r => r -> r -> M.Map r r -> M.Map r r
 addAlias' src trg as = f <$> M.insert src trg as
@@ -140,7 +145,8 @@ swap (x,y) = (y,x)
 
 addAliases :: Monoid a => [(Id,Id)] -> TC a -> TC a
 addAliases [] k = k
-addAliases as k = do
+addAliases as0 k = do
+  let as = filter (\(x,y) -> x /= y) as0
   h <- ask
   report $ ("Adding aliases:" $$+ pretty as)
   origAliases <- aliases <$> ask
@@ -154,7 +160,8 @@ addAliases as k = do
       aliases = [(x,y) | (x:xs) <- classes, y <- xs]
       defs' :: [(Id,Val Id Id)]
       defs' =  fmap (applyAlias <$>) <$> definitions h
-  local (\h2 -> h2 {aliases = allAliases, definitions = defs'}) $
+      ctx' = M.fromList [(applyAlias s, applyAlias t) | (s,t) <- M.assocs $ context h]
+  local (\h2 -> h2 {aliases = allAliases, definitions = defs', context = ctx'}) $
     checkCuts (map snd as) $ addAliases aliases k
 
 addAlias :: Monoid a => Id -> Id -> TC a -> TC a

@@ -25,8 +25,10 @@ resolveVar l (A.Var (_,x)) = do
                  "env = " ++ show env ++ "\n" ++
                  "unknown identifier: " ++ x
 
+conc = id
+
 resolveConc :: (Lens Env (Map String Id)) -> A.Var -> R (Conc Id)
-resolveConc l x = Conc <$> resolveVar l x
+resolveConc l x = conc <$> resolveVar l x
 
 insert :: (Lens Env (Map String Id)) -> A.Var -> (Id -> R a) -> R a
 insert l (A.Var (_,x)) k = do
@@ -43,7 +45,7 @@ resolveModule (A.Module t1 t2) = (,) <$> resolveTerm t1 <*> resolveTerm t2
 resolveTerm :: A.Term -> R (Term Id Id)
 resolveTerm (A.Constr x c t) = do
   c' <- resolveConstr c
-  insert con x $ \x' -> Constr (Conc x') c' <$> resolveTerm t
+  insert con x $ \x' -> Constr (conc x') c' <$> resolveTerm t
 resolveTerm (A.Destr x d t) = do
   d' <- resolveDestr d
   insert hyp x $ \x' -> Destr x' d' <$> resolveTerm t

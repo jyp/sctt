@@ -54,17 +54,24 @@ data Val n r  = VApp r r
               | VLam n (Term n r)
               | VPair r r
               | VTag Tag
-              | VPi    r r -- 2nd arg must point to a function
+              | VPi    r r  -- 2nd arg must point to a function
               | VSigma r r
               | VFin [Tag]
               | VUniv Int
-              -- | VHyp r
               | VClosure r (Term n r) -- Closure blocked on r (probably: all free vars should be listed here.)
     deriving (Eq, Ord, Functor)
 
 
 instance (Pretty r, Pretty n) => Pretty (Val n r) where
-  pretty _ = "<VAL>"
+  pretty (VApp f a) = pretty f <+> pretty a
+  pretty (VLam x b) = ("\\" <> pretty x <> " ->") $$+ (pretty b)
+  pretty (VPair a b) = parens $ pretty a <> "," <> pretty b
+  pretty (VPi a b) = "Π" <> pretty a <> " " <> pretty b
+  pretty (VSigma a b) = "Σ" <> pretty a <> " " <> pretty b
+  pretty (VTag t) = "'" <> text t
+  pretty (VFin ts) = braces $ sep $ punctuate "," $ map text ts
+  pretty (VUniv x) = "*" <> subscriptPretty x
+  pretty (VClosure x t) = "[" <> pretty x <> "]" <> pretty t
   
 -- instance (Pretty r) => Pretty (Conc r) where
 --   pretty (Conc x) = text "_" <> pretty x

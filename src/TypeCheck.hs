@@ -6,22 +6,18 @@ import qualified Data.Map as M
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Control.Applicative
--- import Eval
--- import Eq
 import Fresh
 import Ident
 import Display
 import TCM
 import Heap
 
--- TODO: don't return a boolean.
-
 typeCheck :: Term' -> Term' -> (Either Doc (),[Doc])
 typeCheck a t = runTC (max (nextUnique t) (nextUnique a)) emptyHeap chk
   where chk = do report $ "Start"
-                 -- checkSort t 100000
-                 --- checkTermAgainstTerm a t
-                 error "TOOD: top-level tcing"
+                 checkBindings t $ \t' -> do
+                   checkSort t' 100000
+                   checkTerm a t'
 
 addCtx' :: Hyp Id -> Conc Id -> Heap' -> Heap'
 addCtx' x ( t) h@Heap{..} = h{context = M.insert x t context }
@@ -42,7 +38,7 @@ inferDestr (App f a_) k = do
   case ft of
     (VPi t_ u) -> do
        checkVar a_ t_
-       apply f a_ $ \r -> k ( r)
+       apply u a_ $ \r -> k ( r)
     _ -> terr $ pretty f <> " has not a function type"
 
 -- | Mere lookup of type in the context
@@ -91,26 +87,27 @@ checkBindings (Case x bs) k = do
     _ -> terr $ pretty x <> " has not a fin. type, but " <> pretty xt
 
 checkTerm :: (n~Id,r~Id) => Term n r -> n -> TC ()
-checkTerm e t = checkBindings e $ \c -> checkVar c t
-
-checkConAgainstTerm :: (n~Id,r~Id) => Conc r -> Term n r -> TC ()
-checkConAgainstTerm c t = onConcl t $ \t' -> checkVar c t'
+checkTerm e t = do
+  report $ "checking term " <> pretty e <> ":" <> pretty t
+  checkBindings e $ \c -> checkVar c t
 
 checkVar :: (n~Id,r~Id) => Conc r -> Conc r -> TC ()
 checkVar v t = do
+  report $ "checking conclusion " <> pretty v <> ":" <> pretty t
+  checkConAgainstVal v =<< lookHeapC t
+
+checkConAgainstVal :: Hyp Id -> Val Id Id -> TC ()
+checkConAgainstVal v t' = do
   ctx <- context <$> ask
-  t' <- lookHeapC t
   case M.lookup v ctx of
     Just _ -> checkHyp v t'
     Nothing -> do
-      report $ "checking conclusion " <> pretty v <> ":" <> pretty t
       v' <- lookHeapC v
       report $ "checking construction"
-         $$+ (sep ["val" <+> pretty v, "typ" <+> pretty t])
+         $$+ (sep ["val" <+> pretty v, "typ" <+> pretty t'])
       checkConstr v' t'
 
 checkConstr :: (n~Id,r~Id) => Val n r -> Val n r -> TC ()
--- checkConstr (VClosure _ t) ty = checkTerm t ty -- FIXME: closure should be pushed in the heap with their type!
 checkConstr (VPair a_ b_) (VSigma ta_ tb_) = do
   checkVar a_ ta_
   apply tb_ a_ $ \tb' -> checkVar b_  tb'
@@ -118,24 +115,25 @@ checkConstr (VLam x b_) (VPi ta_ tb_) = do
   addCtx x ta_ $ apply tb_ x $ checkTerm b_
 checkConstr tag@(VTag t) ty@(VFin ts) = unless  (t `elem` ts) $ terr $
    pretty tag <> " is not found in " <> pretty ty
-checkConstr (VSigma ta_ tb_) (VUniv s) = do
+checkConstr (VSigma ta_ tb_) (VUniv s) = getSort s $ \ s' -> do
   checkSort ta_ s
-  xx <- liftTC freshId
-  addCtx xx ta_ $ apply tb_ xx $ \tb' -> checkSort tb' s
-checkConstr (VPi ta_ tb_) (VUniv s) = do
+  checkConAgainstVal tb_ (VPi ta_ s')
+checkConstr (VPi ta_ tb_) (VUniv s) = getSort s $ \ s' -> do
   checkSort ta_ s
-  xx <- liftTC freshId
-  addCtx xx ta_ $ apply tb_ xx $ \tb' -> checkSort tb' s
+  checkConAgainstVal tb_ (VPi ta_ s')
 checkConstr (VFin _) (VUniv _s) = return ()
 checkConstr (VUniv s') (VUniv s) =
-  unless (s' < s) $ terr $ int s' <> " is not a subsort of" <> int s
+  unless (s' < s) $ terr $ int s' <> " is not a subsort of " <> int s
 -- checkConstr x (Rec r t) = do
 --   unfoldRec typ r t $ \t' -> checkConstrAgainstConcl x t'
-
+checkConstr (VClosure _ _) _ = error "Closure is not a construction"
+checkConstr (VApp _ _) _ = error "App is not a construction"
 checkConstr v t = terr $ hang "Type mismatch: " 2 $ sep ["value: " <> pretty v, "type: " <> pretty t]
 
 
+checkHyp :: Hyp Id -> Val Id Id -> TC ()
 checkHyp h u = do
+  report $ "checking hypothesis " <> pretty h <> ":" <> pretty u
   t <- inferHyp h
   let eq = t == u
   -- doc_t <- pConc t
@@ -147,10 +145,12 @@ checkHyp h u = do
                -- $+$ (pretty u <+> "=") $$+ doc_u
                $+$ (pretty h <+> "=") $$+ doc_h
 
-
-
 checkSort :: (n~Id,r~Id) => Conc r -> Int -> TC ()
 checkSort c s = do
   report $ "checking " <> pretty c <> " has sort " <> pretty s
-  s' <- do liftTC $ freshFrom $ ("*" ++ subscriptShow s ++ " ")
-  addConstr s' (Universe s) $ checkVar c ( s') -- TODO: don't allocate duplicate sort names.
+  checkConAgainstVal c (VUniv s)
+
+getSort :: Int -> (Id -> TC ()) -> TC ()
+getSort s k = do
+  x <- liftTC freshId
+  addDef x (VUniv s) $ k x

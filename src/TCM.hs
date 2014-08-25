@@ -26,7 +26,7 @@ data Heap n r = Heap { dbgDepth :: Int
                      , context :: Map r r -- Mapping
                      }
 instance (Pretty r, Pretty n) => Pretty (Heap n r) where
-  pretty (Heap {..}) = sep [hang lab 2  v
+  pretty (Heap {..}) = vcat [hang lab 2  v
                            | (lab,v) <- [("defs" ,pretty definitions)
                                         ,("aliases" ,pretty aliases)
                                         ,("context",pretty context)]
