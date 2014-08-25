@@ -16,7 +16,7 @@ typeCheck :: Term' -> Term' -> (Either Doc (),[Doc])
 typeCheck a t = runTC (max (nextUnique t) (nextUnique a)) emptyHeap chk
   where chk = do report $ "Start"
                  checkBindings t $ \t' -> do
-                   checkSort t' 100000
+                   checkType t'
                    checkTerm a t'
 
 addCtx' :: Hyp Id -> Conc Id -> Heap' -> Heap'
@@ -30,13 +30,13 @@ addCtx x t k = do
 -- Infer the type of a destruction and return it as a normal form.
 inferDestr :: (n~Id,r~Id) => Destr r -> (Conc r ->  TC ()) -> TC ()
 inferDestr (Cut v vt) k = do
-  checkSort vt 10000
+  checkType vt
   checkVar v vt
   k vt
 inferDestr (App f a_) k = do
   ft <- inferHyp f
   case ft of
-    (VPi t_ u) -> do
+    (VQ Pi t_ u) -> do
        checkVar a_ t_
        apply u a_ $ \r -> k ( r)
     _ -> terr $ pretty f <> " has not a function type"
@@ -58,9 +58,13 @@ apply f a k = do
   x <- liftTC freshId
   addDef x (VApp f a) $ k x
   
--- maintains the invariant that every hyp. has an entry in the context.
+-- maintains the invariant that every hyp. and type has an entry in the context.
 checkBindings :: (n~Id,r~Id) => Term n r -> (Conc r -> TC ()) -> TC ()
 checkBindings (Concl c) k = k c
+checkBindings (Constr y c@(Q _ x t u) t1) k = do
+  checkType t
+  addCtx x t $ checkBindings u $ \u' -> checkType u'
+  addConstr y c $ checkBindings t1 k
 checkBindings (Constr ( x) c t1) k = do
   -- report $ "constructing" <> pretty x
   addConstr x c $ do
@@ -72,7 +76,7 @@ checkBindings (Destr x d t1) k = inferDestr d $ \dt -> do
 checkBindings (Split x y z t1) k = do
   zt <- inferHyp z
   case zt of
-    VSigma t_ u ->
+    VQ Sigma t_ u ->
       addCtx x ( t_) $ apply u x $ \u' -> addCtx y ( u') $ addSplit x y z $ checkBindings t1 k
     _ -> do
       doc_z <- pHyp z -- fixme: print the type
@@ -108,22 +112,17 @@ checkConAgainstVal v t' = do
       checkConstr v' t'
 
 checkConstr :: (n~Id,r~Id) => Val n r -> Val n r -> TC ()
-checkConstr (VPair a_ b_) (VSigma ta_ tb_) = do
+checkConstr (VPair a_ b_) (VQ Sigma ta_ tb_) = do
   checkVar a_ ta_
   apply tb_ a_ $ \tb' -> checkVar b_  tb'
-checkConstr (VLam x b_) (VPi ta_ tb_) = do
+checkConstr (VLam x b_) (VQ Pi ta_ tb_) = do
   addCtx x ta_ $ apply tb_ x $ checkTerm b_
 checkConstr tag@(VTag t) ty@(VFin ts) = unless  (t `elem` ts) $ terr $
    pretty tag <> " is not found in " <> pretty ty
-checkConstr (VSigma ta_ tb_) (VUniv s) = getSort s $ \ s' -> do
-  checkSort ta_ s
-  checkConAgainstVal tb_ (VPi ta_ s')
-checkConstr (VPi ta_ tb_) (VUniv s) = getSort s $ \ s' -> do
-  checkSort ta_ s
-  checkConAgainstVal tb_ (VPi ta_ s')
-checkConstr (VFin _) (VUniv _s) = return ()
-checkConstr (VUniv s') (VUniv s) =
-  unless (s' < s) $ terr $ int s' <> " is not a subsort of " <> int s
+checkConstr (VQ _ _ _) (VUniv) = return ()
+checkConstr (VFin _) (VUniv) = return ()
+checkConstr (VUniv) (VUniv) = return ()
+  -- unless (s' < s) $ terr $ int s' <> " is not a subsort of " <> int s
 -- checkConstr x (Rec r t) = do
 --   unfoldRec typ r t $ \t' -> checkConstrAgainstConcl x t'
 checkConstr (VClosure _ _) _ = error "Closure is not a construction"
@@ -145,12 +144,8 @@ checkHyp h u = do
                -- $+$ (pretty u <+> "=") $$+ doc_u
                $+$ (pretty h <+> "=") $$+ doc_h
 
-checkSort :: (n~Id,r~Id) => Conc r -> Int -> TC ()
-checkSort c s = do
-  report $ "checking " <> pretty c <> " has sort " <> pretty s
-  checkConAgainstVal c (VUniv s)
+checkType :: (n~Id,r~Id) => Conc r -> TC ()
+checkType c = do
+  report $ "checking " <> pretty c <> " is a type "
+  checkConAgainstVal c (VUniv)
 
-getSort :: Int -> (Id -> TC ()) -> TC ()
-getSort s k = do
-  x <- liftTC freshId
-  addDef x (VUniv s) $ k x

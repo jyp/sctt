@@ -39,14 +39,12 @@ addConstr :: Monoid a => Id -> Constr' -> TC a -> TC a
 addConstr c d k = case d of
   (Hyp h) -> addAlias c h k
   (Lam x t) -> addDef c (VLam x t) k
-  (Pi x t u) -> do y <- liftTC $ freshId
-                   addDef y (VLam x u) $ addDef c (VPi t y) k
-  (Sigma x t u) -> do y <- liftTC $ freshId
-                      addDef y (VLam x u) $ addDef c (VSigma t y) k
+  (Q q x t u) -> do y <- liftTC $ freshId
+                    addDef y (VLam x u) $ addDef c (VQ q t y) k
   (Pair x y) -> addDef c (VPair x y) k
   (Tag x) -> addDef c (VTag x) k
   (Fin x) -> addDef c (VFin x) k
-  (Universe x) -> addDef c (VUniv x) k
+  (Universe x) -> addDef c (VUniv) k
 
 addDestr :: Monoid a => Id -> Destr' -> TC a -> TC a
 addDestr h d = case d of
@@ -235,11 +233,11 @@ instance Prettier Constr' where
   prettier (Lam x b) = do
     b' <- prettier b
     return $ ("\\" <> pretty x <> " ->") $$+ b'
-  prettier (Pi x t b) = do
+  prettier (Q Pi x t b) = do
     t' <- pConc t
     b' <- prettier b
     return $ (parens (pretty x <>":"<> t') <+> "->") $$+ b'
-  prettier (Sigma x t b) = do
+  prettier (Q Sigma x t b) = do
     t' <- pConc  t
     b' <- prettier b
     return $ parens (pretty x <>":"<> t') <> " × " <> b'

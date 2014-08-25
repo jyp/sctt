@@ -62,10 +62,10 @@ resolveConstr (A.Hyp x) = Hyp <$> resolveVar hyp x
 resolveConstr (A.Lam x t) = insert hyp x $ \x' ->
   Lam x' <$> resolveTerm t
 resolveConstr (A.Pi x c t) = insert hyp x $ \x' ->
-  Pi x' <$> resolveConc con c <*> resolveTerm t
+  Q Pi x' <$> resolveConc con c <*> resolveTerm t
 resolveConstr (A.Pair a b) = Pair <$> resolveConc con a <*> resolveConc con b
 resolveConstr (A.Sigma x c t) = insert hyp x $ \x' ->
-  Sigma x' <$> resolveConc con c <*> resolveTerm t
+  Q Sigma x' <$> resolveConc con c <*> resolveTerm t
 resolveConstr (A.Tag t) = Tag <$> resolveTag t
 resolveConstr (A.Fin ts) = Fin <$> mapM resolveTag ts
 resolveConstr (A.Univ (A.Nat (_,n))) = Universe <$> pure (read n)

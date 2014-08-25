@@ -37,12 +37,14 @@ data Destr r where
   Cut :: Conc r -> Conc r {-^ the type-} -> Destr r
     deriving (Show, Eq, Ord, Functor)
 
+data Q = Pi | Sigma
+    deriving (Eq, Ord)
+
 data Constr n r where
   Hyp :: Hyp r -> Constr n r -- not found in the heap!
   Rec :: Hyp n -> Term n r -> Constr n r
   Lam :: Hyp n -> Term n r -> Constr n r
-  Pi :: Hyp n -> Conc r -> Term n r -> Constr n r
-  Sigma :: Hyp n -> Conc r -> Term n r -> Constr n r
+  Q :: Q -> Hyp n -> Conc r -> Term n r -> Constr n r
   Pair :: Conc r -> Conc r -> Constr n r
   Tag :: Tag -> Constr n r
   Fin :: [Tag] -> Constr n r
@@ -54,25 +56,26 @@ data Val n r  = VApp r r
               | VLam n (Term n r)
               | VPair r r
               | VTag Tag
-              | VPi    r r  -- 2nd arg must point to a function
-              | VSigma r r
+              | VQ Q   r r  -- 2nd arg must point to a function
               | VFin [Tag]
-              | VUniv Int
+              | VUniv
               | VClosure r (Term n r) -- Closure blocked on r (probably: all free vars should be listed here.)
     deriving (Eq, Ord, Functor)
 
 
+instance (Pretty Q) where
+  pretty Pi = "Π"
+  pretty Sigma = "Σ"
 instance (Pretty r, Pretty n) => Pretty (Val n r) where
   pretty (VApp f a) = pretty f <+> pretty a
   pretty (VLam x b) = ("\\" <> pretty x <> " ->") $$+ (pretty b)
   pretty (VPair a b) = parens $ pretty a <> "," <> pretty b
-  pretty (VPi a b) = "Π" <> pretty a <> " " <> pretty b
-  pretty (VSigma a b) = "Σ" <> pretty a <> " " <> pretty b
+  pretty (VQ q a b) = pretty q <> pretty a <> " " <> pretty b
   pretty (VTag t) = "'" <> text t
   pretty (VFin ts) = braces $ sep $ punctuate "," $ map text ts
-  pretty (VUniv x) = "*" <> subscriptPretty x
+  pretty (VUniv) = "*" -- <> subscriptPretty x
   pretty (VClosure x t) = "[" <> pretty x <> "]" <> pretty t
-  
+
 -- instance (Pretty r) => Pretty (Conc r) where
 --   pretty (Conc x) = text "_" <> pretty x
 
@@ -89,7 +92,6 @@ instance (Pretty r, Pretty n) => Pretty (Branch n r) where
   pretty (Br tag t) = "'" <> text tag <> "->" $$+ pretty t
 
 instance Pretty r => Pretty (Destr r) where
-  -- pretty (Tag' v) = "'" <> text v
   pretty (App f x) = pretty f <> " " <> pretty x
   pretty (Cut x t) = pretty x <+> ":" <+> pretty t
 
@@ -97,10 +99,10 @@ instance (Pretty r, Pretty n) => Pretty (Constr n r) where
   pretty (Hyp h) = pretty h
   pretty (Rec x b) = ("rec " <> pretty x <> " ->") $$+ (pretty b)
   pretty (Lam x b) = ("\\" <> pretty x <> " ->") $$+ (pretty b)
-  pretty (Pi x t b) =
+  pretty (Q Pi x t b) =
       (parens (pretty x <+>":"<+>pretty t) <> " ->")
       $$+ (pretty b)
-  pretty (Sigma x t b) =
+  pretty (Q Sigma x t b) =
       (parens (pretty x <+>":"<+>pretty t) <> " ×")
       $$+ (pretty b)
   pretty (Pair a b) = parens $ pretty a <> "," <> pretty b
