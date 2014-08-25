@@ -12,6 +12,7 @@ import Control.Monad.RWS
 import Control.Monad.Error
 import Control.Applicative
 import Data.Map (Map)
+import Data.List (sort)
 
 type Term' = Term Id Id
 type Constr' = Constr Id Id
@@ -25,11 +26,11 @@ data Heap n r = Heap { dbgDepth :: Int
                      , aliases :: Map r r -- should be union-find
                      , context :: Map r r -- Mapping
                      }
-instance (Pretty r, Pretty n) => Pretty (Heap n r) where
+instance (Ord r, Ord n, Pretty r, Pretty n) => Pretty (Heap n r) where
   pretty (Heap {..}) = vcat [hang lab 2  v
-                           | (lab,v) <- [("defs" ,pretty definitions)
-                                        ,("aliases" ,pretty aliases)
-                                        ,("context",pretty context)]
+                           | (lab,v) <- [("defs" ,pretty $ sort definitions)
+                                        ,("aliases" ,pretty $ aliases)
+                                        ,("context",pretty $ context)]
                              ]
 
 newtype TC a = TC {fromTC :: ErrorT Doc (RWST Heap' [Doc] () FreshM) a}

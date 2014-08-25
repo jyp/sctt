@@ -126,7 +126,7 @@ hnf v k = do
     Nothing -> do
       cl <- lkHeap isClosure v
       case cl of
-        Just (VClosure _ t) -> onConcl t $ \v' -> hnf v' k
+        Just (VClosure _ t) -> onConcl t $ \v' -> addAlias v v' $ hnf v' k
         Nothing -> terr "cannot be evaluated to head normal form"
       
 checkConstr0 :: Id -> Id -> TC ()
