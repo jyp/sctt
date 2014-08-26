@@ -23,7 +23,8 @@ addCtx' :: Hyp Id -> Conc Id -> Heap' -> Heap'
 addCtx' x ( t) h@Heap{..} = h{context = M.insert x t context }
 
 addCtx :: Id -> Conc Id -> (TC ()) -> TC ()
-addCtx x t k = do
+addCtx x t0 k = do
+  t <- aliasOf t0
   report $ "Adding hyp " <> pretty x <> ":" <> pretty t
   local (addCtx' x t) k
 
@@ -43,7 +44,8 @@ inferDestr (App f a_) k = do
 
 -- | Mere lookup of type in the context
 inferHyp :: (n~Id,r~Id) => Hyp r -> TC (Val n r)
-inferHyp h = do
+inferHyp h0 = do
+  h <- aliasOf h0
   ctx <- context <$> ask
   case M.lookup h ctx of
     Nothing -> terr $ "Panic: " <> pretty h <> " hyp. not found in context."
@@ -97,9 +99,10 @@ checkTerm e t = do
   checkBindings e $ \c -> checkVar c t
 
 checkVar :: (n~Id,r~Id) => Conc r -> Conc r -> TC ()
-checkVar v0 t = do
+checkVar v0 t0 = do
   ctx <- context <$> ask
   v <- aliasOf v0
+  t <- aliasOf t0
   report $ "checking conclusion " <> pretty v <> ":" <> pretty t
   case M.lookup v ctx of
     Just u -> do

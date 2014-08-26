@@ -103,7 +103,7 @@ isCon v = case v of
   _ -> True
 
 redex :: Monoid a => Id -> Val' -> Id -> TC a -> TC a
-redex result fun arg k = app fun arg $ \clos -> addDef result clos k
+redex result fun arg k = app fun arg $ \clos -> addAlias result clos k
 
 wakeClosures :: Monoid a => Id -> TC a -> TC a
 wakeClosures a k = do
@@ -132,38 +132,30 @@ addDef r0 d0 k = do
             -- Is there a definition for the thing being eliminated? Then reduce.
         _ -> checkCut r k
 
-addAlias' :: Ord r => r -> r -> M.Map r r -> M.Map r r
-addAlias' src trg as = f <$> M.insert src trg as
-  where f x = if x == src then trg else x
-
-addAliases' :: Ord r => [(r,r)] -> M.Map r r -> M.Map r r
-addAliases' = foldr (.) id . map (uncurry addAlias')
-
 swap (x,y) = (y,x)
 
 addAliases :: Monoid a => [(Id,Id)] -> TC a -> TC a
-addAliases [] k = k
-addAliases as0 k = do
-  let as = filter (\(x,y) -> x /= y) as0
-  h <- ask
-  report $ ("Adding aliases:" $$+ pretty as)
-  origAliases <- aliases <$> ask
-  let allAliases = addAliases' as origAliases
-  let applyAlias = getAlias allAliases
-      hD' :: M.Map (Val Id Id) [Id]
-      hD' = M.fromListWith (++) [(fmap applyAlias d, [x]) | (x,d) <- definitions h]
-      myhead (x:_) = x
-      hD'' = fmap myhead hD'
-      classes = M.elems hD'
-      aliases = [(x,y) | (x:xs) <- classes, y <- xs]
-      defs' :: [(Id,Val Id Id)]
-      defs' =  fmap (applyAlias <$>) <$> definitions h
-      ctx' = M.fromList [(applyAlias s, applyAlias t) | (s,t) <- M.assocs $ context h]
-  local (\h2 -> h2 {aliases = allAliases, definitions = defs', context = ctx'}) $
-    checkCuts (map snd as) $ addAliases aliases k
+addAliases = foldr (.) id . map (uncurry addAlias)
 
 addAlias :: Monoid a => Id -> Id -> TC a -> TC a
-addAlias src trg = addAliases [(src,trg)]
+addAlias src trg0 k = do
+  trg <- aliasOf trg0
+  if trg == src
+     then k
+     else do
+       h <- ask
+       let applyAlias x = if x == src then trg else x
+           defs' :: [(Id,Val Id Id)]
+           defs' =  fmap (applyAlias <$>) <$> definitions h
+           ctx' = M.fromList [(applyAlias s, applyAlias t) | (s,t) <- M.assocs $ context h]
+           hD' :: M.Map (Val Id Id) [Id]
+           hD' = M.fromListWith (++) [(d, [x]) | (x,d) <- defs']
+           myhead (x:_) = x
+           hD'' = fmap myhead hD'
+           classes = M.elems hD'
+           extraAliases = [(x,y) | (x:xs) <- classes, y <- xs]
+       local (\h2 -> h2 {aliases = M.insert src trg (aliases h2), definitions = defs', context = ctx'}) $
+         checkCut trg $ addAliases extraAliases k
 
 getAlias :: Ord a => M.Map a a -> a -> a
 getAlias as x = case M.lookup x as of
