@@ -54,13 +54,13 @@ addDestr h d = case d of
 addTermDef :: (Monoid a) => Id -> Term' -> TC a -> TC a
 addTermDef x t k = onConcl t $ \( c) -> addAlias x c k
 
-app :: Monoid a => Val' -> Id -> (Val' -> TC a) -> TC a
+app :: Monoid a => Val' -> Id -> (Id -> TC a) -> TC a
 app fun arg k = do
   fun' <- liftTC (refreshBinders fun)
   case fun' of
     VLam x t -> do
       t' <- substTC x arg t
-      k (VClosure arg t')
+      onConcl t' $ k -- (VClosure arg t')
     _ -> terr $ "panic: app: expected lambda but got " <> pretty fun'
 
 checkCuts :: Monoid a => [Id] -> TC a -> TC a
